@@ -2027,6 +2027,10 @@ let roomPollInterval = null;
 let lastMoveSeq = 0;
 
 async function createRoom() {
+  if (offlineMode || window.location.hostname.endsWith('github.io')) {
+    alert("ℹ️ Remote Room Multiplayer requires the Python server (run 'pip install mangala-game' and 'mangala').\n\nOn GitHub Pages, enjoy 1-Player vs AI, AI vs AI, Hotseat 2-Player, and Tactical Puzzles!");
+    return;
+  }
   try {
     const res = await api('/api/room/create', {});
     currentRoom = res.room;
@@ -2044,6 +2048,10 @@ async function createRoom() {
 }
 
 async function joinRoom(code) {
+  if (offlineMode || window.location.hostname.endsWith('github.io')) {
+    alert("ℹ️ Remote Room Multiplayer requires the Python server (run 'pip install mangala-game' and 'mangala').\n\nOn GitHub Pages, enjoy 1-Player vs AI, AI vs AI, Hotseat 2-Player, and Tactical Puzzles!");
+    return;
+  }
   if (!code) {
     alert("Please enter a 4-character Room Code.");
     return;
@@ -3040,7 +3048,9 @@ if (roomParam) {
 // ── Progressive Web App (Offline Service Worker) ───────────────────────────
 if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      reg.update().catch(() => {});
+    }).catch(() => {});
   });
 }
 </script>
