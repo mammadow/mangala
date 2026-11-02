@@ -208,9 +208,18 @@ def test_deadline_expired_before_first_iteration() -> None:
     from mangala.ai import analyse
 
     s = initial_state()
-    t0 = time.monotonic()
-    # Monotonic returns start, expires at while check, and computes elapsed
-    with patch("time.monotonic", side_effect=[t0, t0 + 10.0, t0 + 10.0]):
+    start_time = time.monotonic()
+    calls = 0
+
+    def mock_monotonic() -> float:
+        nonlocal calls
+        calls += 1
+        # First call records start time; all subsequent calls report time well past deadline
+        if calls == 1:
+            return start_time
+        return start_time + 100.0
+
+    with patch("mangala.ai._time.monotonic", side_effect=mock_monotonic):
         res = analyse(s, time_limit=1.0)
         assert res.move in legal_moves(s)
         assert res.depth == 0
