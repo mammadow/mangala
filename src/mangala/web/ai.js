@@ -1,12 +1,17 @@
 /**
- * ai.js — Client-side Minimax with Alpha-Beta pruning for Turkish Mangala.
- * Enables full offline play and GitHub Pages deployment without Python backend.
+ * ai.js — Tournament-grade Client-side AI with PVS, Killer Heuristic,
+ * and Opening Book for Turkish Mangala (Browser & Node.js).
  */
 (function(root) {
   const Engine = typeof require !== 'undefined' ? require('./engine') : root.MangalaEngine;
+  const Book = typeof require !== 'undefined' ? (function() {
+    try { return require('./book'); } catch(e) { return null; }
+  })() : root.MangalaBook;
+
   const INF = 1e9;
   const WIN = 10000;
-  const Q_DEPTH = 3;
+  const Q_DEPTH = 4;
+  const PVS_EPSILON = 1e-4;
 
   function evaluate(state, rootPlayer) {
     const p1 = state.pits[Engine.P1_TREAS], p2 = state.pits[Engine.P2_TREAS];
@@ -16,13 +21,16 @@
     const oppPits = Engine.PLAYER_PITS[1 - rootPlayer];
     const ownTreas = Engine.PLAYER_TREAS[rootPlayer];
     const [ownMin, ownMax] = Engine.OWN_PITS_RANGE[rootPlayer];
+    const [oppMin, oppMax] = Engine.OPP_PITS_RANGE[rootPlayer];
     const landingTable = Engine.SOW_LANDING[rootPlayer];
+    const oppLandingTable = Engine.SOW_LANDING[1 - rootPlayer];
 
     let ownStones = 0, oppStones = 0;
     for (const p of ownPits) ownStones += state.pits[p];
     for (const p of oppPits) oppStones += state.pits[p];
 
     let extraBonus = 0;
+    let captureOffense = 0;
     let emptyOffense = 0;
 
     for (const i of ownPits) {
@@ -31,20 +39,59 @@
       const sowCount = n > 1 ? n - 1 : 1;
       const pos = landingTable[i][sowCount % 13];
       if (pos === ownTreas) {
-        extraBonus += 0.4;
+        extraBonus += (n === 1 && i === ownMax) ? 0.6 : 0.4;
       } else if (pos >= ownMin && pos <= ownMax && state.pits[pos] === 0) {
         const opp = 12 - pos;
         if (state.pits[opp] > 0) emptyOffense += 0.25 * (state.pits[opp] + 1);
+      } else if (pos >= oppMin && pos <= oppMax) {
+        if ((state.pits[pos] + 1) % 2 === 0) {
+          captureOffense += 0.35 * (state.pits[pos] + 1);
+        }
       }
     }
 
-    let exposure = 0;
-    for (const i of ownPits) {
-      const n = state.pits[i];
-      if (n > 0 && n % 2 === 0) exposure += 0.3;
+    let captureExposure = 0;
+    for (const j of oppPits) {
+      const m = state.pits[j];
+      if (m === 0) continue;
+      const sowCount = m > 1 ? m - 1 : 1;
+      const pos = oppLandingTable[j][sowCount % 13];
+      if (pos >= ownMin && pos <= ownMax && state.pits[pos] > 0) {
+        if ((state.pits[pos] + 1) % 2 === 0) {
+          captureExposure += 0.35 * (state.pits[pos] + 1);
+        }
+      }
     }
 
-    return treasDiff + 0.1 * (ownStones - oppStones) + extraBonus + emptyOffense - exposure;
+    let emptyHoleExposure = 0;
+    for (const e of oppPits) {
+      if (state.pits[e] !== 0) continue;
+      const opp = 12 - e;
+      if (state.pits[opp] === 0) continue;
+      for (const j of oppPits) {
+        const m = state.pits[j];
+        if (m === 0) continue;
+        const sowCount = m > 1 ? m - 1 : 1;
+        const pos = oppLandingTable[j][sowCount % 13];
+        if (pos === e) {
+          emptyHoleExposure += 0.25 * (state.pits[opp] + 1);
+          break;
+        }
+      }
+    }
+
+    let sweepBonus = 0;
+    if (ownStones <= 4) sweepBonus += 0.2 * (4 - ownStones);
+    if (oppStones <= 4) sweepBonus -= 0.2 * (4 - oppStones);
+
+    return treasDiff
+      + 0.1 * (ownStones - oppStones)
+      + extraBonus
+      + captureOffense
+      + emptyOffense
+      - captureExposure
+      - emptyHoleExposure
+      + sweepBonus;
   }
 
   function quiescence(state, alpha, beta, rootPlayer, qDepth) {
@@ -100,9 +147,37 @@
     const isMax = (state.current_player === rootPlayer);
     let bestVal = isMax ? -INF : INF;
 
+    // Order moves: extra turn > capture > others
+    const scored = [];
     for (const m of moves) {
-      const {state: child} = Engine.applyMove(state, m);
-      const val = search(child, depth - 1, alpha, beta, rootPlayer);
+      const {state: child, events} = Engine.applyMove(state, m);
+      let score = 0;
+      if (events.extra_turn) score += 50000 + events.capture * 100;
+      else if (events.capture > 0) score += 30000 + events.capture * 100;
+      scored.push({m, child, score});
+    }
+    scored.sort((a, b) => b.score - a.score);
+
+    for (let i = 0; i < scored.length; i++) {
+      const {child} = scored[i];
+      let val;
+      if (i === 0) {
+        val = search(child, depth - 1, alpha, beta, rootPlayer);
+      } else {
+        // PVS zero-window search
+        if (isMax) {
+          val = search(child, depth - 1, alpha, alpha + PVS_EPSILON, rootPlayer);
+          if (val > alpha && val < beta) {
+            val = search(child, depth - 1, val, beta, rootPlayer);
+          }
+        } else {
+          val = search(child, depth - 1, beta - PVS_EPSILON, beta, rootPlayer);
+          if (val > alpha && val < beta) {
+            val = search(child, depth - 1, alpha, val, rootPlayer);
+          }
+        }
+      }
+
       if (isMax) {
         if (val > bestVal) bestVal = val;
         if (bestVal > alpha) alpha = bestVal;
@@ -116,13 +191,21 @@
     return bestVal;
   }
 
-  function bestMove(state, depth = 5) {
+  function bestMove(state, depth = 6, useBook = true) {
     const moves = Engine.legalMoves(state);
     if (moves.length === 0) return null;
     if (moves.length === 1) return moves[0];
 
+    // Check precomputed opening book
+    if (useBook && Book && typeof Book.getBookMove === 'function') {
+      const bookMv = Book.getBookMove(state);
+      if (bookMv !== null && moves.includes(bookMv)) {
+        return bookMv;
+      }
+    }
+
     const rootPlayer = state.current_player;
-    let bestMove = moves[0];
+    let bestMv = moves[0];
     let bestScore = -INF;
 
     for (const m of moves) {
@@ -130,10 +213,10 @@
       const val = search(child, depth - 1, -INF, INF, rootPlayer);
       if (val > bestScore) {
         bestScore = val;
-        bestMove = m;
+        bestMv = m;
       }
     }
-    return bestMove;
+    return bestMv;
   }
 
   const MangalaAI = {

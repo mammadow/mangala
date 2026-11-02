@@ -103,6 +103,7 @@ python_version = "3.10"
 files = [
     "src/mangala/engine.py",
     "src/mangala/ai.py",
+    "src/mangala/book.py",
     "src/mangala/server.py",
     "src/mangala/cli.py",
     "src/mangala/board.py",

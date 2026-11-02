@@ -225,3 +225,71 @@ def test_deadline_expired_before_first_iteration() -> None:
         assert res.depth == 0
 
 
+def test_opening_book_lookup_and_fastpath() -> None:
+    from mangala.book import OPENING_BOOK, get_book_move
+
+    s0 = initial_state()
+    # Book lookup on starting state
+    mv = get_book_move(s0)
+    assert mv is not None
+    assert mv in legal_moves(s0)
+    assert ((tuple(s0.pits), 0) in OPENING_BOOK)
+
+    # Off-book state
+    custom_pits = [0] * TOTAL
+    custom_pits[0] = 48
+    s_off = GameState(pits=custom_pits, current_player=0)
+    assert get_book_move(s_off) is None
+
+    # analyse with use_book=True returns instant result
+    res = analyse(s0, use_book=True)
+    assert res.move == mv
+    assert res.depth == 16
+    assert res.nodes == 1
+    assert res.pv == [mv]
+
+
+def test_searcher_heuristics_and_ordering() -> None:
+    from mangala.ai import Searcher
+
+    searcher = Searcher()
+    # Test cutoff recording updates killers and history table
+    searcher._record_cutoff(player=0, move=3, ply=2, depth=4)
+    searcher._record_cutoff(player=0, move=4, ply=2, depth=3)
+    searcher._record_cutoff(player=0, move=5, ply=2, depth=2)
+    # Should keep max 2 killers per ply
+    assert searcher.killer_moves[2] == [5, 4]
+    assert searcher.history_table[0][3] == 16
+    assert searcher.history_table[0][4] == 9
+
+    s0 = initial_state()
+    # Ordered children prioritizes PV move then killers/history
+    children = searcher._ordered_children(s0, pv_move=2, ply=2)
+    assert children[0][0] == 2  # PV move first
+
+
+def test_enhanced_evaluation_features() -> None:
+    from mangala.ai import _evaluate
+
+    # Test ladder single-stone bonus
+    pits = [0] * TOTAL
+    pits[5] = 1   # direct single step into P1 treasury (pit 6)
+    pits[6] = 24
+    pits[13] = 23
+    s_ladder = GameState(pits=pits, current_player=0)
+    score_ladder = _evaluate(s_ladder, 0)
+    assert score_ladder > 1.0  # treasury lead + positive ladder bonus
+
+    # Test sweep proximity bonus when few stones remain on own side
+    pits_sweep = [0] * TOTAL
+    pits_sweep[0] = 1
+    pits_sweep[7] = 5
+    pits_sweep[6] = 21
+    pits_sweep[13] = 21
+    s_sweep = GameState(pits=pits_sweep, current_player=0)
+    eval_sweep = _evaluate(s_sweep, 0)
+    # own_stones = 1 vs opp_stones = 5: sweep bonus overcomes stone deficit
+    assert eval_sweep > 0.1
+
+
+

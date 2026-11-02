@@ -244,6 +244,7 @@ class Handler(BaseHTTPRequestHandler):
             result = ai_module.analyse(
                 state,
                 time_limit=time_limit if time_limit is not None else ai_module.DEFAULT_TIME_LIMIT,
+                use_book=True,
             )
         self._send_json({"pit": result.move, "score": result.score, "depth": result.depth})
 
