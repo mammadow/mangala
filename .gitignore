@@ -31,3 +31,4 @@ Thumbs.db
 # Local AI-assistant settings
 .claude/
 .gemini/
+GEMINI.md

@@ -35,11 +35,12 @@ from dataclasses import dataclass, field
 
 from .engine import (
     DEFAULT_RULES,
+    OWN_PITS_RANGE,
     P1_PITS,
     P1_TREASURY,
     P2_PITS,
     P2_TREASURY,
-    TOTAL,
+    SOW_LANDING,
     GameState,
     MoveEvents,
     Rules,
@@ -47,6 +48,11 @@ from .engine import (
     legal_moves,
     score,
 )
+
+_OWN_PITS_TUPLE: tuple[tuple[int, ...], tuple[int, ...]] = (tuple(P1_PITS), tuple(P2_PITS))
+_OPP_PITS_TUPLE: tuple[tuple[int, ...], tuple[int, ...]] = (tuple(P2_PITS), tuple(P1_PITS))
+_OWN_TREAS_TUPLE: tuple[int, int] = (P1_TREASURY, P2_TREASURY)
+_OPP_TREAS_TUPLE: tuple[int, int] = (P2_TREASURY, P1_TREASURY)
 
 _INF = math.inf
 
@@ -107,51 +113,41 @@ def _evaluate(state: GameState, root: int) -> float:
     p1, p2 = score(state)
     treasury_diff = (p1 - p2) if root == 0 else (p2 - p1)
 
-    own_pits  = P1_PITS     if root == 0 else P2_PITS
-    opp_pits  = P2_PITS     if root == 0 else P1_PITS
-    own_treas = P1_TREASURY if root == 0 else P2_TREASURY
-    opp_treas = P2_TREASURY if root == 0 else P1_TREASURY
+    own_pits  = _OWN_PITS_TUPLE[root]
+    opp_pits  = _OPP_PITS_TUPLE[root]
+    own_treas = _OWN_TREAS_TUPLE[root]
+    own_min, own_max = OWN_PITS_RANGE[root]
+    landing_table = SOW_LANDING[root]
+    opp_landing_table = SOW_LANDING[1 - root]
 
     pits = state.pits
     own_stones = sum(pits[i] for i in own_pits)
     opp_stones = sum(pits[i] for i in opp_pits)
 
-    # Extra-turn potential: bonus for each own pit whose last sown stone
-    # would land in own treasury (free-tempo move).
-    # Also compute empty-hole offense along the same sowing simulation.
+    # Extra-turn potential & empty-hole offense using O(1) sowing table lookup
     extra_bonus = 0.0
     empty_hole_offense = 0.0
-    own_pits_set = set(own_pits)
     for i in own_pits:
         n = pits[i]
         if n == 0:
             continue
         sow_count = n - 1 if n > 1 else 1
-        pos = i
-        for _ in range(sow_count):
-            pos = (pos + 1) % TOTAL
-            if pos == opp_treas:
-                pos = (pos + 1) % TOTAL
+        pos = landing_table[i][sow_count % 13]
         if pos == own_treas:
             extra_bonus += 0.4
-        # Empty-hole offense: sowing lands in own pit that is currently empty
-        # and the directly opposite opponent pit has stones.
-        elif pos in own_pits_set and pits[pos] == 0:
+        elif own_min <= pos <= own_max and pits[pos] == 0:
             opposite = 12 - pos
             if pits[opposite] > 0:
                 empty_hole_offense += 0.25 * (pits[opposite] + 1)
 
-    # Regular capture exposure: penalty for own even-count pits (immediately
-    # capturable by the opponent's last stone).
+    # Regular capture exposure: penalty for own even-count pits
     exposure = 0.0
     for i in own_pits:
         n = pits[i]
         if n > 0 and n % 2 == 0:
             exposure += 0.3
 
-    # Empty-hole exposure: penalty when opponent can exploit own empty pits.
-    # For each own empty pit e whose opposite has stones, check whether any
-    # opponent pit's sowing would land exactly in e.
+    # Empty-hole exposure: check if any opponent pit can land its last stone in own empty pit e
     empty_hole_exposure = 0.0
     for e in own_pits:
         if pits[e] != 0:
@@ -159,20 +155,15 @@ def _evaluate(state: GameState, root: int) -> float:
         opposite = 12 - e
         if pits[opposite] == 0:
             continue
-        # Check if any opponent pit can land its last stone in e.
         for j in opp_pits:
             m = pits[j]
             if m == 0:
                 continue
             sow_count = m - 1 if m > 1 else 1
-            pos = j
-            for _ in range(sow_count):
-                pos = (pos + 1) % TOTAL
-                if pos == own_treas:
-                    pos = (pos + 1) % TOTAL
+            pos = opp_landing_table[j][sow_count % 13]
             if pos == e:
                 empty_hole_exposure += 0.25 * (pits[opposite] + 1)
-                break  # one threat per empty pit is enough
+                break
 
     return (treasury_diff
             + 0.1 * (own_stones - opp_stones)

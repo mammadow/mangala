@@ -15,7 +15,7 @@ import time
 
 from . import ai as ai_module
 from .board import render, render_status
-from .engine import apply_move, initial_state, is_terminal, legal_moves
+from .engine import GameState, apply_move, initial_state, is_terminal, legal_moves
 
 _DIVIDER = "-" * 55
 
@@ -126,7 +126,7 @@ def _prompt_move(player: int, moves: list) -> int:
 # AI turn
 # ---------------------------------------------------------------------------
 
-def _ai_move(state, level: str) -> int:
+def _ai_move(state: GameState, level: str) -> int:
     """Compute and announce the AI's move. Returns pit index."""
     player = state.current_player
     print(f"\n  Player {player + 1} (AI) is thinking...", end="", flush=True)
@@ -141,7 +141,7 @@ def _ai_move(state, level: str) -> int:
 # Shared game-turn logic
 # ---------------------------------------------------------------------------
 
-def _play_turn(state, players: list, level: str) -> tuple:
+def _play_turn(state: GameState, players: list[str], level: str) -> tuple[GameState, bool]:
     """
     Execute one turn (human or AI) and return (new_state, aborted).
     `players` is a list of two strings: "human" or "ai".
@@ -199,7 +199,7 @@ def _game_loop(players: list, level: str, watch_mode: bool) -> None:
     print(_DIVIDER)
     if state.winner == -1:
         print("\n  It's a tie! Both players scored equally.")
-    else:
+    elif state.winner is not None:
         p1, p2 = state.pits[6], state.pits[13]
         print(f"\n  Congratulations, Player {state.winner + 1} wins!  ({p1} vs {p2})")
     print()

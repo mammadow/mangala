@@ -35,3 +35,6 @@ def test_render_status_game_over() -> None:
 
     s_tie = GameState(pits=pits, current_player=0, game_over=True, winner=-1)
     assert "It's a tie!" in render_status(s_tie)
+
+    s_unknown = GameState(pits=pits, current_player=0, game_over=True, winner=None)
+    assert "Game over" in render_status(s_unknown)

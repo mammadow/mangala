@@ -153,3 +153,66 @@ def test_tiny_time_budget_fallback() -> None:
         assert res.move in legal_moves(s)
         assert res.depth == 0
 
+
+def test_quiescence_terminal_state() -> None:
+    from mangala.ai import Searcher
+    from mangala.engine import GameState
+
+    pits = [0] * 14
+    pits[6] = 30
+    pits[13] = 18
+    s_term = GameState(pits=pits, current_player=0, game_over=True, winner=0)
+    searcher = Searcher()
+    val = searcher._quiescence(s_term, alpha=-100.0, beta=100.0, root=0, q_depth=2)
+    assert val > 1000.0
+
+
+def test_search_children_empty_fallback() -> None:
+    from unittest.mock import patch
+
+    from mangala.ai import Searcher
+
+    s = initial_state()
+    searcher = Searcher()
+    searcher._deadline = float("inf")
+    with patch.object(Searcher, "_ordered_children", return_value=[]):
+        val = searcher._search(s, depth=2, alpha=-100.0, beta=100.0, root=0)
+        assert isinstance(val, float)
+
+
+def test_extract_pv_terminal_and_missing() -> None:
+    from mangala.ai import Searcher
+
+    searcher = Searcher()
+    s = initial_state()
+    pv = searcher._extract_pv(s, first=0, max_len=5)
+    assert pv == [0]
+
+
+def test_analyse_forced_win_cutoff() -> None:
+    from unittest.mock import patch
+
+    from mangala.ai import Searcher, analyse
+
+    s = initial_state()
+    with patch.object(Searcher, "_search_root", return_value=(0, 10050.0)):
+        res = analyse(s, time_limit=1.0)
+        assert res.move == 0
+        assert res.score == 10050.0
+
+
+def test_deadline_expired_before_first_iteration() -> None:
+    import time
+    from unittest.mock import patch
+
+    from mangala.ai import analyse
+
+    s = initial_state()
+    t0 = time.monotonic()
+    # Monotonic returns start, expires at while check, and computes elapsed
+    with patch("time.monotonic", side_effect=[t0, t0 + 10.0, t0 + 10.0]):
+        res = analyse(s, time_limit=1.0)
+        assert res.move in legal_moves(s)
+        assert res.depth == 0
+
+

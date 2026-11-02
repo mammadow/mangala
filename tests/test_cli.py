@@ -179,3 +179,17 @@ def test_cli_main_ai_vs_ai_and_keyboard_interrupt() -> None:
         patch("mangala.cli._game_loop", side_effect=KeyboardInterrupt),
     ):
         main()
+
+
+def test_game_loop_watch_mode_sleep() -> None:
+    from mangala.cli import _game_loop
+    from mangala.engine import GameState
+
+    term = GameState(pits=[0] * 14, current_player=0, game_over=True, winner=0)
+    with (
+        patch("mangala.cli._play_turn", side_effect=[(term, False)]),
+        patch("time.sleep") as mock_sleep,
+    ):
+        _game_loop(["ai", "ai"], "easy", watch_mode=True)
+        assert mock_sleep.called
+

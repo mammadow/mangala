@@ -63,5 +63,7 @@ def render_status(state: GameState) -> str:
     if state.game_over:
         if state.winner == -1:
             return f"{base}  |  It's a tie!"
-        return f"{base}  |  Player {state.winner + 1} wins!"
+        if state.winner is not None:
+            return f"{base}  |  Player {state.winner + 1} wins!"
+        return f"{base}  |  Game over"
     return f"{base}  |  Player {state.current_player + 1}'s turn"

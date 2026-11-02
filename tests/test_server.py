@@ -248,3 +248,69 @@ def test_server_main_run_and_stop() -> None:
         patch("webbrowser.open"),
     ):
         main(["--port", "0", "--no-browser", "--verbose"])
+
+
+def test_handler_log_message_verbose() -> None:
+    from unittest.mock import patch
+
+    from mangala.server import Handler
+
+    h = Handler.__new__(Handler)
+    h.quiet = False
+    h.client_address = ("127.0.0.1", 12345)
+    with patch.object(Handler, "log_date_time_string", return_value="now"), patch("sys.stderr.write"):
+        h.log_message("test format %s", "arg")
+    Handler.quiet = True
+
+
+def test_handler_send_file_oserror() -> None:
+    from unittest.mock import patch
+
+    from mangala.server import Handler
+
+    h = Handler.__new__(Handler)
+    with (
+        patch("builtins.open", side_effect=OSError("not found")),
+        patch.object(h, "_send_error_json") as mock_err,
+    ):
+        h._send_file("non_existent_file.xyz")
+        assert mock_err.called
+        assert mock_err.call_args[0] == (404, "not found")
+
+
+def test_handler_read_json_bad_content_length() -> None:
+    from mangala.server import BadRequest, Handler
+
+    h = Handler.__new__(Handler)
+    h.headers = {"Content-Length": "not_an_int"}
+    with pytest.raises(BadRequest, match="invalid Content-Length"):
+        h._read_json()
+
+
+def test_handler_drain_body_exception() -> None:
+    from mangala.server import Handler
+
+    h = Handler.__new__(Handler)
+    h.headers = {"Content-Length": "10"}
+
+    class BadRFile:
+        def read(self, n: int) -> bytes:
+            raise OSError("connection reset")
+
+    h.rfile = BadRFile()
+    # Must suppress silently
+    h._drain_body()
+
+
+def test_server_main_with_browser_launch() -> None:
+    from unittest.mock import patch
+
+    from mangala.server import main
+
+    with (
+        patch("http.server.ThreadingHTTPServer.serve_forever", side_effect=KeyboardInterrupt),
+        patch("webbrowser.open") as mock_open,
+    ):
+        main(["--port", "0"])
+        assert mock_open.called
+

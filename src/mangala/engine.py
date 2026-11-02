@@ -34,6 +34,32 @@ PLAYER_PITS = [P1_PITS, P2_PITS]
 PLAYER_TREASURY = [P1_TREASURY, P2_TREASURY]
 OPP_TREASURY = [P2_TREASURY, P1_TREASURY]
 
+# Precomputed pit boundaries for O(1) zero-allocation range checks
+OWN_PITS_RANGE: tuple[tuple[int, int], tuple[int, int]] = ((0, 5), (7, 12))
+OPP_PITS_RANGE: tuple[tuple[int, int], tuple[int, int]] = ((7, 12), (0, 5))
+
+
+def _compute_landing(player: int, pit: int, to_sow: int) -> int:
+    opp_treas = OPP_TREASURY[player]
+    pos = pit
+    for _ in range(to_sow):
+        pos = (pos + 1) % TOTAL
+        if pos == opp_treas:
+            pos = (pos + 1) % TOTAL
+    return pos
+
+
+# Precomputed O(1) landing table: SOW_LANDING[player][pit][to_sow % 13]
+# Sowing tracks contain 13 active holes (opponent treasury is skipped).
+# Advancing 13 steps around the 13 active holes returns to the origin pit.
+SOW_LANDING: tuple[tuple[tuple[int, ...], ...], ...] = tuple(
+    tuple(
+        tuple(_compute_landing(p, pit, k) for k in range(13))
+        for pit in range(TOTAL)
+    )
+    for p in range(2)
+)
+
 # End-game sweep variants (see Rules.sweep_to).
 SWEEP_EMPTIED_SIDE = "emptied_side"
 SWEEP_LAST_MOVER = "last_mover"
@@ -143,21 +169,15 @@ def apply_move(state: GameState, pit_index: int,
         the player whose side emptied takes them). Most stones wins.
     """
     player = state.current_player
-    own_pits = PLAYER_PITS[player]
-    if (state.game_over or not (own_pits[0] <= pit_index <= own_pits[-1])
+    own_min, own_max = OWN_PITS_RANGE[player]
+    if (state.game_over or not (own_min <= pit_index <= own_max)
             or state.pits[pit_index] == 0):
         raise ValueError(f"illegal move: pit {pit_index} for player {player + 1}")
 
     pits = state.pits[:]
-
     own_treasury  = PLAYER_TREASURY[player]
     opp_treasury  = OPP_TREASURY[player]
-    own_pits_set  = set(own_pits)
-    opp_pits_set  = set(PLAYER_PITS[1 - player])
-
-    # Remember which of the player's own pits were empty before this move
-    # (needed to detect the empty-hole capture rule).
-    own_empty_before = {i for i in own_pits_set if pits[i] == 0}
+    opp_min, opp_max = OPP_PITS_RANGE[player]
 
     stones = pits[pit_index]
     if stones > 1:
@@ -184,7 +204,7 @@ def apply_move(state: GameState, pit_index: int,
     # Rule 1 — Regular capture:
     #   Last stone lands on opponent's side and makes that pit's count even
     #   → take all stones from that pit.
-    if last in opp_pits_set and pits[last] % 2 == 0 and pits[last] > 0:
+    if opp_min <= last <= opp_max and pits[last] % 2 == 0 and pits[last] > 0:
         captured = pits[last]
         pits[own_treasury] += captured
         pits[last] = 0
@@ -194,8 +214,8 @@ def apply_move(state: GameState, pit_index: int,
     #   the start of this turn (so the pit now has exactly 1 stone).
     #   → take that 1 stone PLUS all stones in the directly opposite opponent pit.
     #   The opposite of pit i is pit (12 − i) for both rows (board is symmetric).
-    elif (last in own_pits_set
-          and last in own_empty_before
+    elif (own_min <= last <= own_max
+          and state.pits[last] == 0
           and pits[last] == 1):
         opp_pit = opposite(last)
         # Only capture when the opposite opponent pit actually has stones.
@@ -212,10 +232,12 @@ def apply_move(state: GameState, pit_index: int,
     game_over = False
     winner = None
     for p in range(2):
-        if all(pits[i] == 0 for i in PLAYER_PITS[p]):
+        p_min, p_max = OWN_PITS_RANGE[p]
+        if all(pits[i] == 0 for i in range(p_min, p_max + 1)):
             other = 1 - p
             collector = p if rules.sweep_to == SWEEP_EMPTIED_SIDE else player
-            for i in PLAYER_PITS[other]:
+            o_min, o_max = OWN_PITS_RANGE[other]
+            for i in range(o_min, o_max + 1):
                 pits[PLAYER_TREASURY[collector]] += pits[i]
                 pits[i] = 0
             game_over = True

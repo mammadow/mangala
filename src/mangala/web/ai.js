@@ -15,7 +15,8 @@
     const ownPits = Engine.PLAYER_PITS[rootPlayer];
     const oppPits = Engine.PLAYER_PITS[1 - rootPlayer];
     const ownTreas = Engine.PLAYER_TREAS[rootPlayer];
-    const oppTreas = Engine.PLAYER_TREAS[1 - rootPlayer];
+    const [ownMin, ownMax] = Engine.OWN_PITS_RANGE[rootPlayer];
+    const landingTable = Engine.SOW_LANDING[rootPlayer];
 
     let ownStones = 0, oppStones = 0;
     for (const p of ownPits) ownStones += state.pits[p];
@@ -23,20 +24,15 @@
 
     let extraBonus = 0;
     let emptyOffense = 0;
-    const ownPitsSet = new Set(ownPits);
 
     for (const i of ownPits) {
       const n = state.pits[i];
       if (n === 0) continue;
       const sowCount = n > 1 ? n - 1 : 1;
-      let pos = i;
-      for (let s = 0; s < sowCount; s++) {
-        pos = (pos + 1) % Engine.TOTAL;
-        if (pos === oppTreas) pos = (pos + 1) % Engine.TOTAL;
-      }
+      const pos = landingTable[i][sowCount % 13];
       if (pos === ownTreas) {
         extraBonus += 0.4;
-      } else if (ownPitsSet.has(pos) && state.pits[pos] === 0) {
+      } else if (pos >= ownMin && pos <= ownMax && state.pits[pos] === 0) {
         const opp = 12 - pos;
         if (state.pits[opp] > 0) emptyOffense += 0.25 * (state.pits[opp] + 1);
       }
