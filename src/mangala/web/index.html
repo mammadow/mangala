@@ -2388,21 +2388,26 @@ async function playMove(pit) {
   const before = S.pits.slice();
   const { toSow, path, leaveBehind } = sowPath(S, pit);
 
-  // Lift stones from origin pit
+  // Mark origin pit as active source (keep its stones visible until lifted)
   const work = before.slice();
-  work[pit] = leaveBehind;
   pitEls[pit].classList.add('source');
-  renderPit(pit, work[pit], true);
   sfx.clack(1.3);
-  if (curSpeed().sow > 0) await sleep(curSpeed().sow + 40);
 
-  // Sow one stone at a time
+  // Sow one stone at a time: lift from origin, fly, and drop into destination
+  const sowDur = curSpeed().sow;
   for (let i = 0; i < path.length; i++) {
     const idx = path[i];
-    const prevIdx = (i === 0) ? pit : path[i - 1];
-    if (curSpeed().sow > 0) {
-      animateFlyingStone(prevIdx, idx, curSpeed().sow);
+
+    // 1. Lift one stone from origin pit
+    work[pit] -= 1;
+    renderPit(pit, work[pit], true);
+
+    // 2. Animate stone flying in an arc from origin pit to destination pit
+    if (sowDur > 0) {
+      await animateFlyingStone(pit, idx, sowDur);
     }
+
+    // 3. Drop stone into destination pit upon arrival
     work[idx] += 1;
     pitEls[idx].classList.add('sowing');
     renderPit(idx, work[idx], true);
@@ -2413,7 +2418,7 @@ async function playMove(pit) {
       sfx.clack(1.0 + (i % 4) * 0.08);
     }
 
-    if (curSpeed().sow > 0) await sleep(curSpeed().sow);
+    if (sowDur > 0) await sleep(Math.max(15, Math.round(sowDur * 0.2)));
     pitEls[idx].classList.remove('sowing');
   }
   pitEls[pit].classList.remove('source');
