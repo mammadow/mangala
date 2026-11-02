@@ -538,60 +538,109 @@ header {
   line-height: 1.4;
 }
 
-.menu { display: flex; flex-direction: column; gap: 10px; }
-.mbtn {
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-main);
-  cursor: pointer;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.045);
-  transition: all 0.15s ease;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.mbtn:hover {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 207, 51, 0.4);
-  transform: translateX(3px);
-}
-.mbtn.active {
-  background: rgba(255, 207, 51, 0.14);
-  border-color: var(--gold);
-  box-shadow: 0 0 16px rgba(255, 207, 51, 0.25);
-  color: #fff9e6;
-}
-.mbtn.active small { color: #ecdca5; }
-.mbtn-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
   text-align: left;
 }
-.mbtn .mcheck {
-  font-size: 11px;
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 480px) {
+  .mode-grid { grid-template-columns: 1fr; }
+}
+.mcard {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: relative;
+  font-family: inherit;
+  color: var(--text-main);
+}
+.mcard:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 207, 51, 0.4);
+  transform: translateY(-2px);
+}
+.mcard.active {
+  background: rgba(255, 207, 51, 0.14);
+  border-color: var(--gold);
+  box-shadow: 0 0 16px rgba(255, 207, 51, 0.28);
+}
+.mcard-icon { font-size: 20px; line-height: 1.2; }
+.mcard-title { font-size: 14px; font-weight: 700; color: #fff; }
+.mcard-desc { font-size: 11px; color: var(--text-dim); }
+.mcard-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
   font-weight: 800;
   color: var(--gold);
   background: rgba(255, 207, 51, 0.2);
   border: 1px solid var(--gold);
-  padding: 3px 9px;
-  border-radius: 12px;
-  margin-left: 10px;
-  white-space: nowrap;
-  letter-spacing: 0.3px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  display: none;
 }
-.mbtn small { color: var(--text-dim); font-weight: 400; font-size: 12px; }
+.mcard.active .mcard-badge { display: block; }
 
-.diff-btn.active {
-  background: rgba(255, 207, 51, 0.22) !important;
-  border-color: var(--gold) !important;
-  color: var(--gold) !important;
-  box-shadow: 0 0 12px rgba(255, 207, 51, 0.35);
+.pill-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
+.pill-btn {
+  flex: 1;
+  min-width: 90px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.pill-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 207, 51, 0.35);
+}
+.pill-btn.active {
+  background: rgba(255, 207, 51, 0.18);
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 12px rgba(255, 207, 51, 0.25);
+}
+.pill-btn small {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+.pill-btn.active small {
+  color: #eedca0;
+}
+
 .modal-close-btn {
   position: absolute;
   top: 14px;
@@ -761,70 +810,71 @@ header {
 
 <!-- Mode Selection Overlay -->
 <div class="overlay" id="menuOverlay">
-  <div class="panel">
+  <div class="panel" style="max-width: 480px;">
     <button class="modal-close-btn hidden" id="closeMenuBtn" title="Resume game">✕</button>
     <h2>🏺 Turkish Mangala</h2>
-    <p class="sub">Choose a game mode</p>
-    <div class="menu" id="modeMenu">
-      <button class="mbtn" data-mode="hva">
-        <div class="mbtn-text">
-          <span>Human vs AI</span>
-          <small>challenge minimax engine</small>
-        </div>
-        <span class="mcheck hidden">✓ Current</span>
+    <p class="sub" style="margin-bottom: 16px;">Configure your match</p>
+
+    <div class="section-label">Game Mode</div>
+    <div class="mode-grid" id="modeGrid">
+      <button class="mcard active" data-mode="hva">
+        <div class="mcard-badge">✓ Selected</div>
+        <div class="mcard-icon">👤 vs 🤖</div>
+        <div class="mcard-title">Human vs AI</div>
+        <div class="mcard-desc">Challenge minimax engine</div>
       </button>
-      <button class="mbtn" data-mode="hvh">
-        <div class="mbtn-text">
-          <span>Human vs Human</span>
-          <small>local hotseat 2-player</small>
-        </div>
-        <span class="mcheck hidden">✓ Current</span>
+      <button class="mcard" data-mode="hvh">
+        <div class="mcard-badge">✓ Selected</div>
+        <div class="mcard-icon">👤 vs 👤</div>
+        <div class="mcard-title">2 Players</div>
+        <div class="mcard-desc">Local hotseat play</div>
       </button>
-      <button class="mbtn" data-mode="ava">
-        <div class="mbtn-text">
-          <span>AI vs AI</span>
-          <small>spectate tournament play</small>
-        </div>
-        <span class="mcheck hidden">✓ Current</span>
+      <button class="mcard" data-mode="ava">
+        <div class="mcard-badge">✓ Selected</div>
+        <div class="mcard-icon">🤖 vs 🤖</div>
+        <div class="mcard-title">AI vs AI</div>
+        <div class="mcard-desc">Spectate bot tournament</div>
       </button>
-      <button class="mbtn" data-mode="analysis">
-        <div class="mbtn-text">
-          <span>Analysis Sandbox</span>
-          <small>hints · undo · pass</small>
-        </div>
-        <span class="mcheck hidden">✓ Current</span>
+      <button class="mcard" data-mode="analysis">
+        <div class="mcard-badge">✓ Selected</div>
+        <div class="mcard-icon">🔬</div>
+        <div class="mcard-title">Sandbox</div>
+        <div class="mcard-desc">Hints, undo & analysis</div>
       </button>
-      <button class="btn ghost hidden" id="resumeGameBtn" style="margin-top:14px;width:100%;border-color:rgba(255,207,51,0.4);color:var(--gold);font-weight:700">▶ Resume Current Game</button>
     </div>
-    <div class="menu back hidden" id="sideMenu">
-      <div id="diffSection">
-        <p class="sub" style="margin-bottom:8px">Select AI Difficulty</p>
-        <div style="display:flex;gap:6px;justify-content:center;margin-bottom:16px">
-          <button class="btn ghost diff-btn" data-level="easy">Easy</button>
-          <button class="btn ghost diff-btn" data-level="medium">Medium</button>
-          <button class="btn ghost diff-btn" data-level="hard">Hard</button>
-          <button class="btn ghost diff-btn active" data-level="expert">Expert</button>
-        </div>
+
+    <!-- AI Difficulty -->
+    <div id="diffSection" style="margin-top: 14px;">
+      <div class="section-label">AI Difficulty</div>
+      <div class="pill-group">
+        <button class="pill-btn" data-level="easy">Easy <small>Depth 2</small></button>
+        <button class="pill-btn" data-level="medium">Medium <small>Depth 4</small></button>
+        <button class="pill-btn" data-level="hard">Hard <small>Depth 5</small></button>
+        <button class="pill-btn active" data-level="expert">Expert <small>Depth 6</small></button>
       </div>
-      <p class="sub">Choose your side:</p>
-      <button class="mbtn" data-side="0">
-        <div class="mbtn-text">
-          <span>Play as Player 1</span>
-          <small>moves first (bottom)</small>
-        </div>
-        <span class="mcheck hidden">✓ Selected</span>
-      </button>
-      <button class="mbtn" data-side="1">
-        <div class="mbtn-text">
-          <span>Play as Player 2</span>
-          <small>moves second (top)</small>
-        </div>
-        <span class="mcheck hidden">✓ Selected</span>
-      </button>
-      <div style="display:flex;gap:10px;margin-top:14px">
-        <button class="btn ghost" id="sideBack" style="flex:1">‹ Back</button>
-        <button class="btn ghost hidden" id="sideResumeBtn" style="flex:1;border-color:rgba(255,207,51,0.4);color:var(--gold)">Resume Game</button>
+    </div>
+
+    <!-- Side Selection -->
+    <div id="sideSection" style="margin-top: 14px;">
+      <div class="section-label">Choose Your Side</div>
+      <div class="pill-group">
+        <button class="pill-btn active" data-side="0">
+          <span>👤 Player 1</span>
+          <small>Moves first · Bottom</small>
+        </button>
+        <button class="pill-btn" data-side="1">
+          <span>👤 Player 2</span>
+          <small>Moves second · Top</small>
+        </button>
       </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display: flex; gap: 10px; margin-top: 20px;">
+      <button class="btn ghost hidden" id="resumeGameBtn" style="flex: 1;">▶ Resume</button>
+      <button class="btn" id="startConfigBtn" style="flex: 2; font-size: 15px; padding: 12px 18px; font-weight: 700;">
+        ▶ Start Game
+      </button>
     </div>
   </div>
 </div>
@@ -1469,7 +1519,7 @@ function updateToolbarMenuBtn() {
     const cap = aiLevel.charAt(0).toUpperCase() + aiLevel.slice(1);
     menuBtn.textContent = `⚙️ vs AI (${cap})`;
   } else if (mode === 'hvh') {
-    menuBtn.textContent = '⚙️ vs Human';
+    menuBtn.textContent = '⚙️ 2 Players';
   } else if (mode === 'ava') {
     menuBtn.textContent = '⚙️ AI vs AI';
   } else if (mode === 'analysis') {
@@ -1477,93 +1527,48 @@ function updateToolbarMenuBtn() {
   }
 }
 
-function updateMenuUI() {
-  const hasGame = (S !== null && !S.game_over);
+let selectedMode = 'hva';
+let selectedLevel = 'expert';
+let selectedSide = 0;
 
+function syncMenuDOM() {
+  const hasGame = (S !== null && !S.game_over);
   const closeBtn = document.getElementById('closeMenuBtn');
   const resumeBtn = document.getElementById('resumeGameBtn');
-  const sideResumeBtn = document.getElementById('sideResumeBtn');
   if (closeBtn) closeBtn.classList.toggle('hidden', !hasGame);
   if (resumeBtn) resumeBtn.classList.toggle('hidden', !hasGame);
-  if (sideResumeBtn) sideResumeBtn.classList.toggle('hidden', !hasGame);
 
-  // Update mode buttons
-  document.querySelectorAll('#modeMenu .mbtn').forEach(btn => {
-    const isCur = (mode !== null && btn.dataset.mode === mode);
-    btn.classList.toggle('active', isCur);
-    const chk = btn.querySelector('.mcheck');
-    if (chk) chk.classList.toggle('hidden', !isCur);
+  // Update mode cards
+  document.querySelectorAll('#modeGrid .mcard').forEach(card => {
+    card.classList.toggle('active', card.dataset.mode === selectedMode);
   });
 
-  // Update AI difficulty buttons
-  document.querySelectorAll('.diff-btn').forEach(btn => {
-    const isCur = (btn.dataset.level === aiLevel);
-    btn.classList.toggle('active', isCur);
+  // Show/hide diff and side sections depending on mode
+  const showDiff = (selectedMode === 'hva' || selectedMode === 'ava');
+  const showSide = (selectedMode === 'hva' || selectedMode === 'analysis');
+  document.getElementById('diffSection').style.display = showDiff ? 'block' : 'none';
+  document.getElementById('sideSection').style.display = showSide ? 'block' : 'none';
+
+  // Update difficulty pills
+  document.querySelectorAll('#diffSection .pill-btn').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.level === selectedLevel);
   });
 
-  // Update side buttons
-  let curSide = 0;
-  if (mode === 'hva') {
-    curSide = (players[1] === 'human') ? 1 : 0;
-  } else if (mode === 'analysis') {
-    curSide = coachSide || 0;
-  }
-  document.querySelectorAll('#sideMenu .mbtn').forEach(btn => {
-    const isCur = (mode !== null && parseInt(btn.dataset.side) === curSide);
-    btn.classList.toggle('active', isCur);
-    const chk = btn.querySelector('.mcheck');
-    if (chk) chk.classList.toggle('hidden', !isCur);
+  // Update side pills
+  document.querySelectorAll('#sideSection .pill-btn').forEach(pill => {
+    pill.classList.toggle('active', parseInt(pill.dataset.side) === selectedSide);
   });
-
-  updateToolbarMenuBtn();
 }
-
-function chooseMode(m, side) {
-  mode = m;
-  if (m === 'hvh') players = ['human', 'human'];
-  else if (m === 'ava') players = ['ai', 'ai'];
-  else if (m === 'hva') { players = ['ai', 'ai']; players[side] = 'human'; }
-  else if (m === 'analysis') { players = ['human', 'human']; coachSide = side; }
-
-  flipped = (side === 1);
-  applyFlip();
-  document.getElementById('menuOverlay').classList.add('hidden');
-  startGame();
-}
-
-// ── Menu Wiring ────────────────────────────────────────────────────────────
-let pendingMode = null;
-document.querySelectorAll('#modeMenu .mbtn').forEach(b => {
-  b.addEventListener('click', () => {
-    const m = b.dataset.mode;
-    if (m === 'hva' || m === 'analysis') {
-      pendingMode = m;
-      document.getElementById('modeMenu').classList.add('hidden');
-      document.getElementById('sideMenu').classList.remove('hidden');
-      updateMenuUI();
-    } else {
-      chooseMode(m, null);
-    }
-  });
-});
-
-document.querySelectorAll('#sideMenu .mbtn').forEach(b => {
-  b.addEventListener('click', () => chooseMode(pendingMode, parseInt(b.dataset.side)));
-});
-
-document.getElementById('sideBack').addEventListener('click', () => {
-  document.getElementById('sideMenu').classList.add('hidden');
-  document.getElementById('modeMenu').classList.remove('hidden');
-  updateMenuUI();
-});
 
 function openMenu() {
+  selectedMode = mode || 'hva';
+  selectedLevel = aiLevel || 'expert';
+  selectedSide = (players[1] === 'human' && mode === 'hva') ? 1 : (coachSide || 0);
+
   document.getElementById('winOverlay').classList.add('hidden');
   document.getElementById('rulesOverlay').classList.add('hidden');
   document.getElementById('menuOverlay').classList.remove('hidden');
-  document.getElementById('sideMenu').classList.add('hidden');
-  document.getElementById('modeMenu').classList.remove('hidden');
-  updateMenuUI();
+  syncMenuDOM();
 }
 
 function closeMenu() {
@@ -1572,17 +1577,67 @@ function closeMenu() {
   }
 }
 
-document.querySelectorAll('.diff-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    aiLevel = btn.dataset.level;
-    updateMenuUI();
-    updateAiBadges();
+function resumeGame() {
+  if (S !== null) {
+    if (mode === 'hva' || mode === 'ava') {
+      aiLevel = selectedLevel;
+      updateAiBadges();
+    }
+    closeMenu();
+  }
+}
+
+function launchConfiguredGame() {
+  mode = selectedMode;
+  aiLevel = selectedLevel;
+
+  if (mode === 'hvh') {
+    players = ['human', 'human'];
+  } else if (mode === 'ava') {
+    players = ['ai', 'ai'];
+  } else if (mode === 'hva') {
+    players = ['ai', 'ai'];
+    players[selectedSide] = 'human';
+  } else if (mode === 'analysis') {
+    players = ['human', 'human'];
+    coachSide = selectedSide;
+  }
+
+  flipped = (selectedSide === 1);
+  applyFlip();
+  updateToolbarMenuBtn();
+  document.getElementById('menuOverlay').classList.add('hidden');
+  startGame();
+}
+
+// ── Menu Wiring ────────────────────────────────────────────────────────────
+// Mode cards
+document.querySelectorAll('#modeGrid .mcard').forEach(card => {
+  card.addEventListener('click', () => {
+    selectedMode = card.dataset.mode;
+    syncMenuDOM();
   });
 });
 
-document.getElementById('closeMenuBtn').addEventListener('click', closeMenu);
-document.getElementById('resumeGameBtn').addEventListener('click', closeMenu);
-document.getElementById('sideResumeBtn').addEventListener('click', closeMenu);
+// Difficulty pills
+document.querySelectorAll('#diffSection .pill-btn').forEach(pill => {
+  pill.addEventListener('click', () => {
+    selectedLevel = pill.dataset.level;
+    syncMenuDOM();
+  });
+});
+
+// Side pills
+document.querySelectorAll('#sideSection .pill-btn').forEach(pill => {
+  pill.addEventListener('click', () => {
+    selectedSide = parseInt(pill.dataset.side);
+    syncMenuDOM();
+  });
+});
+
+document.getElementById('startConfigBtn').addEventListener('click', launchConfiguredGame);
+document.getElementById('resumeGameBtn').addEventListener('click', resumeGame);
+document.getElementById('closeMenuBtn').addEventListener('click', resumeGame);
 document.getElementById('closeRulesXBtn').addEventListener('click', () => {
   document.getElementById('rulesOverlay').classList.add('hidden');
 });
@@ -1590,7 +1645,7 @@ document.getElementById('closeRulesXBtn').addEventListener('click', () => {
 // Click outside panel to dismiss overlays
 document.getElementById('menuOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'menuOverlay' && S !== null) {
-    closeMenu();
+    resumeGame();
   }
 });
 document.getElementById('rulesOverlay').addEventListener('click', (e) => {
@@ -1601,13 +1656,7 @@ document.getElementById('rulesOverlay').addEventListener('click', (e) => {
 
 // Click AI badge in scorebar to quickly tweak difficulty
 document.getElementById('badge2').addEventListener('click', () => {
-  if (players[1] === 'ai' || players[0] === 'ai') {
-    openMenu();
-    pendingMode = mode || 'hva';
-    document.getElementById('modeMenu').classList.add('hidden');
-    document.getElementById('sideMenu').classList.remove('hidden');
-    updateMenuUI();
-  }
+  openMenu();
 });
 
 // Toolbar buttons
@@ -1690,12 +1739,18 @@ document.addEventListener('keydown', e => {
   if (mode !== 'analysis') return;
   if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
   if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+  // Enter key in menu to launch game
+  if (e.key === 'Enter' && !document.getElementById('menuOverlay').classList.contains('hidden')) {
+    e.preventDefault();
+    launchConfiguredGame();
+    return;
+  }
 });
 
 // ── Initialization ─────────────────────────────────────────────────────────
 buildBoard();
 updateTurnText(null);
-updateMenuUI();
+syncMenuDOM();
 </script>
 </body>
 </html>
