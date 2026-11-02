@@ -9,9 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mammadow/mangala/actions"><img src="https://img.shields.io/github/actions/workflow/status/mammadow/mangala/ci.yml?branch=main&label=CI&style=flat-square" alt="CI Status" /></a>
-  <a href="https://pypi.org/project/mangala-game/"><img src="https://img.shields.io/pypi/v/mangala-game?style=flat-square&color=blue" alt="PyPI Version" /></a>
-  <a href="https://pypi.org/project/mangala-game/"><img src="https://img.shields.io/pypi/pyversions/mangala-game?style=flat-square" alt="Python Versions" /></a>
+  <a href="https://github.com/mammadow/mangala/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/mammadow/mangala/ci.yml?branch=main&label=CI&style=flat-square" alt="CI Status" /></a>
+  <a href="https://github.com/mammadow/mangala/releases"><img src="https://img.shields.io/badge/release-v0.1.0-blue?style=flat-square" alt="Release" /></a>
+  <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue?style=flat-square" alt="Python Versions" />
+  <img src="https://img.shields.io/badge/coverage-98%25-brightgreen?style=flat-square" alt="Coverage" />
+  <img src="https://img.shields.io/badge/parity-629%20passed-brightgreen?style=flat-square" alt="Engine Parity" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" /></a>
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square" alt="Ruff" /></a>
 </p>
