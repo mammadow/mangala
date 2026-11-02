@@ -278,6 +278,23 @@ def test_handler_send_file_oserror() -> None:
         assert mock_err.call_args[0] == (404, "not found")
 
 
+def test_handler_send_file_generic_json() -> None:
+    from unittest.mock import MagicMock, mock_open, patch
+
+    from mangala.server import Handler
+
+    h = Handler.__new__(Handler)
+    h.wfile = MagicMock()
+    with (
+        patch("builtins.open", mock_open(read_data=b'{"key": 1}')),
+        patch.object(h, "_headers") as mock_headers,
+    ):
+        h._send_file("sample.json")
+        assert mock_headers.called
+        assert mock_headers.call_args[0][1] == "application/json; charset=utf-8"
+        assert h.wfile.write.called
+
+
 def test_handler_read_json_bad_content_length() -> None:
     from mangala.server import BadRequest, Handler
 
@@ -313,4 +330,15 @@ def test_server_main_with_browser_launch() -> None:
     ):
         main(["--port", "0"])
         assert mock_open.called
+
+
+def test_static_manifest_and_sw(server_url: str) -> None:
+    code, headers, body = _request(f"{server_url}/manifest.json")
+    assert code == 200
+    assert "application/manifest+json" in headers.get("Content-Type", "")
+    assert isinstance(body, dict) and body.get("name") == "Turkish Mangala"
+
+    code, headers, body = _request(f"{server_url}/sw.js")
+    assert code == 200
+    assert "javascript" in headers.get("Content-Type", "")
 

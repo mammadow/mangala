@@ -143,7 +143,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send_error_json(404, "not found")
             return
         ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
-        if ctype.startswith("text/") or ctype == "application/javascript":
+        if path.endswith(".json") or path.endswith(".webmanifest"):
+            if path.endswith("manifest.json"):
+                ctype = "application/manifest+json"
+            else:
+                ctype = "application/json; charset=utf-8"
+        elif ctype.startswith("text/") or ctype == "application/javascript":
             ctype += "; charset=utf-8"
         self._headers(200, ctype, len(body), cache="no-cache")
         self.wfile.write(body)

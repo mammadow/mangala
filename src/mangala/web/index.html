@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Turkish Mangala (Mancala)</title>
 <meta name="description" content="Authentic Turkish Mangala game with tournament-grade minimax AI, responsive web UI, and offline play.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d0a14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏺</text></svg>">
 <style>
 :root {
@@ -37,6 +41,170 @@
   --text-dark: #2a1b08;
   --board-max-w: 1040px;
 }
+
+/* ── Themes ───────────────────────────────────────────── */
+body.theme-marble {
+  --bg-gradient: radial-gradient(1200px 800px at 50% -10%, #1c2430 0%, #101622 50%, #0a0d14 100%);
+  --wood-outer: #dcdcdc;
+  --wood-mid: #ececec;
+  --wood-inner: #c4c4c4;
+  --wood-rim: #989898;
+  --felt-dark: #0f1c2e;
+  --felt-light: #1b3252;
+  --pit-edge: #b5b5b5;
+  --pit-mid: #dedede;
+  --pit-base: #a2a2a2;
+  --treas-light: #dcd0b8;
+  --treas-dark: #9e8e70;
+  --stone-top: #2c3e50;
+  --stone-mid: #1a252f;
+  --stone-shadow: #0d1318;
+  --gold: #dfa837;
+  --text-main: #f0f4f8;
+  --text-dim: #94a3b8;
+}
+
+body.theme-obsidian {
+  --bg-gradient: radial-gradient(1200px 800px at 50% -10%, #1f112e 0%, #120a1c 50%, #07040a 100%);
+  --wood-outer: #1c1924;
+  --wood-mid: #2b2538;
+  --wood-inner: #15121b;
+  --wood-rim: #0c0a10;
+  --felt-dark: #1b122c;
+  --felt-light: #321f52;
+  --pit-edge: #38304a;
+  --pit-mid: #4a3e63;
+  --pit-base: #221c2e;
+  --treas-light: #a78bfa;
+  --treas-dark: #6d28d9;
+  --stone-top: #f3e8ff;
+  --stone-mid: #c084fc;
+  --stone-shadow: #581c87;
+  --gold: #38bdf8;
+  --p1-color: #38bdf8;
+  --p2-color: #f43f5e;
+  --text-main: #f8fafc;
+  --text-dim: #a1a1aa;
+}
+
+body.theme-terracotta {
+  --bg-gradient: radial-gradient(1200px 800px at 50% -10%, #3e1e12 0%, #241109 50%, #120804 100%);
+  --wood-outer: #8a3c22;
+  --wood-mid: #aa4e2e;
+  --wood-inner: #6d2d18;
+  --wood-rim: #451b0d;
+  --felt-dark: #0a2d2a;
+  --felt-light: #134e4a;
+  --pit-edge: #bf5b38;
+  --pit-mid: #cf6e49;
+  --pit-base: #6e2e17;
+  --treas-light: #fbbf24;
+  --treas-dark: #b45309;
+  --stone-top: #fef3c7;
+  --stone-mid: #fde68a;
+  --stone-shadow: #b45309;
+  --gold: #f59e0b;
+  --text-main: #fef2f2;
+  --text-dim: #d1b19a;
+}
+
+/* ── Clocks ──────────────────────────────────────────── */
+.pclock {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+  display: none;
+  margin-top: 5px;
+  align-self: flex-start;
+}
+.pcard.right .pclock { align-self: flex-end; }
+.pclock.active {
+  color: var(--gold);
+  border-color: var(--gold-glow);
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+.pclock.low {
+  color: #ff4d4d;
+  border-color: #ff4d4d;
+  animation: pulseLow 1s infinite;
+}
+@keyframes pulseLow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Evaluation Bar ──────────────────────────────────── */
+.eval-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 4px;
+}
+.eval-track {
+  flex: 1;
+  height: 8px;
+  background: var(--p2-color);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+}
+.eval-fill {
+  height: 100%;
+  background: var(--p1-color);
+  width: 50%;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.eval-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-dim);
+  min-width: 44px;
+  text-align: right;
+  letter-spacing: 0.5px;
+}
+
+/* ── Match Review Modal ──────────────────────────────── */
+.review-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+.review-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+}
+.review-acc {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 4px 0;
+}
+.review-p1 .review-acc { color: var(--p1-color); }
+.review-p2 .review-acc { color: var(--p2-color); }
+.review-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  text-align: left;
+  margin-top: 8px;
+}
+.review-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-dim);
+}
+.review-row span.num { font-weight: 700; color: var(--text-main); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body {
@@ -734,6 +902,8 @@ header {
     </div>
     <div class="toolbar">
       <button class="btn ghost" id="soundBtn" title="Toggle sound effects">🔊 Sound</button>
+      <button class="btn ghost" id="themeBtn" title="Switch board palette (Walnut / Marble / Obsidian / Terracotta)">🎨 Walnut</button>
+      <button class="btn ghost" id="reviewBtn" title="View Match Analysis & Accuracy">📊 Review</button>
       <button class="btn ghost" id="rulesBtn" title="How to play">📖 Rules</button>
       <button class="btn ghost" id="flipBtn" title="Rotate board 180° (F)">⟲ Flip</button>
       <button class="btn ghost" id="speedBtn" title="Animation speed">⚡ 1x</button>
@@ -749,6 +919,7 @@ header {
         <span class="who">Player 1</span>
         <span class="sc" id="sc1">0</span>
         <span class="badge" id="badge1">You</span>
+        <div class="pclock" id="clock1">--:--</div>
       </div>
     </div>
     <div class="turnchip">
@@ -761,8 +932,16 @@ header {
         <span class="who">Player 2</span>
         <span class="sc" id="sc2">0</span>
         <span class="badge" id="badge2">AI (Expert)</span>
+        <div class="pclock" id="clock2">--:--</div>
       </div>
     </div>
+  </div>
+
+  <div class="eval-wrap" id="evalWrap" title="Live Advantage Evaluation">
+    <div class="eval-track">
+      <div class="eval-fill" id="evalFill" style="width: 50%;"></div>
+    </div>
+    <div class="eval-badge" id="evalBadge">0.0</div>
   </div>
 
   <div class="board-wrapper">
@@ -869,6 +1048,17 @@ header {
       </div>
     </div>
 
+    <!-- Time Control -->
+    <div id="timeSection" style="margin-top: 14px;">
+      <div class="section-label">Time Control</div>
+      <div class="pill-group" id="timeGrid">
+        <button class="pill-btn active" data-time="0"><span>Unlimited</span><small>Casual</small></button>
+        <button class="pill-btn" data-time="60"><span>1 min</span><small>+1s / move</small></button>
+        <button class="pill-btn" data-time="180"><span>3 min</span><small>+2s / move</small></button>
+        <button class="pill-btn" data-time="300"><span>5 min</span><small>+3s / move</small></button>
+      </div>
+    </div>
+
     <!-- Actions -->
     <div style="display: flex; gap: 10px; margin-top: 20px;">
       <button class="btn ghost hidden" id="resumeGameBtn" style="flex: 1;">▶ Resume</button>
@@ -921,10 +1111,35 @@ header {
       <div class="win-stat"><div class="val" id="statCaptures">0</div><div class="lbl">Captures</div></div>
       <div class="win-stat"><div class="val" id="statExtras">0</div><div class="lbl">Extra Turns</div></div>
     </div>
-    <div class="row-btns" style="display:flex;gap:10px;justify-content:center">
+    <div class="row-btns" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn" id="winAgain">Play Again</button>
+      <button class="btn ghost" id="winReviewBtn">📊 Review Match</button>
       <button class="btn ghost" id="winMenu">Change Mode</button>
     </div>
+  </div>
+</div>
+
+<!-- Match Review Overlay -->
+<div class="overlay hidden" id="reviewOverlay">
+  <div class="panel" style="max-width: 500px;">
+    <button class="modal-close-btn" id="closeReviewBtn" title="Close">✕</button>
+    <h2>📊 Match Review</h2>
+    <p class="sub" id="reviewSubtitle">Quality of play evaluated across all turns</p>
+
+    <div class="review-stats">
+      <div class="review-card review-p1">
+        <div style="font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;">Player 1</div>
+        <div class="review-acc" id="p1Acc">100%</div>
+        <div class="review-counts" id="p1Counts"></div>
+      </div>
+      <div class="review-card review-p2">
+        <div style="font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;">Player 2</div>
+        <div class="review-acc" id="p2Acc">100%</div>
+        <div class="review-counts" id="p2Counts"></div>
+      </div>
+    </div>
+
+    <button class="btn" id="closeReviewOkBtn" style="width:100%;margin-top:12px;">Back to Game</button>
   </div>
 </div>
 
@@ -1146,6 +1361,181 @@ function renderPit(idx, n, animate) {
   }
 }
 
+// ── Visual Theme Management ────────────────────────────────────────────────
+const THEMES = [
+  { id: 'walnut', label: '🎨 Walnut' },
+  { id: 'marble', label: '🏛️ Marble' },
+  { id: 'obsidian', label: '🔮 Obsidian' },
+  { id: 'terracotta', label: '🏺 Terracotta' }
+];
+let currentTheme = localStorage.getItem('mangala_theme') || 'walnut';
+
+function applyTheme(themeId) {
+  THEMES.forEach(t => document.body.classList.remove('theme-' + t.id));
+  if (themeId !== 'walnut') {
+    document.body.classList.add('theme-' + themeId);
+  }
+  currentTheme = themeId;
+  localStorage.setItem('mangala_theme', themeId);
+  const themeObj = THEMES.find(t => t.id === themeId) || THEMES[0];
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = themeObj.label;
+}
+
+function cycleTheme() {
+  const idx = THEMES.findIndex(t => t.id === currentTheme);
+  const next = THEMES[(idx + 1) % THEMES.length].id;
+  applyTheme(next);
+}
+
+// ── Real-Time Evaluation Bar ───────────────────────────────────────────────
+function updateEvalBar() {
+  if (!S || !window.MangalaAI) return;
+  const badge = document.getElementById('evalBadge');
+  const fill = document.getElementById('evalFill');
+  if (!badge || !fill) return;
+
+  let ev = 0;
+  try {
+    ev = window.MangalaAI.evaluate(S, 0);
+  } catch (_) {
+    return;
+  }
+
+  let pct = 50;
+  let txt = '0.0';
+  if (ev >= 20000) {
+    pct = 100;
+    txt = '+M';
+  } else if (ev <= -20000) {
+    pct = 0;
+    txt = '-M';
+  } else {
+    pct = Math.max(5, Math.min(95, 50 + (ev / 24) * 50));
+    txt = (ev >= 0 ? '+' : '') + ev.toFixed(1);
+  }
+  fill.style.width = pct + '%';
+  badge.textContent = txt;
+}
+
+// ── Match Clocks & Time Controls ───────────────────────────────────────────
+let selectedTime = 0; // 0 = unlimited, 60, 180, 300
+let clocks = [0, 0];
+let clockInterval = null;
+const INCREMENTS = { 0: 0, 60: 1, 180: 2, 300: 3 };
+
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+function updateClockDisplay() {
+  const c1 = document.getElementById('clock1');
+  const c2 = document.getElementById('clock2');
+  if (!c1 || !c2) return;
+  if (selectedTime === 0) {
+    c1.style.display = 'none';
+    c2.style.display = 'none';
+    return;
+  }
+  c1.style.display = 'inline-block';
+  c2.style.display = 'inline-block';
+  c1.textContent = fmtTime(clocks[0]);
+  c2.textContent = fmtTime(clocks[1]);
+  c1.classList.toggle('active', S && !S.game_over && S.current_player === 0);
+  c2.classList.toggle('active', S && !S.game_over && S.current_player === 1);
+  c1.classList.toggle('low', clocks[0] <= 15 && clocks[0] > 0);
+  c2.classList.toggle('low', clocks[1] <= 15 && clocks[1] > 0);
+}
+
+function startClock() {
+  if (clockInterval) clearInterval(clockInterval);
+  if (selectedTime === 0) return;
+  clockInterval = setInterval(() => {
+    if (!S || S.game_over || busy) return;
+    const p = S.current_player;
+    clocks[p] = Math.max(0, clocks[p] - 0.1);
+    updateClockDisplay();
+    if (clocks[p] <= 0) {
+      clearInterval(clockInterval);
+      handleTimeout(p);
+    }
+  }, 100);
+}
+
+function stopClock() {
+  if (clockInterval) {
+    clearInterval(clockInterval);
+    clockInterval = null;
+  }
+  updateClockDisplay();
+}
+
+function handleTimeout(player) {
+  if (!S || S.game_over) return;
+  S.game_over = true;
+  S.winner = 1 - player;
+  showWin(`Time out! Player ${S.winner + 1} won on time.`);
+}
+
+// ── Match Review & Accuracy Evaluation ─────────────────────────────────────
+function openReview() {
+  if (!history || history.length < 2) {
+    alert("Play at least one move to generate a Match Review!");
+    return;
+  }
+  const reviewOverlay = document.getElementById('reviewOverlay');
+  if (!reviewOverlay) return;
+
+  const counts = [
+    { best: 0, good: 0, inacc: 0, mistake: 0, blunder: 0, losses: [] },
+    { best: 0, good: 0, inacc: 0, mistake: 0, blunder: 0, losses: [] }
+  ];
+
+  for (let i = 1; i < history.length; i++) {
+    const prev = history[i - 1];
+    const curr = history[i];
+    const player = prev.current_player;
+    try {
+      const ePrev = window.MangalaAI.evaluate(prev, player);
+      const eCurr = window.MangalaAI.evaluate(curr, player);
+      const loss = Math.max(0, ePrev - eCurr);
+      counts[player].losses.push(loss);
+
+      if (loss <= 0.2) counts[player].best++;
+      else if (loss <= 1.0) counts[player].good++;
+      else if (loss <= 2.5) counts[player].inacc++;
+      else if (loss <= 5.0) counts[player].mistake++;
+      else counts[player].blunder++;
+    } catch (_) {}
+  }
+
+  function calcAcc(c) {
+    if (c.losses.length === 0) return '100%';
+    const avgLoss = c.losses.reduce((a, b) => a + b, 0) / c.losses.length;
+    const acc = Math.max(10, Math.min(100, Math.round(100 * Math.exp(-0.06 * avgLoss))));
+    return acc + '%';
+  }
+
+  function renderCounts(c) {
+    return `
+      <div class="review-row"><span>🎯 Best Moves</span><span class="num">${c.best}</span></div>
+      <div class="review-row"><span>👍 Good Moves</span><span class="num">${c.good}</span></div>
+      <div class="review-row"><span>⚠️ Inaccuracies</span><span class="num">${c.inacc}</span></div>
+      <div class="review-row"><span>❓ Mistakes</span><span class="num">${c.mistake}</span></div>
+      <div class="review-row"><span>💥 Blunders</span><span class="num">${c.blunder}</span></div>
+    `;
+  }
+
+  document.getElementById('p1Acc').textContent = calcAcc(counts[0]);
+  document.getElementById('p2Acc').textContent = calcAcc(counts[1]);
+  document.getElementById('p1Counts').innerHTML = renderCounts(counts[0]);
+  document.getElementById('p2Counts').innerHTML = renderCounts(counts[1]);
+
+  reviewOverlay.classList.remove('hidden');
+}
+
 function render(state) {
   for (let i = 0; i < TOTAL; i++) renderPit(i, state.pits[i], false);
   document.getElementById('sc1').textContent = state.pits[P1_TREAS];
@@ -1160,6 +1550,8 @@ function render(state) {
   }
   updateTurnText(state);
   updateAnalysisButtons();
+  updateEvalBar();
+  updateClockDisplay();
 }
 
 function clearHL() {
@@ -1343,6 +1735,10 @@ async function playMove(pit) {
 
   pitEls[OWN_TREAS[player]].classList.remove('glow');
   addLog(player, pit, events);
+  if (selectedTime > 0) {
+    clocks[player] += INCREMENTS[selectedTime] || 0;
+    updateClockDisplay();
+  }
   busy = false;
 }
 
@@ -1457,13 +1853,17 @@ async function hint() {
 }
 
 // ── Game Over Screen ───────────────────────────────────────────────────────
-function showWin() {
+function showWin(customMsg) {
+  stopClock();
   sfx.win();
   const o = document.getElementById('winOverlay');
   o.classList.remove('hidden');
   const p1 = S.pits[P1_TREAS], p2 = S.pits[P2_TREAS];
   const t = document.getElementById('winTitle');
-  if (S.winner === -1) {
+  if (customMsg) {
+    t.textContent = customMsg;
+    t.style.color = '#ffce3a';
+  } else if (S.winner === -1) {
     t.textContent = "It's a Tie!";
     t.style.color = '#ffce3a';
   } else {
@@ -1485,6 +1885,14 @@ async function startGame() {
   histIdx = -1;
   busy = false;
   matchStats = { moves: 0, captures: 0, extraTurns: 0 };
+
+  if (selectedTime > 0) {
+    clocks = [selectedTime, selectedTime];
+    updateClockDisplay();
+    startClock();
+  } else {
+    stopClock();
+  }
 
   renderLog();
   render(S);
@@ -1558,6 +1966,11 @@ function syncMenuDOM() {
   // Update side pills
   document.querySelectorAll('#sideSection .pill-btn').forEach(pill => {
     pill.classList.toggle('active', parseInt(pill.dataset.side) === selectedSide);
+  });
+
+  // Update time control pills
+  document.querySelectorAll('#timeGrid .pill-btn').forEach(pill => {
+    pill.classList.toggle('active', parseInt(pill.dataset.time) === selectedTime);
   });
 }
 
@@ -1636,6 +2049,14 @@ document.querySelectorAll('#sideSection .pill-btn').forEach(pill => {
   });
 });
 
+// Time control pills
+document.querySelectorAll('#timeGrid .pill-btn').forEach(pill => {
+  pill.addEventListener('click', () => {
+    selectedTime = parseInt(pill.dataset.time);
+    syncMenuDOM();
+  });
+});
+
 document.getElementById('startConfigBtn').addEventListener('click', launchConfiguredGame);
 document.getElementById('resumeGameBtn').addEventListener('click', resumeGame);
 document.getElementById('closeMenuBtn').addEventListener('click', resumeGame);
@@ -1662,6 +2083,18 @@ document.getElementById('badge2').addEventListener('click', () => {
 
 // Toolbar buttons
 document.getElementById('soundBtn').addEventListener('click', () => sfx.toggle());
+document.getElementById('themeBtn').addEventListener('click', cycleTheme);
+document.getElementById('reviewBtn').addEventListener('click', openReview);
+document.getElementById('winReviewBtn').addEventListener('click', () => {
+  document.getElementById('winOverlay').classList.add('hidden');
+  openReview();
+});
+document.getElementById('closeReviewBtn').addEventListener('click', () => {
+  document.getElementById('reviewOverlay').classList.add('hidden');
+});
+document.getElementById('closeReviewOkBtn').addEventListener('click', () => {
+  document.getElementById('reviewOverlay').classList.add('hidden');
+});
 document.getElementById('rulesBtn').addEventListener('click', () => {
   document.getElementById('rulesOverlay').classList.remove('hidden');
 });
@@ -1749,9 +2182,17 @@ document.addEventListener('keydown', e => {
 });
 
 // ── Initialization ─────────────────────────────────────────────────────────
+applyTheme(currentTheme);
 buildBoard();
 updateTurnText(null);
 syncMenuDOM();
+
+// ── Progressive Web App (Offline Service Worker) ───────────────────────────
+if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>

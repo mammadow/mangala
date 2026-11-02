@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import sys
 import time
+from typing import Any
 
 from . import ai as ai_module
 from .board import render, render_status
@@ -206,10 +207,91 @@ def _game_loop(players: list, level: str, watch_mode: bool) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Mancala Universal Interface (MUI / UCI) Protocol
+# ---------------------------------------------------------------------------
+
+def run_mui_protocol(in_stream: Any = sys.stdin, out_stream: Any = sys.stdout) -> None:
+    """Mancala Universal Interface (MUI / UCI) standard protocol loop.
+
+    Allows connecting the Turkish Mangala engine to external tournament managers,
+    chess GUIs, and bot arenas via standard text protocol.
+    """
+    state = initial_state()
+
+    for raw_line in in_stream:
+        line = raw_line.strip()
+        if not line:
+            continue
+        tokens = line.split()
+        cmd = tokens[0].lower()
+
+        if cmd in ("mui", "uci"):
+            out_stream.write("id name Turkish Mangala\n")
+            out_stream.write("id author mammadow\n")
+            opt_line = (
+                "option name Level type combo default expert "
+                "var easy var medium var hard var expert\n"
+            )
+            out_stream.write(opt_line)
+            out_stream.write(f"{cmd}ok\n")
+            out_stream.flush()
+        elif cmd == "isready":
+            out_stream.write("readyok\n")
+            out_stream.flush()
+        elif cmd in ("muinewgame", "ucinewgame"):
+            state = initial_state()
+        elif cmd == "position":
+            if len(tokens) > 1 and tokens[1] == "startpos":
+                state = initial_state()
+                if "moves" in tokens:
+                    move_idx = tokens.index("moves") + 1
+                    for mv_str in tokens[move_idx:]:
+                        with contextlib.suppress(ValueError):
+                            mv = int(mv_str)
+                            if mv in legal_moves(state):
+                                state, _ = apply_move(state, mv)
+        elif cmd == "go":
+            depth = None
+            time_limit = 2.5
+            if "depth" in tokens:
+                with contextlib.suppress(ValueError, IndexError):
+                    depth = int(tokens[tokens.index("depth") + 1])
+            if "movetime" in tokens:
+                with contextlib.suppress(ValueError, IndexError):
+                    time_limit = float(tokens[tokens.index("movetime") + 1]) / 1000.0
+
+            if is_terminal(state) or not legal_moves(state):
+                out_stream.write("bestmove none\n")
+            else:
+                res = ai_module.analyse(state, depth=depth, time_limit=time_limit, use_book=True)
+                score_cp = int(res.score * 100)
+                elapsed_ms = int(res.elapsed * 1000)
+                pv_str = " ".join(str(p) for p in res.pv)
+                info_line = (
+                    f"info depth {res.depth} score cp {score_cp} "
+                    f"nodes {res.nodes} time {elapsed_ms} pv {pv_str}\n"
+                )
+                out_stream.write(info_line)
+                out_stream.write(f"bestmove {res.move}\n")
+            out_stream.flush()
+        elif cmd == "eval":
+            ev = ai_module._evaluate(state, state.current_player)
+            out_stream.write(f"eval {ev:.2f}\n")
+            out_stream.flush()
+        elif cmd == "quit":
+            break
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    # Handle standard tournament protocol flag
+    if any(arg in sys.argv for arg in ("--mui", "--uci", "-m", "-u")):
+        run_mui_protocol()
+        return
+
     # Ensure UTF-8 output on Windows consoles without closing or replacing the stream
     if hasattr(sys.stdout, "reconfigure"):
         with contextlib.suppress(Exception):

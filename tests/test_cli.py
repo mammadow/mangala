@@ -193,3 +193,71 @@ def test_game_loop_watch_mode_sleep() -> None:
         _game_loop(["ai", "ai"], "easy", watch_mode=True)
         assert mock_sleep.called
 
+
+def test_run_mui_protocol_full() -> None:
+    import io
+
+    from mangala.cli import run_mui_protocol
+
+    # Feed sequence of standard protocol commands
+    commands = "\n".join([
+        "",  # empty line
+        "mui",
+        "uci",
+        "isready",
+        "muinewgame",
+        "ucinewgame",
+        "position startpos",
+        "eval",
+        "go depth 1",
+        "position startpos moves 0 7 1",
+        "go depth 1 movetime 50",
+        "quit",
+    ]) + "\n"
+
+    in_stream = io.StringIO(commands)
+    out_stream = io.StringIO()
+
+    run_mui_protocol(in_stream=in_stream, out_stream=out_stream)
+    output = out_stream.getvalue()
+
+    assert "id name Turkish Mangala" in output
+    assert "id author mammadow" in output
+    assert "muiok" in output
+    assert "uciok" in output
+    assert "readyok" in output
+    assert "eval " in output
+    assert "bestmove " in output
+
+
+def test_run_mui_protocol_terminal_state() -> None:
+    import io
+
+    from mangala.cli import run_mui_protocol
+
+    # Test go on a terminal position where all pits are empty
+    in_stream = io.StringIO("go\nquit\n")
+    out_stream = io.StringIO()
+
+    from mangala.engine import GameState
+    term = GameState(pits=[0] * 14, current_player=0, game_over=True, winner=0)
+    term.pits[6] = 25
+    term.pits[13] = 23
+
+    with patch("mangala.cli.initial_state", return_value=term):
+        run_mui_protocol(in_stream=in_stream, out_stream=out_stream)
+        output = out_stream.getvalue()
+        assert "bestmove none" in output
+
+
+def test_cli_main_mui_flags() -> None:
+    from mangala.cli import main
+
+    with patch("sys.argv", ["mangala", "--mui"]), patch("mangala.cli.run_mui_protocol") as mock_mui:
+        main()
+        assert mock_mui.called
+
+    with patch("sys.argv", ["mangala", "-u"]), patch("mangala.cli.run_mui_protocol") as mock_mui:
+        main()
+        assert mock_mui.called
+

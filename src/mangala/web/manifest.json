@@ -1,0 +1,17 @@
+{
+  "name": "Turkish Mangala",
+  "short_name": "Mangala",
+  "description": "Authentic Turkish Mangala engine with tournament AI, responsive board, and offline play.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d0a14",
+  "theme_color": "#0d0a14",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏺</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
