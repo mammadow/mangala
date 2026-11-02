@@ -3,7 +3,7 @@ from __future__ import annotations
 
 __version__ = "0.1.0"
 
-from .engine import (  # noqa: E402
+from .engine import (
     DEFAULT_RULES,
     GameState,
     Rules,
@@ -16,10 +16,10 @@ from .engine import (  # noqa: E402
 )
 
 __all__ = [
-    "__version__",
     "DEFAULT_RULES",
     "GameState",
     "Rules",
+    "__version__",
     "apply_move",
     "initial_state",
     "is_terminal",

@@ -1,7 +1,7 @@
 """Unit tests for the pure Turkish Mangala engine."""
 import pytest
+
 from mangala.engine import (
-    DEFAULT_RULES,
     P1_PITS,
     P1_TREASURY,
     P2_PITS,

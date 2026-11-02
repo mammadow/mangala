@@ -1,11 +1,10 @@
 """Tests for the Mangala search engine (ai.py)."""
 import threading
 import time
+
 import pytest
+
 from mangala.ai import (
-    DEFAULT_TIME_LIMIT,
-    LEVELS,
-    Searcher,
     analyse,
     best_move,
     best_move_for_level,
@@ -13,7 +12,6 @@ from mangala.ai import (
 from mangala.engine import (
     TOTAL,
     GameState,
-    apply_move,
     initial_state,
     legal_moves,
 )

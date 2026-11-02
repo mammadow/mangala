@@ -13,15 +13,13 @@ from __future__ import annotations
 
 import argparse
 import math
-import sys
 import time
-from typing import Optional
 
 from mangala.ai import LEVELS, best_move, best_move_for_level
-from mangala.engine import GameState, apply_move, initial_state, is_terminal, score
+from mangala.engine import apply_move, initial_state, is_terminal, score
 
 
-def estimate_elo_diff(score_ratio: float) -> Optional[float]:
+def estimate_elo_diff(score_ratio: float) -> float | None:
     """Estimate Elo difference from score ratio in [0, 1]."""
     if score_ratio <= 0.0:
         return -math.inf
@@ -116,8 +114,12 @@ def run_tournament(p1_conf: dict, p2_conf: dict, games: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Mangala AI Benchmark Arena")
     parser.add_argument("--games", type=int, default=20, help="Number of games to play (default: 20)")
-    parser.add_argument("--p1", default="hard", choices=list(LEVELS), help="Agent A preset (default: hard)")
-    parser.add_argument("--p2", default="medium", choices=list(LEVELS), help="Agent B preset (default: medium)")
+    parser.add_argument(
+        "--p1", default="hard", choices=list(LEVELS), help="Agent A preset (default: hard)"
+    )
+    parser.add_argument(
+        "--p2", default="medium", choices=list(LEVELS), help="Agent B preset (default: medium)"
+    )
     args = parser.parse_args()
 
     run_tournament({"level": args.p1}, {"level": args.p2}, games=args.games)

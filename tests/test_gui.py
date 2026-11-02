@@ -1,5 +1,6 @@
 """Unit tests for mangala.gui_pygame (optional GUI)."""
 import os
+
 import pytest
 
 try:
@@ -23,7 +24,7 @@ def test_gui_constants_and_geometry() -> None:
 def test_gui_headless_init() -> None:
     # Set dummy video driver for headless test environments (CI, terminals)
     os.environ["SDL_VIDEODRIVER"] = "dummy"
-    from mangala.gui_pygame import MangalaGUI, Button, pit_center, P1_TREASURY, P2_TREASURY
+    from mangala.gui_pygame import P1_TREASURY, P2_TREASURY, Button, MangalaGUI, pit_center
     gui = MangalaGUI()
     assert gui.screen is not None
     assert gui.clock is not None

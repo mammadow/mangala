@@ -36,7 +36,7 @@ jobs:
 
       - name: Type check with Mypy
         run: |
-          mypy src/mangala/
+          mypy
 
       - name: Run Test Suite with Pytest
         env:

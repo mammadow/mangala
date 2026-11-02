@@ -1,7 +1,7 @@
 """Verifies engine_parity_fixtures.json against python engine to ensure fixture validity."""
 import json
 import os
-import pytest
+
 from mangala.engine import apply_move
 from mangala.server import dict_to_state, state_to_dict
 
@@ -10,7 +10,7 @@ FIXTURES_PATH = os.path.join(os.path.dirname(__file__), "fixtures", "engine_pari
 
 def test_python_engine_matches_parity_fixtures() -> None:
     assert os.path.isfile(FIXTURES_PATH), "Parity fixture file missing"
-    with open(FIXTURES_PATH, "r", encoding="utf-8") as f:
+    with open(FIXTURES_PATH, encoding="utf-8") as f:
         fixtures = json.load(f)
 
     assert len(fixtures) >= 600

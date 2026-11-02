@@ -6,9 +6,9 @@ Produces `tests/fixtures/engine_parity_fixtures.json`.
 import json
 import os
 import random
+
 from mangala.engine import (
     TOTAL,
-    TOTAL_STONES,
     apply_move,
     initial_state,
     legal_moves,
@@ -114,5 +114,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    import mangala.engine
     main()

@@ -19,7 +19,7 @@ Opposite pits (used by the empty-hole capture)::
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 P1_PITS = list(range(0, 6))
 P1_TREASURY = 6
@@ -66,7 +66,7 @@ class GameState:
     pits: list[int]               # length 14, index layout described above
     current_player: int           # 0 or 1
     game_over: bool = False
-    winner: Optional[int] = None  # 0, 1, or -1 for tie
+    winner: int | None = None  # 0, 1, or -1 for tie
 
 
 class MoveEvents(TypedDict):

@@ -32,7 +32,6 @@ from __future__ import annotations
 import math
 import time as _time
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .engine import (
     DEFAULT_RULES,
@@ -400,7 +399,7 @@ class Searcher:
             s, _ = apply_move(s, entry[3], self.rules)
         return pv
 
-    def analyse(self, state: GameState, depth: Optional[int] = None,
+    def analyse(self, state: GameState, depth: int | None = None,
                 time_limit: float = DEFAULT_TIME_LIMIT) -> SearchResult:
         """Search *state* and return the best move with statistics.
 
@@ -469,14 +468,14 @@ class Searcher:
 # Public API
 # ---------------------------------------------------------------------------
 
-def analyse(state: GameState, depth: Optional[int] = None,
+def analyse(state: GameState, depth: int | None = None,
             time_limit: float = DEFAULT_TIME_LIMIT,
             rules: Rules = DEFAULT_RULES) -> SearchResult:
     """Search *state* and return a :class:`SearchResult`."""
     return Searcher(rules).analyse(state, depth=depth, time_limit=time_limit)
 
 
-def best_move(state: GameState, depth: Optional[int] = None,
+def best_move(state: GameState, depth: int | None = None,
               time_limit: float = DEFAULT_TIME_LIMIT,
               rules: Rules = DEFAULT_RULES) -> int:
     """Return the pit index of the best move for the current player.

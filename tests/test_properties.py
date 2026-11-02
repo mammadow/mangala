@@ -1,10 +1,12 @@
 """Property-based tests with Hypothesis for Turkish Mangala."""
 import random
-from hypothesis import given, settings, strategies as st
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
 from mangala.engine import (
-    TOTAL,
-    TOTAL_STONES,
     PLAYER_PITS,
+    TOTAL_STONES,
     apply_move,
     initial_state,
     is_terminal,
@@ -41,7 +43,7 @@ def test_stone_conservation_and_invariants(rnd: random.Random) -> None:
         player_before = state.current_player
 
         chosen_move = rnd.choice(moves)
-        next_state, events = apply_move(state, chosen_move)
+        next_state, _events = apply_move(state, chosen_move)
 
         # Immutability
         assert state.pits == pits_before

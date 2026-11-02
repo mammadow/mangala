@@ -8,16 +8,27 @@ try:
     import pygame
 except ImportError:
     print("Pygame is not installed.\nRun:  pip install pygame   (or: pip install \"mangala-game[gui]\")")
-    raise SystemExit(1)
+    raise SystemExit(1) from None
 
 import math
 import threading
 
 from . import ai as ai_module
 from .engine import (
-    GameState, initial_state, legal_moves, apply_move, is_terminal, score,
-    P1_PITS, P2_PITS, P1_TREASURY, P2_TREASURY,
-    PLAYER_PITS, PLAYER_TREASURY, OPP_TREASURY, TOTAL,
+    OPP_TREASURY,
+    P1_PITS,
+    P1_TREASURY,
+    P2_PITS,
+    P2_TREASURY,
+    PLAYER_PITS,
+    PLAYER_TREASURY,
+    TOTAL,
+    GameState,
+    apply_move,
+    initial_state,
+    is_terminal,
+    legal_moves,
+    score,
 )
 
 # ── window & timing ───────────────────────────────────────────────────────────
@@ -227,7 +238,7 @@ class MangalaGUI:
             il    = self.f_tiny.render(str(idxc), True, ic)
             self.screen.blit(il, il.get_rect(center=(cx, iy)))
 
-    def _draw_frame(self, pits: list, hl: dict = None, msg: str = "",
+    def _draw_frame(self, pits: list, hl: dict | None = None, msg: str = "",
                     sub: str = ""):
         """Full redraw: background, board, all pits, status bar.
         sub: optional second line in status bar (shown smaller, dimmer).
@@ -687,9 +698,8 @@ class MangalaGUI:
             # ── Human turn ────────────────────────────────────────────────────
 
             # Kick off AI hint thread if it's the coach side's turn
-            if coach_side is not None and player == coach_side:
-                if hint_for_state_id != id(state):
-                    _start_hint(state)
+            if coach_side is not None and player == coach_side and hint_for_state_id != id(state):
+                _start_hint(state)
 
             now     = pygame.time.get_ticks()
             invalid = {k: v for k, v in invalid.items() if v > now}

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 cli.py - Terminal front-end for Turkish Mangala.
 Run with: mangala-cli   (or: python -m mangala.cli)
@@ -10,7 +9,7 @@ Modes:
 """
 from __future__ import annotations
 
-import io
+import contextlib
 import sys
 import time
 
@@ -213,10 +212,8 @@ def _game_loop(players: list, level: str, watch_mode: bool) -> None:
 def main() -> None:
     # Ensure UTF-8 output on Windows consoles without closing or replacing the stream
     if hasattr(sys.stdout, "reconfigure"):
-        try:
+        with contextlib.suppress(Exception):
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
 
     print("\n" + "=" * 55)
     print("           WELCOME TO MANGALA")

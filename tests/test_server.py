@@ -1,12 +1,13 @@
 """Integration tests for the HTTP server and REST API."""
 import json
 import threading
-from typing import Generator
-from urllib.request import Request, urlopen
+from collections.abc import Generator
 from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
 import pytest
+
 from mangala.server import make_server
-from mangala.engine import initial_state
 
 
 @pytest.fixture(scope="module")
@@ -21,8 +22,8 @@ def server_url() -> Generator[str, None, None]:
     server.server_close()
 
 
-def _request(url: str, method: str = "GET", data: dict = None,
-             raw_data: bytes = None) -> tuple[int, dict, dict]:
+def _request(url: str, method: str = "GET", data: dict | None = None,
+             raw_data: bytes | None = None) -> tuple[int, dict, dict]:
     headers = {}
     body_bytes = None
     if data is not None:
@@ -167,7 +168,7 @@ def test_not_found(server_url: str) -> None:
 
 
 def test_path_traversal_blocked(server_url: str) -> None:
-    code, _, res = _request(f"{server_url}/../pyproject.toml")
+    code, _, _res = _request(f"{server_url}/../pyproject.toml")
     assert code == 404
 
 
@@ -239,8 +240,11 @@ def test_server_main_version() -> None:
 
 def test_server_main_run_and_stop() -> None:
     from unittest.mock import patch
+
     from mangala.server import main
 
-    with patch("http.server.ThreadingHTTPServer.serve_forever", side_effect=KeyboardInterrupt):
-        with patch("webbrowser.open"):
-            main(["--port", "0", "--no-browser", "--verbose"])
+    with (
+        patch("http.server.ThreadingHTTPServer.serve_forever", side_effect=KeyboardInterrupt),
+        patch("webbrowser.open"),
+    ):
+        main(["--port", "0", "--no-browser", "--verbose"])

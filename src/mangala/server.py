@@ -17,6 +17,7 @@ No extra dependencies — uses only the Python standard library.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
 import mimetypes
@@ -24,7 +25,7 @@ import os
 import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlsplit
 
 from . import __version__
@@ -96,7 +97,7 @@ def dict_to_state(d: Any) -> GameState:
     return state
 
 
-def _parse_time_limit(raw: Any) -> Optional[float]:
+def _parse_time_limit(raw: Any) -> float | None:
     if raw is None:
         return None
     if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(raw):
@@ -110,7 +111,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = f"Mangala/{__version__}"
     quiet = True
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+    def log_message(self, format: str, *args: Any) -> None:
         if not self.quiet:
             super().log_message(format, *args)
 
@@ -169,7 +170,7 @@ class Handler(BaseHTTPRequestHandler):
     def _route(self) -> str:
         return urlsplit(self.path).path
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         path = self._route()
         try:
             if path in ("/", "/index.html"):
@@ -204,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             pass
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         path = self._route()
         try:
             if path == "/api/move":
@@ -252,7 +253,7 @@ def make_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> Threading
     return server
 
 
-def main(argv: Optional[list[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="mangala", description="Play Turkish Mangala in your browser.")
     parser.add_argument("--host", default=DEFAULT_HOST,
                         help=f"interface to bind (default {DEFAULT_HOST}; use 0.0.0.0 to share on your LAN)")
@@ -270,10 +271,8 @@ def main(argv: Optional[list[str]] = None) -> None:
     print(f"Turkish Mangala  ->  {url}")
     print("Press Ctrl+C to stop.")
     if not args.no_browser:
-        try:
+        with contextlib.suppress(Exception):
             webbrowser.open(url)
-        except Exception:
-            pass
     try:
         server.serve_forever()
     except KeyboardInterrupt:

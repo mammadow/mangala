@@ -3,11 +3,12 @@ import math
 import sys
 from pathlib import Path
 from unittest.mock import patch
+
 import pytest
 
 # Ensure tools directory is in sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
-from selfplay import estimate_elo_diff, play_one_game, run_tournament, main
+from selfplay import estimate_elo_diff, main, play_one_game
 
 
 def test_estimate_elo_diff() -> None:
