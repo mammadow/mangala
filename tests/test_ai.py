@@ -142,9 +142,14 @@ def test_search_result_properties_and_terminal_tie() -> None:
 
 
 def test_tiny_time_budget_fallback() -> None:
+    from unittest.mock import patch
+
+    from mangala.ai import Searcher, _TimeUp
+
     s = initial_state()
-    # A microscopic budget guarantees _TimeUp occurs before iteration 1 finishes
-    res = analyse(s, time_limit=1e-12)
-    assert res.move in legal_moves(s)
-    assert res.depth == 0
+    # Mock _TimeUp occurring before iteration 1 finishes to test the fallback branch
+    with patch.object(Searcher, "_search_root", side_effect=_TimeUp):
+        res = analyse(s, time_limit=0.1)
+        assert res.move in legal_moves(s)
+        assert res.depth == 0
 
