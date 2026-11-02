@@ -27,8 +27,10 @@
     const treasDiff = ownT - oppT;
     const ownPits = Engine.PLAYER_PITS[rootPlayer];
     const oppPits = Engine.PLAYER_PITS[1 - rootPlayer];
-    const [ownMin, ownMax] = Engine.OWN_PITS_RANGE[rootPlayer];
-    const [oppMin, oppMax] = Engine.OPP_PITS_RANGE[rootPlayer];
+    const ownRange = Engine.OWN_PITS_RANGE ? Engine.OWN_PITS_RANGE[rootPlayer] : (rootPlayer === 0 ? [0, 5] : [7, 12]);
+    const oppRange = Engine.OPP_PITS_RANGE ? Engine.OPP_PITS_RANGE[rootPlayer] : (rootPlayer === 0 ? [7, 12] : [0, 5]);
+    const [ownMin, ownMax] = ownRange;
+    const [oppMin, oppMax] = oppRange;
     const landingTable = Engine.SOW_LANDING[rootPlayer];
     const oppLandingTable = Engine.SOW_LANDING[1 - rootPlayer];
 
