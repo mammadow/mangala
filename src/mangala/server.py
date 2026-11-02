@@ -156,6 +156,8 @@ class Handler(BaseHTTPRequestHandler):
         if length <= 0:
             raise BadRequest("request body required")
         if length > MAX_BODY_BYTES:
+            with contextlib.suppress(Exception):
+                self.rfile.read(min(length, 65536))
             raise BadRequest("request body too large")
         try:
             data = json.loads(self.rfile.read(length).decode("utf-8"))

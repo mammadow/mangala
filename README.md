@@ -1,39 +1,42 @@
-# Turkish Mangala (Mancala)
+<div align="center">
+
+# 🏺 Turkish Mangala (Mancala)
+
+[![Turkish Mangala Banner](docs/assets/banner.svg)](https://mammadow.github.io/mangala/)
+
+### Authentic Game Engine • Tournament AI • Responsive Web • Terminal CLI • Desktop Arcade
+
+[![CI Status](https://img.shields.io/github/actions/workflow/status/mammadow/mangala/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/mammadow/mangala/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/badge/release-v0.1.0-blue?style=flat-square)](https://github.com/mammadow/mangala/releases)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue?style=flat-square)](https://github.com/mammadow/mangala)
+[![Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen?style=flat-square)](https://github.com/mammadow/mangala)
+[![Parity](https://img.shields.io/badge/parity-629%20passed-brightgreen?style=flat-square)](https://github.com/mammadow/mangala)
+[![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square)](https://github.com/astral-sh/ruff)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mammadow/mangala/main/docs/assets/banner.svg" alt="Turkish Mangala" width="600"/>
+  <a href="https://mammadow.github.io/mangala/"><strong>🎮 Play Live in Browser</strong></a> •
+  <a href="#-quick-start"><strong>🚀 Quick Start</strong></a> •
+  <a href="#-three-ways-to-play"><strong>🕹️ Interfaces</strong></a> •
+  <a href="#-turkish-mangala-rules"><strong>📜 Rules</strong></a> •
+  <a href="#-ai-architecture"><strong>🧠 AI Engine</strong></a> •
+  <a href="docs/architecture.md"><strong>📐 Architecture</strong></a>
 </p>
 
-<p align="center">
-  <strong>An authentic Turkish Mangala engine with a tournament-grade AI, modern web interface, CLI, and desktop GUI.</strong>
-</p>
-
-<p align="center">
-  <a href="https://github.com/mammadow/mangala/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/mammadow/mangala/ci.yml?branch=main&label=CI&style=flat-square" alt="CI Status" /></a>
-  <a href="https://github.com/mammadow/mangala/releases"><img src="https://img.shields.io/badge/release-v0.1.0-blue?style=flat-square" alt="Release" /></a>
-  <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue?style=flat-square" alt="Python Versions" />
-  <img src="https://img.shields.io/badge/coverage-98%25-brightgreen?style=flat-square" alt="Coverage" />
-  <img src="https://img.shields.io/badge/parity-629%20passed-brightgreen?style=flat-square" alt="Engine Parity" />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" /></a>
-  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square" alt="Ruff" /></a>
-</p>
+</div>
 
 ---
 
-## ✨ Features
+## 🌟 Highlights
 
-- **Pure, Tested Game Engine**: Zero runtime dependencies. Functional, immutable board representations verified by property-based fuzzing and 100% stone conservation tests.
-- **Tournament-Grade AI**:
-  - Alpha-Beta search with iterative deepening and anytime time-budget management.
-  - Symmetrical root evaluation handling Turkish Mangala extra-turn branches without negamax sign inversions.
-  - 64-bit Transposition Table (TT) caching exact values, lower bounds, and upper bounds with Principal Variation (PV) ordering.
-  - Quiescence search extending tactical captures and extra turns up to 4 plies.
-  - Endgame exact solver for terminal positions with $\le 12$ stones.
-  - Thread-safe design for concurrent API calls and background hint processing.
-- **Three Front-Ends**:
-  - 🌐 **Modern Web GUI**: Single-file responsive interface with board flip (180° rotation), felt/wood aesthetic, animated stone sowing, move history log, undo/redo, and live AI suggestions.
-  - 💻 **Terminal CLI**: Terminal board with ANSI/ASCII support, step-by-step turns, and difficulty presets.
-  - 🎮 **Pygame Desktop GUI**: Legacy arcade-style desktop window with stone physics and animation banners.
+| Capability | Specification |
+| :--- | :--- |
+| **Pure Standard Library Engine** | Zero runtime dependencies (`dependencies = []`). Immutable `GameState` verified by property-based Hypothesis fuzzing. |
+| **Tournament-Grade AI** | Alpha-Beta minimax with symmetrical extra-turn handling, 64-bit Transposition Table, PV move ordering, Quiescence search, and an endgame exact solver for $\le 12$ stones. |
+| **Dual-Mode Web UI** | Modern wood & felt responsive interface. Seamlessly runs against a Python REST API or directly offline in the browser via client-side JavaScript engine. |
+| **Cross-Language Parity** | 100% rules parity between Python and JavaScript engines validated across 629 corner-case and simulated playout test fixtures. |
+| **Multi-Platform Support** | Run anywhere: Web browser, terminal (ANSI/ASCII), or desktop arcade window (Pygame). |
+| **Thread-Safe Architecture** | Concurrency-isolated `Searcher` contexts allow simultaneous background AI analysis, hint generation, and multi-user web serving without race conditions. |
 
 ---
 
@@ -51,86 +54,117 @@ pip install mangala-game
 pip install "mangala-game[gui]"
 ```
 
-Or clone and run locally:
+Or clone the repository to run from source:
 
 ```bash
 git clone https://github.com/mammadow/mangala.git
 cd mangala
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e .
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -e ".[dev,gui]"
 ```
 
-### Running
+---
+
+## 🕹️ Three Ways to Play
+
+### 1. 🌐 Modern Web GUI
+Launch the local web server (automatically opens in your browser at `http://localhost:8000`):
 
 ```bash
-# Launch modern Web GUI (opens http://localhost:8000 automatically)
 mangala
-
-# Launch interactive CLI in your terminal
-mangala-cli
-
-# Launch Pygame GUI (requires mangala-game[gui])
-mangala-gui
+# or: python -m mangala.server
 ```
 
-*(You can also run directly with `python server.py`, `python main.py`, or `python gui.py`)*
+- **Features**: Animated stone sowing, difficulty pills (`Easy`, `Medium`, `Hard`, `Expert`), speed toggle (`⚡ 1x`, `2x`, `Instant`), 180° board rotation (`F` key), keyboard pit sowing (keys `1`–`6`), live move history, undo/redo, and interactive AI coach hints.
+- **Offline / Static**: You can also open [`src/mangala/web/index.html`](src/mangala/web/index.html) directly in any modern browser without Python running!
+
+### 2. 💻 Terminal CLI
+Play an authentic text-based game directly inside your terminal with active player indicators and ANSI color highlights:
+
+```bash
+mangala-cli
+# or: python -m mangala.cli
+```
+
+- **Modes**:
+  - `1` : Human vs Human (hotseat)
+  - `2` : Human vs AI (choose your side and difficulty)
+  - `3` : AI vs AI (spectate the minimax engine analyzing in real time)
+
+### 3. 🎮 Pygame Desktop GUI
+For an arcade-style experience with desktop window physics, stone drop sounds, and capture banners:
+
+```bash
+mangala-gui
+# or: python -m mangala.gui_pygame
+```
 
 ---
 
 ## 📜 Turkish Mangala Rules
 
-Turkish Mangala is played on a board with **12 pits** (6 per player) and **2 treasuries** (*Hazine*).
+Turkish Mangala is played on a board with **12 pits** (6 per player) and **2 treasuries** (*Hazine*). Total of **48 stones** (4 in each pit initially).
 
 ```text
-               Player 2 Pits (top row)
+               Player 2 Pits (top row, counterclockwise)
            12   11   10    9    8    7
   P2 [ 0]  [ 4]  [ 4]  [ 4]  [ 4]  [ 4]  [ 4]  [ 0] P1
            [ 4]  [ 4]  [ 4]  [ 4]  [ 4]  [ 4]
             0    1    2    3    4    5
-               Player 1 Pits (bottom row)
+               Player 1 Pits (bottom row, counterclockwise)
 ```
 
-1. **Sowing**: Choose an owned pit.
-   - If it has $> 1$ stone: leave 1 stone behind, and sow the remainder counterclockwise.
-   - If it has exactly $1$ stone: pick it up and sow it into the next counterclockwise pit.
-   - The opponent's treasury is **always skipped**.
-2. **Extra Turn**: If the last sown stone lands in your own treasury, you play again immediately.
-3. **Regular Capture**: If the last stone lands in an opponent's pit and makes that pit's total count **even**, you capture all stones from that pit into your treasury.
-4. **Empty-Hole Capture**: If the last stone lands in your own pit that was previously empty (now has 1 stone), and the opposite opponent pit (`12 - i`) has stones, you capture your stone **plus** all stones in the opposite pit!
-5. **Endgame Sweep**: When either player's side is completely empty, the player whose side emptied captures all remaining stones on the board. The player with the most stones in their treasury wins!
+### The 4 Core Rules
 
-*Detailed rule breakdowns and official variations are documented in [docs/rules.md](docs/rules.md).*
+1. **🌰 Sowing**: Pick up all stones from one of your pits:
+   - If the pit has **$> 1$ stone**: Leave **1 stone behind** in the origin pit, then sow the remaining stones counterclockwise one-by-one into consecutive pits and your own treasury.
+   - If the pit has **exactly $1$ stone**: Lift it and place it into the **next pit** to the right (the origin pit becomes empty).
+   - **Opponent's Treasury is always skipped**.
+2. **⚡ Extra Turn**: If the last sown stone lands in your own treasury (*Hazine*), you retain your turn and play again immediately.
+3. **🎯 Even Capture**: If the last sown stone lands in an opponent's pit and makes that pit's total count **even** ($2, 4, 6, \dots$), you capture **all stones from that pit** and deposit them into your treasury.
+4. **🔄 Empty-Hole Capture**: If the last sown stone lands in one of your own pits that was previously empty (now has 1 stone), and the opposite opponent pit (`12 - i`) contains stones, you capture your stone **plus all stones from the opposite pit**.
+5. **🏁 Endgame Sweep**: When either player's 6 pits are completely emptied, the game ends immediately. The player whose side emptied captures **all remaining stones on the opponent's side**. The player with the highest score wins!
+
+> [!TIP]
+> Comprehensive rule variations, official tournament rules, and tactical strategy guides are available in [docs/rules.md](docs/rules.md).
 
 ---
 
 ## 🧠 AI Architecture
 
-The search engine is implemented in [`src/mangala/ai.py`](src/mangala/ai.py):
+The minimax search engine is located in [`src/mangala/ai.py`](src/mangala/ai.py).
 
 ```mermaid
 flowchart TD
-    A[Start Search: State, Time Limit] --> B[Iterative Deepening d = 1..64]
-    B --> C[Order Moves: PV move from TT -> Extra turns -> Captures -> Quiet]
-    C --> D[Alpha-Beta Minimax]
-    D --> E{Terminal or d == 0?}
-    E -- Yes --> F[Quiescence Search: Noisy Moves Only]
-    E -- No --> G[Recursive Search & Cutoffs]
-    F --> H[Transposition Table Cache]
-    G --> H
-    H --> I{Time Expired or Forced Win?}
-    I -- No --> B
-    I -- Yes --> J[Return Best Move + PV + Eval Score]
+    Start["Position & Time Budget"] --> ID["Iterative Deepening (d = 1..64)"]
+    ID --> Order["Move Ordering: PV Move -> Extra Turns -> Captures -> Quiet"]
+    Order --> Minimax["Alpha-Beta Minimax (Symmetrical Extra-Turn Evaluation)"]
+    Minimax --> Horizon{"Horizon Reached?"}
+    Horizon -- "Yes" --> QSearch["Quiescence Search (Tactical & Extra-Turn Extensions)"]
+    Horizon -- "No" --> TT["Transposition Table Probe & Cutoffs"]
+    QSearch --> TT
+    TT --> Solved{"Forced Win or Time Expired?"}
+    Solved -- "No" --> ID
+    Solved -- "Yes" --> Best["Best Move + Evaluation + PV Line"]
 ```
 
-### Search Features
-- **Thread Safety**: Each search maintains its own `Searcher` instance, allowing multi-threaded HTTP requests and real-time interactive hints without race conditions.
-- **Transposition Table**: Stores position hash tuples with flags (`EXACT`, `LOWER_BOUND`, `UPPER_BOUND`) to achieve massive pruning efficiency.
-- **Difficulty Presets**:
-  - `easy`: Depth 2 search.
-  - `medium`: Depth 5 search.
-  - `hard`: 1.0 second iterative deepening.
-  - `expert`: 2.5 seconds tournament iterative deepening.
+### Key AI Features
+
+- **Symmetrical Root Alpha-Beta**: Turkish Mangala grants extra turns on treasury finishes, breaking standard negamax sign inversions. The engine uses explicit alternating min/max routines to evaluate branch chains correctly.
+- **Principal Variation (PV) Ordering**: Move ordering checks the transposition table first, evaluating high-probability cutoffs first to maximize alpha-beta pruning.
+- **Quiescence Search**: Extends search horizons up to 4 extra plies for tactical captures and extra turns to eliminate horizon effect blunders.
+- **Endgame Exact Solver**: Automatically transitions to a full retrograde solver whenever $\le 12$ stones remain on the board, calculating forced wins up to depth 64.
+- **Anytime Budgeting**: Iterative deepening with clock checks every 128 nodes ensures strict adherence to time constraints.
+
+### Difficulty Presets
+
+| Preset | Search Method | Typical Depth | Target Audience |
+| :--- | :--- | :--- | :--- |
+| **`easy`** | Fixed-depth minimax | Depth 2 | Beginners & learning the rules |
+| **`medium`** | Fixed-depth with Quiescence | Depth 5 | Casual play |
+| **`hard`** | Iterative Deepening | ~8–12 plies (1.0s budget) | Experienced players |
+| **`expert`** | Tournament Iterative Deepening | ~12–18 plies (2.5s budget) | Master / benchmark level |
 
 ---
 
@@ -139,41 +173,42 @@ flowchart TD
 ```text
 mangala/
 ├── .github/workflows/
-│   ├── ci.yml                     # Multi-OS CI (Python 3.10-3.13 + Node.js)
+│   ├── ci.yml                     # Multi-OS CI (Python 3.10-3.13 on Ubuntu & Windows)
 │   └── pages.yml                  # GitHub Pages automated deployment
 ├── docs/
-│   ├── rules.md                   # Complete rules specification
-│   ├── architecture.md            # System design & algorithm details
-│   └── devlog.md                  # Development log & fix history
+│   ├── assets/banner.svg          # Vector art board illustration
+│   ├── rules.md                   # Formal rules & tournament specifications
+│   ├── architecture.md            # Engine design, AI algorithms, and REST API
+│   └── devlog.md                  # Development history & optimization log
 ├── src/mangala/
-│   ├── __init__.py                # Package version & top-level exports
-│   ├── __main__.py                # python -m mangala entrypoint
+│   ├── __init__.py                # Package version & public exports
+│   ├── __main__.py                # CLI runner (python -m mangala)
 │   ├── engine.py                  # Pure rules engine & immutable GameState
-│   ├── ai.py                      # Thread-safe Minimax / TT / Quiescence
-│   ├── server.py                  # Hardened stdlib HTTP server & JSON API
-│   ├── cli.py                     # Terminal interface with ANSI board
-│   ├── board.py                   # ASCII board renderer
-│   ├── gui_pygame.py              # Pygame desktop UI
-│   ├── py.typed                   # PEP 561 type annotation marker
+│   ├── ai.py                      # Thread-safe Minimax / TT / Quiescence search
+│   ├── server.py                  # Hardened stdlib HTTP server & REST API
+│   ├── cli.py                     # Terminal front-end with ANSI visualizer
+│   ├── board.py                   # ASCII board formatter
+│   ├── gui_pygame.py              # Pygame desktop arcade GUI
+│   ├── py.typed                   # PEP 561 static type checking marker
 │   └── web/
-│       ├── index.html             # Responsive web UI with SVG aesthetics
+│       ├── index.html             # Responsive web UI (single-file HTML/CSS/JS)
 │       ├── engine.js              # Client-side JavaScript rules engine
-│       └── ai.js                  # Client-side minimax & quiescence AI
+│       └── ai.js                  # Client-side JavaScript minimax AI
 ├── tests/
 │   ├── fixtures/
 │   │   └── engine_parity_fixtures.json  # 629 cross-language test fixtures
-│   ├── test_engine.py             # Engine unit tests & rule verification
-│   ├── test_ai.py                 # AI search, pruning, and thread safety
-│   ├── test_server.py             # REST API & security hardening tests
+│   ├── test_engine.py             # Engine rule tests & edge-case sweeps
+│   ├── test_ai.py                 # Minimax, quiescence, and thread safety tests
+│   ├── test_server.py             # HTTP REST API & security header tests
 │   ├── test_cli.py                # Terminal interactive game loop tests
 │   ├── test_board.py              # Board formatting tests
 │   ├── test_gui.py                # Headless Pygame desktop tests
 │   ├── test_selfplay.py           # Selfplay tournament runner tests
 │   ├── test_fixtures_parity.py    # Python parity validation against fixtures
 │   ├── test_parity.mjs            # Node.js cross-language parity runner
-│   └── test_properties.py         # Hypothesis fuzzing & stone conservation
+│   └── test_properties.py         # Hypothesis property fuzzing (48-stone conservation)
 ├── tools/
-│   ├── selfplay.py                # AI benchmarking & self-play arena
+│   ├── selfplay.py                # AI benchmarking & Elo rating arena
 │   └── generate_parity_fixtures.py# Parity fixture generator
 ├── pyproject.toml                 # PEP 621 package & tool configurations
 ├── LICENSE                        # MIT License
@@ -182,32 +217,50 @@ mangala/
 
 ---
 
-## 🧪 Testing & Quality
+## 🧪 Testing & Verification
 
-Run the test suite:
+Run the comprehensive test suite locally:
 
 ```bash
-# Run all Python tests with 97%+ coverage
+# 1. Run all Python unit and property tests with 98% coverage
 pytest --cov=mangala tests/
 
-# Run cross-language Python <-> JavaScript parity suite (629 test cases)
+# 2. Run cross-language Python <-> JavaScript parity suite (629 test cases)
 node --test tests/test_parity.mjs
 
-# Run property-based hypothesis fuzzing
-pytest tests/test_properties.py
+# 3. Lint with Ruff (0 warnings, strict formatting)
+ruff check .
 
-# Build source distribution and binary wheel
+# 4. Type check with Mypy
+mypy
+
+# 5. Build distribution packages (wheel and sdist)
 python -m build
+```
+
+---
+
+## ⚔️ AI Tournament Arena
+
+Benchmark two AI configurations or measure Elo differences:
+
+```bash
+# Run a 20-game tournament between Hard and Medium AI (alternating starters)
+python tools/selfplay.py --games 20 --p1 hard --p2 medium
+
+# Run an Expert vs Hard tournament with custom time limits
+python tools/selfplay.py --games 50 --p1 expert --p2 hard
 ```
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please check out [CONTRIBUTING.md](CONTRIBUTING.md) for details on code style, testing requirements, and issue submission.
+Contributions, bug reports, and rule suggestions are warmly welcomed! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on code style, linting, and PR submissions.
 
 ---
 
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
+Distributed freely for education, competition, and enjoyment.
