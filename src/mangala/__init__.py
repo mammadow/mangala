@@ -1,7 +1,7 @@
 """Turkish Mangala — rules engine, strong AI, and web / terminal / desktop front-ends."""
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .book import OPENING_BOOK, get_book_move
 from .engine import (

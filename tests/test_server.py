@@ -342,3 +342,106 @@ def test_static_manifest_and_sw(server_url: str) -> None:
     assert code == 200
     assert "javascript" in headers.get("Content-Type", "")
 
+
+def test_room_lifecycle_and_multiplayer_flow(server_url: str) -> None:
+    # 1. Create Room
+    code, _, data = _request(f"{server_url}/api/room/create", method="POST", data={})
+    assert code == 200
+    room_id = data["room"]
+    assert len(room_id) == 4
+    assert data["player"] == 0
+    assert "state" in data
+
+    # 2. Poll initial state
+    code, _, poll_data = _request(f"{server_url}/api/room/poll?room={room_id}&since=0")
+    assert code == 200
+    assert not poll_data["guest_joined"]
+    assert len(poll_data["moves"]) == 0
+
+    # 3. Join Room
+    code, _, join_data = _request(f"{server_url}/api/room/join", method="POST", data={"room": room_id})
+    assert code == 200
+    assert join_data["player"] == 1
+
+    # 4. Join full room -> 400
+    code, _, err = _request(f"{server_url}/api/room/join", method="POST", data={"room": room_id})
+    assert code == 400
+    assert "full" in err["error"]
+
+    # 5. Wrong turn move -> 400
+    code, _, err = _request(f"{server_url}/api/room/move", method="POST", data={
+        "room": room_id,
+        "player": 1,
+        "pit": 7,
+    })
+    assert code == 400
+    assert "not your turn" in err["error"]
+
+    # 6. Illegal pit move -> 400
+    code, _, err = _request(f"{server_url}/api/room/move", method="POST", data={
+        "room": room_id,
+        "player": 0,
+        "pit": 99,
+    })
+    assert code == 400
+    assert "not legal" in err["error"]
+
+    # 7. Valid move -> 200
+    code, _, mv_data = _request(f"{server_url}/api/room/move", method="POST", data={
+        "room": room_id,
+        "player": 0,
+        "pit": 0,
+    })
+    assert code == 200
+    assert mv_data["seq"] == 0
+
+    # 8. Poll pending moves -> returns 1 move
+    code, _, poll_data = _request(f"{server_url}/api/room/poll?room={room_id}&since=0")
+    assert code == 200
+    assert poll_data["guest_joined"]
+    assert len(poll_data["moves"]) == 1
+    assert poll_data["moves"][0]["pit"] == 0
+
+
+def test_room_error_handling(server_url: str) -> None:
+    # Join empty or invalid room
+    code, _, err = _request(f"{server_url}/api/room/join", method="POST", data={"room": ""})
+    assert code == 400
+    assert "required" in err["error"]
+
+    code, _, err = _request(f"{server_url}/api/room/join", method="POST", data={"room": "ZZZZ"})
+    assert code == 400
+    assert "not found" in err["error"]
+
+    # Move on invalid room
+    code, _, err = _request(f"{server_url}/api/room/move", method="POST", data={
+        "room": "ZZZZ", "player": 0, "pit": 0
+    })
+    assert code == 400
+    assert "not found" in err["error"]
+
+    # Move with invalid payload
+    code, _, err = _request(f"{server_url}/api/room/move", method="POST", data={
+        "room": "", "player": 9, "pit": "bad"
+    })
+    assert code == 400
+
+    # Poll errors
+    code, _, err = _request(f"{server_url}/api/room/poll")
+    assert code == 400
+    assert "required" in err["error"]
+
+    code, _, err = _request(f"{server_url}/api/room/poll?room=ABCD&since=invalid")
+    assert code == 400
+    assert "integer" in err["error"]
+
+    code, _, err = _request(f"{server_url}/api/room/poll?room=ZZZZ&since=0")
+    assert code == 400
+    assert "not found" in err["error"]
+
+    # Method not allowed for room POST endpoints
+    for ep in ("/api/room/create", "/api/room/join", "/api/room/move"):
+        code, _, err = _request(f"{server_url}{ep}", method="GET")
+        assert code == 405
+        assert "use POST" in err["error"]
+

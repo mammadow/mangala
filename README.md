@@ -7,36 +7,46 @@
 ### Authentic Game Engine • Tournament AI • Responsive Web • Terminal CLI • Desktop Arcade
 
 [![CI Status](https://img.shields.io/github/actions/workflow/status/mammadow/mangala/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/mammadow/mangala/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/release-v0.1.0-blue?style=flat-square)](https://github.com/mammadow/mangala/releases)
+[![Release](https://img.shields.io/badge/release-v0.2.0-blue?style=flat-square)](https://github.com/mammadow/mangala/releases)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue?style=flat-square)](https://github.com/mammadow/mangala)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square)](https://github.com/mammadow/mangala)
 [![Parity](https://img.shields.io/badge/parity-629%20passed-brightgreen?style=flat-square)](https://github.com/mammadow/mangala)
+[![PWA](https://img.shields.io/badge/PWA-installable%20offline-orange?style=flat-square)](https://mammadow.github.io/mangala/)
+[![Multiplayer](https://img.shields.io/badge/multiplayer-P2P%20room%20codes-purple?style=flat-square)](https://mammadow.github.io/mangala/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square)](https://github.com/astral-sh/ruff)
 
 <p align="center">
   <a href="https://mammadow.github.io/mangala/"><strong>🎮 Play Live in Browser</strong></a> •
   <a href="#-quick-start"><strong>🚀 Quick Start</strong></a> •
+  <a href="#-tournament-features"><strong>✨ Features</strong></a> •
   <a href="#-three-ways-to-play"><strong>🕹️ Interfaces</strong></a> •
   <a href="#-turkish-mangala-rules"><strong>📜 Rules</strong></a> •
   <a href="#-ai-architecture"><strong>🧠 AI Engine</strong></a> •
-  <a href="docs/architecture.md"><strong>📐 Architecture</strong></a>
+  <a href="docs/MUI_SPEC.md"><strong>🔌 MUI Protocol</strong></a> •
+  <a href="docs/MPGN_SPEC.md"><strong>📝 MPGN Notation</strong></a>
 </p>
 
 </div>
 
 ---
 
-## 🌟 Highlights
+## 🌟 Highlights & Tournament Feature Matrix
 
 | Capability | Specification |
 | :--- | :--- |
 | **Pure Standard Library Engine** | Zero runtime dependencies (`dependencies = []`). Immutable `GameState` verified by property-based Hypothesis fuzzing. |
-| **Tournament-Grade AI** | Alpha-Beta minimax with symmetrical extra-turn handling, 64-bit Transposition Table, PV move ordering, Quiescence search, and an endgame exact solver for $\le 12$ stones. |
-| **Dual-Mode Web UI** | Modern wood & felt responsive interface. Seamlessly runs against a Python REST API or directly offline in the browser via client-side JavaScript engine. |
-| **Cross-Language Parity** | 100% rules parity between Python and JavaScript engines validated across 629 corner-case and simulated playout test fixtures. |
-| **Multi-Platform Support** | Run anywhere: Web browser, terminal (ANSI/ASCII), or desktop arcade window (Pygame). |
-| **Thread-Safe Architecture** | Concurrency-isolated `Searcher` contexts allow simultaneous background AI analysis, hint generation, and multi-user web serving without race conditions. |
+| **Tournament-Grade AI** | PVS with null-window scouting, 2-tier killer heuristic, history heuristic table, 25-stone mathematical win threshold, 180° opening book involution, and depth 64 endgame solver. |
+| **Real-Time Evaluation Bar** | Live win probability and stone evaluation gauge rendered continuously during matches. |
+| **Visual Board Themes** | 4 luxury hand-crafted visual palettes: *Classic Walnut*, *Carrara Marble*, *Obsidian Night*, and *Anatolian Terracotta*. |
+| **Tactical Puzzle Trainer** | 8 authentic curated Turkish Mangala tactical scenarios with live solution validation and hint guidance. |
+| **Interactive Playable Tutorial** | 5-step guided onboarding walkthrough with glowing pit cues explaining sowing, extra turns, even captures, empty-hole captures, and sweeps. |
+| **Competitive Clocks & Timers** | Tournament time controls: *Casual (Unlimited)*, *Bullet (1m+1s)*, *Blitz (3m+2s)*, and *Rapid (5m+3s)* with timeout flag-fall handling. |
+| **Post-Game Review & Accuracy** | Move-by-move evaluation analysis, centipawn loss calculation, and move classifications (*Best*, *Good*, *Inaccuracy*, *Mistake*, *Blunder*). |
+| **P2P Multiplayer & Room Codes** | Play with friends across local networks or the web using fast 4-letter room codes or serverless WebRTC data channels. |
+| **Progressive Web App (PWA)** | Installable desktop and mobile app with full cache-first offline service worker support. |
+| **MUI Tournament Protocol** | Universal text-based engine interface (`mangala --mui` / `--uci`) for connecting to tournament managers and bot arenas. |
+| **MPGN Match Notation** | Standardized *Mancala Portable Game Notation* (`.mpgn`) with 1-click clipboard copy, file export, and move sequence replay. |
 
 ---
 
@@ -179,21 +189,27 @@ mangala/
 │   ├── assets/banner.svg          # Vector art board illustration
 │   ├── rules.md                   # Formal rules & tournament specifications
 │   ├── architecture.md            # Engine design, AI algorithms, and REST API
+│   ├── MUI_SPEC.md                # Mancala Universal Interface (MUI v1.0) specification
+│   ├── MPGN_SPEC.md               # Mancala Portable Game Notation (MPGN v1.0) specification
 │   └── devlog.md                  # Development history & optimization log
 ├── src/mangala/
 │   ├── __init__.py                # Package version & public exports
 │   ├── __main__.py                # CLI runner (python -m mangala)
 │   ├── engine.py                  # Pure rules engine & immutable GameState
 │   ├── ai.py                      # Thread-safe Minimax / TT / Quiescence search
-│   ├── server.py                  # Hardened stdlib HTTP server & REST API
-│   ├── cli.py                     # Terminal front-end with ANSI visualizer
+│   ├── book.py                    # Polyglot-style opening book with rotational involution
+│   ├── server.py                  # Hardened stdlib HTTP server, room signaling & REST API
+│   ├── cli.py                     # Terminal front-end & MUI tournament engine protocol
 │   ├── board.py                   # ASCII board formatter
 │   ├── gui_pygame.py              # Pygame desktop arcade GUI
 │   ├── py.typed                   # PEP 561 static type checking marker
 │   └── web/
 │       ├── index.html             # Responsive web UI (single-file HTML/CSS/JS)
 │       ├── engine.js              # Client-side JavaScript rules engine
-│       └── ai.js                  # Client-side JavaScript minimax AI
+│       ├── ai.js                  # Client-side JavaScript minimax AI
+│       ├── book.js                # Client-side opening book
+│       ├── manifest.json          # Web App Manifest (PWA)
+│       └── sw.js                  # Service Worker (offline cache)
 ├── tests/
 │   ├── fixtures/
 │   │   └── engine_parity_fixtures.json  # 629 cross-language test fixtures
@@ -222,7 +238,7 @@ mangala/
 Run the comprehensive test suite locally:
 
 ```bash
-# 1. Run all Python unit and property tests with 98% coverage
+# 1. Run all Python unit and property tests with 100% coverage
 pytest --cov=mangala tests/
 
 # 2. Run cross-language Python <-> JavaScript parity suite (629 test cases)

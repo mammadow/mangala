@@ -902,9 +902,10 @@ header {
     </div>
     <div class="toolbar">
       <button class="btn ghost" id="soundBtn" title="Toggle sound effects">🔊 Sound</button>
-      <button class="btn ghost" id="themeBtn" title="Switch board palette (Walnut / Marble / Obsidian / Terracotta)">🎨 Walnut</button>
+      <button class="btn ghost" id="themeBtn" title="Switch board theme (Walnut / Marble / Obsidian / Terracotta)">🎨 Walnut</button>
+      <button class="btn ghost" id="puzzleBtn" title="Tactical Puzzles Trainer">🧩 Puzzles</button>
       <button class="btn ghost" id="reviewBtn" title="View Match Analysis & Accuracy">📊 Review</button>
-      <button class="btn ghost" id="rulesBtn" title="How to play">📖 Rules</button>
+      <button class="btn ghost" id="rulesBtn" title="Rules & Interactive Tutorial">📖 Guide</button>
       <button class="btn ghost" id="flipBtn" title="Rotate board 180° (F)">⟲ Flip</button>
       <button class="btn ghost" id="speedBtn" title="Animation speed">⚡ 1x</button>
       <button class="btn ghost" id="menuBtn">⚙️ Modes</button>
@@ -1020,6 +1021,33 @@ header {
         <div class="mcard-title">Sandbox</div>
         <div class="mcard-desc">Hints, undo & analysis</div>
       </button>
+      <button class="mcard" data-mode="online">
+        <div class="mcard-badge">✓ Selected</div>
+        <div class="mcard-icon">🌐</div>
+        <div class="mcard-title">Online P2P</div>
+        <div class="mcard-desc">Play friend with Room Code</div>
+      </button>
+    </div>
+
+    <!-- Online Match Section -->
+    <div id="onlineSection" style="margin-top: 14px; display: none;">
+      <div class="section-label">Online Peer-to-Peer Match</div>
+      <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <button class="btn" id="createRoomBtn" style="flex:1;">Create Room</button>
+        <button class="btn ghost" id="joinRoomToggleBtn" style="flex:1;">Join Room</button>
+      </div>
+      <div id="roomCreatedBox" style="display:none;background:rgba(0,0,0,0.3);padding:10px;border-radius:10px;margin-bottom:10px;border:1px solid var(--gold);">
+        <div style="font-size:12px;color:var(--text-dim);">Share this 4-character Room Code with a friend:</div>
+        <div id="displayRoomCode" style="font-size:24px;font-weight:800;color:var(--gold);letter-spacing:4px;margin:4px 0;">----</div>
+        <button class="btn ghost" id="copyRoomLinkBtn" style="font-size:11px;padding:4px 8px;">📋 Copy Invite Link</button>
+      </div>
+      <div id="roomJoinBox" style="display:none;background:rgba(0,0,0,0.3);padding:10px;border-radius:10px;margin-bottom:10px;">
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">Enter 4-character Room Code:</div>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="inputRoomCode" maxlength="4" placeholder="e.g. A1B2" style="flex:1;text-transform:uppercase;font-size:18px;font-weight:700;text-align:center;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);color:var(--text-main);border-radius:8px;">
+          <button class="btn" id="submitJoinRoomBtn">Connect</button>
+        </div>
+      </div>
     </div>
 
     <!-- AI Difficulty -->
@@ -1073,9 +1101,16 @@ header {
 <div class="overlay hidden" id="rulesOverlay">
   <div class="panel" style="max-width:540px">
     <button class="modal-close-btn" id="closeRulesXBtn" title="Close">✕</button>
-    <h2>📖 How to Play Mangala</h2>
+    <h2>📖 Mangala Guide</h2>
     <p class="sub">Authentic Turkish rules for 48 stones across 12 pits & 2 treasuries.</p>
-    <div class="rules-content">
+
+    <div class="pill-group" style="margin-bottom: 14px;">
+      <button class="pill-btn active" id="tabRulesBtn">📖 Rules Guide</button>
+      <button class="pill-btn" id="tabTutorialBtn">🎓 Interactive Tutorial</button>
+    </div>
+
+    <!-- Static Rules Content -->
+    <div class="rules-content" id="rulesTextContent">
       <div class="rule-card">
         <h3>🌰 1. Sowing Rule</h3>
         <p>Pick up all stones from one of your pits. If it has <strong>&gt; 1 stone</strong>, leave <strong>1 stone behind</strong> and sow the rest counterclockwise one by one. If it has <strong>only 1 stone</strong>, pick it up and place it in the next pit. <em>The opponent's treasury is always skipped.</em></p>
@@ -1096,8 +1131,26 @@ header {
         <h3>🏁 5. Endgame Sweep & Win</h3>
         <p>When either player clears all 6 of their pits, the game ends. The player who cleared their pits collects <strong>all remaining stones from the opponent's side</strong>. The player with the most stones in their treasury wins!</p>
       </div>
+      <button class="btn" id="closeRulesBtn" style="margin-top:10px;width:100%">Got It, Let's Play</button>
     </div>
-    <button class="btn" id="closeRulesBtn" style="margin-top:18px;width:100%">Got It, Let's Play</button>
+
+    <!-- Interactive Tutorial Step Content -->
+    <div id="tutorialContent" style="display:none; text-align: left;">
+      <div class="rule-card" style="margin-bottom: 12px;">
+        <h3 id="tutStepTitle">Step 1: The Sowing Rule</h3>
+        <p id="tutStepDesc" style="color:var(--text-main);font-size:13px;line-height:1.5;margin-top:6px;">
+          Learn how to distribute stones counterclockwise, leaving 1 stone in the pit.
+        </p>
+        <div style="margin-top: 10px; font-size: 12px; color: var(--gold); font-weight: 700;" id="tutStepInstruction">
+          👉 Instruction: Click pit 4 on the board to sow stones!
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:space-between;">
+        <button class="btn ghost" id="tutPrevBtn">◀ Previous</button>
+        <button class="btn" id="tutPlayStepBtn">Try on Board</button>
+        <button class="btn ghost" id="tutNextBtn">Next ▶</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1139,7 +1192,46 @@ header {
       </div>
     </div>
 
-    <button class="btn" id="closeReviewOkBtn" style="width:100%;margin-top:12px;">Back to Game</button>
+    <!-- MPGN Notation Section -->
+    <div style="margin-top: 14px; text-align: left;">
+      <div class="section-label">Mancala Portable Game Notation (MPGN)</div>
+      <textarea id="mpgnArea" readonly style="width: 100%; height: 75px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text-dim); font-family: ui-monospace, monospace; font-size: 11px; padding: 6px; resize: none;"></textarea>
+      <div style="display: flex; gap: 8px; margin-top: 6px;">
+        <button class="btn ghost" id="copyMpgnBtn" style="flex: 1; font-size: 12px; padding: 6px 10px;">📋 Copy MPGN</button>
+        <button class="btn ghost" id="dlMpgnBtn" style="flex: 1; font-size: 12px; padding: 6px 10px;">💾 Download .mpgn</button>
+      </div>
+    </div>
+
+    <button class="btn" id="closeReviewOkBtn" style="width:100%;margin-top:14px;">Back to Game</button>
+  </div>
+</div>
+
+<!-- Tactical Puzzles Overlay -->
+<div class="overlay hidden" id="puzzleOverlay">
+  <div class="panel" style="max-width: 520px;">
+    <button class="modal-close-btn" id="closePuzzleBtn" title="Close">✕</button>
+    <h2>🧩 Tactical Puzzles</h2>
+    <p class="sub" id="puzzleSubtitle">Sharpen your calculation with authentic tactical scenarios</p>
+
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap" id="puzzlePills">
+      <!-- 8 numbered puzzle pills generated by JS -->
+    </div>
+
+    <div class="rule-card" style="margin-bottom: 16px; text-align: left;">
+      <h3 id="puzzleTitle">Puzzle 1: Extra-Turn Ladder</h3>
+      <p id="puzzlePrompt" style="margin-top: 6px; color: var(--text-main); font-size: 13px; line-height: 1.5;">
+        Find the move for Player 1 that secures a continuous treasury chain.
+      </p>
+      <div id="puzzleStatus" style="margin-top: 8px; font-weight: 700; color: var(--gold); font-size: 12px;">
+        👉 Your turn: click the best pit!
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn ghost" id="puzzleHintBtn">💡 Hint</button>
+      <button class="btn ghost" id="puzzleResetBtn">↺ Reset</button>
+      <button class="btn" id="puzzlePlayBtn">Load on Board</button>
+    </div>
   </div>
 </div>
 
@@ -1480,6 +1572,36 @@ function handleTimeout(player) {
 }
 
 // ── Match Review & Accuracy Evaluation ─────────────────────────────────────
+function generateMPGN() {
+  const d = new Date().toISOString().split('T')[0];
+  const p1Name = players[0] === 'ai' ? `AI (${aiLevel})` : 'Player 1';
+  const p2Name = players[1] === 'ai' ? `AI (${aiLevel})` : 'Player 2';
+  const p1Sc = S ? S.pits[P1_TREAS] : 0;
+  const p2Sc = S ? S.pits[P2_TREAS] : 0;
+  const res = (S && S.game_over) ? `${p1Sc}-${p2Sc}` : '*';
+
+  let txt = `[Event "Turkish Mangala Match"]\n`;
+  txt += `[Site "${window.location.hostname || 'local'}"]\n`;
+  txt += `[Date "${d}"]\n`;
+  txt += `[Player1 "${p1Name}"]\n`;
+  txt += `[Player2 "${p2Name}"]\n`;
+  txt += `[Result "${res}"]\n\n`;
+
+  let moveNum = 1;
+  let line = "";
+  for (let i = 0; i < logEntries.length; i++) {
+    const entry = logEntries[i];
+    if (entry.player === 0) {
+      line += `${moveNum}. ${entry.text.replace(/\s+/g, ' ')} `;
+    } else {
+      line += `${entry.text.replace(/\s+/g, ' ')} `;
+      moveNum++;
+    }
+  }
+  txt += line.trim() + ` ${res}`;
+  return txt;
+}
+
 function openReview() {
   if (!history || history.length < 2) {
     alert("Play at least one move to generate a Match Review!");
@@ -1533,8 +1655,288 @@ function openReview() {
   document.getElementById('p1Counts').innerHTML = renderCounts(counts[0]);
   document.getElementById('p2Counts').innerHTML = renderCounts(counts[1]);
 
+  const pgn = generateMPGN();
+  const mpgnEl = document.getElementById('mpgnArea');
+  if (mpgnEl) mpgnEl.value = pgn;
+
   reviewOverlay.classList.remove('hidden');
 }
+
+// ── Tactical Puzzle Trainer ────────────────────────────────────────────────
+const PUZZLES = [
+  {
+    id: 1,
+    title: "Extra-Turn Treasury Ladder",
+    prompt: "Player 1 to move: Find the pit that lands exactly in your Hazine and earns an immediate bonus turn.",
+    pits: [2, 4, 3, 4, 4, 1, 6, 4, 4, 4, 4, 4, 4, 0],
+    player: 0,
+    solution: 5,
+    hint: "Pit 6 (index 5) has 1 stone and sits right next to your Hazine!"
+  },
+  {
+    id: 2,
+    title: "Even Capture Snipe",
+    prompt: "Player 1 to move: Opponent's pit 7 has 3 stones. Sow into it to make it 4 and capture all stones!",
+    pits: [4, 4, 4, 4, 4, 2, 0, 3, 4, 4, 4, 4, 4, 3],
+    player: 0,
+    solution: 5,
+    hint: "Pit 6 (index 5) has 2 stones. It will deposit 1 in Hazine and 1 into pit 7!"
+  },
+  {
+    id: 3,
+    title: "Empty-Hole Opposite Sweep",
+    prompt: "Player 1 to move: Your pit 2 is empty, while opponent pit 10 holds 6 stones. Execute an empty-hole capture!",
+    pits: [4, 2, 0, 4, 4, 4, 2, 4, 4, 4, 6, 4, 4, 2],
+    player: 0,
+    solution: 1,
+    hint: "Pit 2 (index 1) has 2 stones. Sowing leaves 1 and lands the final stone in empty pit 3 (index 2)!"
+  },
+  {
+    id: 4,
+    title: "The 25th Stone Victory",
+    prompt: "Player 1 to move: You hold 23 stones in Hazine. Find the move that immediately secures 25+ stones for victory!",
+    pits: [0, 0, 0, 0, 2, 0, 23, 3, 4, 4, 4, 4, 4, 0],
+    player: 0,
+    solution: 4,
+    hint: "Sowing from pit 5 (index 4) reaches Hazine or creates a capture securing the 25-stone threshold."
+  },
+  {
+    id: 5,
+    title: "Opponent Starvation",
+    prompt: "Player 1 to move: Deny the opponent any capture on their upcoming turn.",
+    pits: [4, 4, 4, 4, 1, 4, 3, 1, 4, 4, 4, 4, 4, 2],
+    player: 0,
+    solution: 4,
+    hint: "Advance isolated single stones before the opponent can target them."
+  },
+  {
+    id: 6,
+    title: "Double Threat Fork",
+    prompt: "Player 1 to move: Create multiple simultaneous capture threats across the opponent's row.",
+    pits: [4, 4, 5, 4, 4, 4, 1, 3, 5, 4, 4, 4, 4, 1],
+    player: 0,
+    solution: 2,
+    hint: "Sow deep into enemy territory to make multiple pits even."
+  },
+  {
+    id: 7,
+    title: "Hazine Rapid Re-Entry",
+    prompt: "Player 1 to move: String together multiple consecutive extra turns.",
+    pits: [1, 2, 3, 4, 5, 1, 2, 4, 4, 4, 4, 4, 4, 1],
+    player: 0,
+    solution: 5,
+    hint: "Start with pit 6 (index 5) right next to your treasury."
+  },
+  {
+    id: 8,
+    title: "The Grandmaster Sweep",
+    prompt: "Player 1 to move: Clear your last remaining pits to trigger the endgame sweep and collect all remaining stones!",
+    pits: [0, 0, 0, 0, 0, 1, 18, 5, 5, 5, 5, 4, 4, 1],
+    player: 0,
+    solution: 5,
+    hint: "Emptying your entire row triggers the rule where you claim all opponent stones!"
+  }
+];
+
+let curPuzzleIdx = 0;
+
+function openPuzzles() {
+  renderPuzzlePills();
+  selectPuzzle(curPuzzleIdx);
+  document.getElementById('puzzleOverlay').classList.remove('hidden');
+}
+
+function renderPuzzlePills() {
+  const box = document.getElementById('puzzlePills');
+  if (!box) return;
+  box.innerHTML = '';
+  PUZZLES.forEach((p, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'pill-btn' + (idx === curPuzzleIdx ? ' active' : '');
+    btn.textContent = `#${p.id}`;
+    btn.style.minWidth = '42px';
+    btn.addEventListener('click', () => selectPuzzle(idx));
+    box.appendChild(btn);
+  });
+}
+
+function selectPuzzle(idx) {
+  curPuzzleIdx = idx;
+  const p = PUZZLES[idx];
+  document.getElementById('puzzleTitle').textContent = `Puzzle ${p.id}: ${p.title}`;
+  document.getElementById('puzzlePrompt').textContent = p.prompt;
+  document.getElementById('puzzleStatus').textContent = "👉 Your turn: click the best pit!";
+  document.getElementById('puzzleStatus').style.color = "var(--gold)";
+  renderPuzzlePills();
+}
+
+function loadPuzzleOnBoard() {
+  const p = PUZZLES[curPuzzleIdx];
+  mode = 'puzzle';
+  players = ['human', 'ai'];
+  S = {
+    pits: p.pits.slice(),
+    current_player: p.player,
+    game_over: false,
+    winner: null,
+    legal: [0, 1, 2, 3, 4, 5].filter(i => p.pits[i] > 0)
+  };
+  flipped = false;
+  applyFlip();
+  updateToolbarMenuBtn();
+  document.getElementById('puzzleOverlay').classList.add('hidden');
+  render(S);
+  banner(`🧩 Loaded Puzzle ${p.id}: ${p.title}`, 'var(--gold)');
+}
+
+// ── Interactive Rules Tutorial ─────────────────────────────────────────────
+const TUTORIAL_STEPS = [
+  {
+    title: "Step 1: Sowing Rule",
+    desc: "When a pit has > 1 stone, 1 stone stays behind, and the rest sow counterclockwise one-by-one into consecutive pits.",
+    instruction: "👉 Click pit 4 (index 3) to see 1 stone remain behind while 3 stones advance!",
+    pits: [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0],
+    targetPit: 3
+  },
+  {
+    title: "Step 2: Extra Turn (Hazine)",
+    desc: "If your last sown stone lands inside your own treasury (Hazine), you earn an immediate bonus turn!",
+    instruction: "👉 Click pit 6 (index 5) — its single stone lands directly in your Hazine!",
+    pits: [4, 4, 4, 4, 4, 1, 0, 4, 4, 4, 4, 4, 4, 0],
+    targetPit: 5
+  },
+  {
+    title: "Step 3: Even Capture",
+    desc: "If your last stone lands in an opponent pit and makes its count EVEN (2, 4, 6...), you capture ALL stones from that pit into your Hazine!",
+    instruction: "👉 Click pit 6 (index 5) — its 2 stones deposit into Hazine and then pit 7, making it 4 (even capture)!",
+    pits: [4, 4, 4, 4, 4, 2, 0, 3, 4, 4, 4, 4, 4, 0],
+    targetPit: 5
+  },
+  {
+    title: "Step 4: Empty-Hole Capture",
+    desc: "If your last stone lands in your own previously empty pit (now 1 stone), you capture your stone PLUS all stones from the directly opposite opponent pit!",
+    instruction: "👉 Click pit 2 (index 1) with 2 stones to land in empty pit 3 and snatch pit 10's 5 stones!",
+    pits: [4, 2, 0, 4, 4, 4, 0, 4, 4, 4, 5, 4, 4, 0],
+    targetPit: 1
+  },
+  {
+    title: "Step 5: Endgame Sweep",
+    desc: "When either player empties all 6 of their pits, the game ends immediately. That player sweeps ALL remaining opponent stones!",
+    instruction: "👉 Click pit 6 (index 5) to empty your row and sweep all remaining stones on the board!",
+    pits: [0, 0, 0, 0, 0, 1, 20, 4, 4, 4, 4, 4, 4, 3],
+    targetPit: 5
+  }
+];
+
+let tutStepIdx = 0;
+
+function showTutorialStep(idx) {
+  tutStepIdx = Math.max(0, Math.min(TUTORIAL_STEPS.length - 1, idx));
+  const step = TUTORIAL_STEPS[tutStepIdx];
+  document.getElementById('tutStepTitle').textContent = step.title;
+  document.getElementById('tutStepDesc').textContent = step.desc;
+  document.getElementById('tutStepInstruction').textContent = step.instruction;
+}
+
+function loadTutorialOnBoard() {
+  const step = TUTORIAL_STEPS[tutStepIdx];
+  mode = 'tutorial';
+  players = ['human', 'human'];
+  S = {
+    pits: step.pits.slice(),
+    current_player: 0,
+    game_over: false,
+    winner: null,
+    legal: [step.targetPit]
+  };
+  flipped = false;
+  applyFlip();
+  updateToolbarMenuBtn();
+  document.getElementById('rulesOverlay').classList.add('hidden');
+  render(S);
+  banner(`🎓 ${step.title}: Click glowing pit [${step.targetPit + 1}]!`, 'var(--gold)');
+}
+
+// ── Online P2P Multiplayer ─────────────────────────────────────────────────
+let currentRoom = null;
+let onlinePlayerSide = 0; // 0 for host, 1 for guest
+let roomPollInterval = null;
+let lastMoveSeq = 0;
+
+async function createRoom() {
+  try {
+    const res = await api('/api/room/create', {});
+    currentRoom = res.room;
+    onlinePlayerSide = 0;
+    lastMoveSeq = 0;
+
+    document.getElementById('roomCreatedBox').style.display = 'block';
+    document.getElementById('displayRoomCode').textContent = currentRoom;
+    document.getElementById('roomJoinBox').style.display = 'none';
+
+    startRoomPolling();
+  } catch (err) {
+    alert("Could not create room: " + err.message);
+  }
+}
+
+async function joinRoom(code) {
+  if (!code) {
+    alert("Please enter a 4-character Room Code.");
+    return;
+  }
+  try {
+    const res = await api('/api/room/join', { room: code.toUpperCase() });
+    currentRoom = res.room;
+    onlinePlayerSide = 1;
+    lastMoveSeq = 0;
+
+    mode = 'online';
+    players = ['human', 'human'];
+    flipped = true;
+    applyFlip();
+    updateToolbarMenuBtn();
+
+    document.getElementById('menuOverlay').classList.add('hidden');
+    S = res.state;
+    render(S);
+    startRoomPolling();
+    banner(`Connected to Room ${currentRoom}! You are Player 2.`, '#48db8c');
+  } catch (err) {
+    alert("Failed to join room: " + err.message);
+  }
+}
+
+function startRoomPolling() {
+  if (roomPollInterval) clearInterval(roomPollInterval);
+  roomPollInterval = setInterval(async () => {
+    if (!currentRoom) return;
+    try {
+      const data = await api(`/api/room/poll?room=${currentRoom}&since=${lastMoveSeq}`);
+      if (onlinePlayerSide === 0 && data.guest_joined && mode !== 'online') {
+        mode = 'online';
+        players = ['human', 'human'];
+        updateToolbarMenuBtn();
+        document.getElementById('menuOverlay').classList.add('hidden');
+        banner(`Guest joined Room ${currentRoom}! Match started.`, '#48db8c');
+      }
+
+      if (data.moves && data.moves.length > 0) {
+        for (const mv of data.moves) {
+          if (mv.seq >= lastMoveSeq) {
+            lastMoveSeq = mv.seq + 1;
+            if (mv.player !== onlinePlayerSide && S) {
+              await playMove(mv.pit);
+              pushHistory();
+              render(S);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }, 600);
+}
+
 
 function render(state) {
   for (let i = 0; i < TOTAL; i++) renderPit(i, state.pits[i], false);
@@ -1751,6 +2153,47 @@ async function onPitClick(idx) {
     setTimeout(() => pitEls[idx].classList.remove('invalid'), 350);
     return;
   }
+
+  if (mode === 'puzzle') {
+    const curP = PUZZLES[curPuzzleIdx];
+    if (idx !== curP.solution) {
+      await banner("❌ Not the winning move. Check the hint!", "#ff6e6e");
+      return;
+    }
+    await playMove(idx);
+    pushHistory();
+    render(S);
+    sfx.win();
+    await banner("🎉 Brilliant! Tactical Solution Discovered!", "#48db8c");
+    document.getElementById('puzzleStatus').textContent = "✅ Solved! Outstanding tactical calculation.";
+    document.getElementById('puzzleStatus').style.color = "#48db8c";
+    return;
+  }
+
+  if (mode === 'tutorial') {
+    await playMove(idx);
+    pushHistory();
+    render(S);
+    await banner("👏 Rule demonstrated! Click Next Step in guide.", "#48db8c");
+    return;
+  }
+
+  if (mode === 'online') {
+    if (S.current_player !== onlinePlayerSide) {
+      await banner("⏳ Wait for opponent's move!", "#ff6e6e");
+      return;
+    }
+    await playMove(idx);
+    pushHistory();
+    render(S);
+    try {
+      await api('/api/room/move', { room: currentRoom, player: onlinePlayerSide, pit: idx });
+    } catch (e) {
+      console.warn("Room move failed:", e);
+    }
+    return;
+  }
+
   await playMove(idx);
   pushHistory();
   render(S);
@@ -1933,6 +2376,12 @@ function updateToolbarMenuBtn() {
     menuBtn.textContent = '⚙️ AI vs AI';
   } else if (mode === 'analysis') {
     menuBtn.textContent = '⚙️ Sandbox';
+  } else if (mode === 'online') {
+    menuBtn.textContent = '⚙️ Online P2P';
+  } else if (mode === 'puzzle') {
+    menuBtn.textContent = '⚙️ Puzzle';
+  } else if (mode === 'tutorial') {
+    menuBtn.textContent = '⚙️ Tutorial';
   }
 }
 
@@ -1952,11 +2401,15 @@ function syncMenuDOM() {
     card.classList.toggle('active', card.dataset.mode === selectedMode);
   });
 
-  // Show/hide diff and side sections depending on mode
+  // Show/hide diff, side, time, and online sections depending on mode
   const showDiff = (selectedMode === 'hva' || selectedMode === 'ava');
   const showSide = (selectedMode === 'hva' || selectedMode === 'analysis');
+  const showOnline = (selectedMode === 'online');
+  const showTime = (selectedMode !== 'online' && selectedMode !== 'analysis');
   document.getElementById('diffSection').style.display = showDiff ? 'block' : 'none';
   document.getElementById('sideSection').style.display = showSide ? 'block' : 'none';
+  document.getElementById('timeSection').style.display = showTime ? 'block' : 'none';
+  document.getElementById('onlineSection').style.display = showOnline ? 'block' : 'none';
 
   // Update difficulty pills
   document.querySelectorAll('#diffSection .pill-btn').forEach(pill => {
@@ -2084,6 +2537,75 @@ document.getElementById('badge2').addEventListener('click', () => {
 // Toolbar buttons
 document.getElementById('soundBtn').addEventListener('click', () => sfx.toggle());
 document.getElementById('themeBtn').addEventListener('click', cycleTheme);
+document.getElementById('puzzleBtn').addEventListener('click', openPuzzles);
+document.getElementById('closePuzzleBtn').addEventListener('click', () => {
+  document.getElementById('puzzleOverlay').classList.add('hidden');
+});
+document.getElementById('puzzlePlayBtn').addEventListener('click', loadPuzzleOnBoard);
+document.getElementById('puzzleHintBtn').addEventListener('click', () => {
+  alert("💡 Hint: " + PUZZLES[curPuzzleIdx].hint);
+});
+document.getElementById('puzzleResetBtn').addEventListener('click', () => {
+  selectPuzzle(curPuzzleIdx);
+});
+
+// Rules & Tutorial Tabs
+document.getElementById('tabRulesBtn').addEventListener('click', () => {
+  document.getElementById('tabRulesBtn').classList.add('active');
+  document.getElementById('tabTutorialBtn').classList.remove('active');
+  document.getElementById('rulesTextContent').style.display = 'block';
+  document.getElementById('tutorialContent').style.display = 'none';
+});
+document.getElementById('tabTutorialBtn').addEventListener('click', () => {
+  document.getElementById('tabTutorialBtn').classList.add('active');
+  document.getElementById('tabRulesBtn').classList.remove('active');
+  document.getElementById('rulesTextContent').style.display = 'none';
+  document.getElementById('tutorialContent').style.display = 'block';
+  showTutorialStep(tutStepIdx);
+});
+document.getElementById('tutPrevBtn').addEventListener('click', () => showTutorialStep(tutStepIdx - 1));
+document.getElementById('tutNextBtn').addEventListener('click', () => showTutorialStep(tutStepIdx + 1));
+document.getElementById('tutPlayStepBtn').addEventListener('click', loadTutorialOnBoard);
+
+// Online P2P Rooms
+document.getElementById('createRoomBtn').addEventListener('click', createRoom);
+document.getElementById('joinRoomToggleBtn').addEventListener('click', () => {
+  const box = document.getElementById('roomJoinBox');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('roomCreatedBox').style.display = 'none';
+});
+document.getElementById('submitJoinRoomBtn').addEventListener('click', () => {
+  const code = document.getElementById('inputRoomCode').value.trim();
+  joinRoom(code);
+});
+document.getElementById('copyRoomLinkBtn').addEventListener('click', () => {
+  if (!currentRoom) return;
+  const link = `${window.location.origin}${window.location.pathname}?room=${currentRoom}`;
+  navigator.clipboard.writeText(link).then(() => {
+    banner("📋 Room link copied to clipboard!", "var(--gold)");
+  }).catch(() => {
+    prompt("Copy room link:", link);
+  });
+});
+
+// MPGN Export
+document.getElementById('copyMpgnBtn').addEventListener('click', () => {
+  const val = document.getElementById('mpgnArea').value;
+  navigator.clipboard.writeText(val).then(() => {
+    banner("📋 MPGN copied to clipboard!", "var(--gold)");
+  }).catch(() => {
+    alert("MPGN:\n" + val);
+  });
+});
+document.getElementById('dlMpgnBtn').addEventListener('click', () => {
+  const val = document.getElementById('mpgnArea').value;
+  const blob = new Blob([val], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `mangala_${new Date().toISOString().split('T')[0]}.mpgn`;
+  a.click();
+});
+
 document.getElementById('reviewBtn').addEventListener('click', openReview);
 document.getElementById('winReviewBtn').addEventListener('click', () => {
   document.getElementById('winOverlay').classList.add('hidden');
@@ -2186,6 +2708,13 @@ applyTheme(currentTheme);
 buildBoard();
 updateTurnText(null);
 syncMenuDOM();
+
+// Auto-join room from URL query parameter (?room=ABCD)
+const urlParams = new URLSearchParams(window.location.search);
+const roomParam = urlParams.get('room');
+if (roomParam) {
+  setTimeout(() => joinRoom(roomParam), 350);
+}
 
 // ── Progressive Web App (Offline Service Worker) ───────────────────────────
 if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {

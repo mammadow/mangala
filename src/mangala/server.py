@@ -49,6 +49,10 @@ MAX_CONCURRENT_SEARCHES = 4
 # Caps CPU use: at most this many AI searches run at the same time.
 _search_slots = threading.BoundedSemaphore(MAX_CONCURRENT_SEARCHES)
 
+# In-memory rooms for lightweight multiplayer matches
+_ROOMS_LOCK = threading.Lock()
+_ROOMS: dict[str, dict[str, Any]] = {}
+
 _SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
@@ -184,12 +188,22 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_file(os.path.join(WEB_DIR, "index.html"))
             elif path == "/api/new":
                 self._send_json({"state": state_to_dict(initial_state())})
-            elif path in ("/api/move", "/api/ai"):
+            elif path == "/api/room/poll":
+                self._api_room_poll()
+            elif path in (
+                "/api/move",
+                "/api/ai",
+                "/api/room/create",
+                "/api/room/join",
+                "/api/room/move",
+            ):
                 self._send_error_json(405, "use POST")
             elif path.startswith("/api/"):
                 self._send_error_json(404, "not found")
             else:
                 self._serve_static(path)
+        except BadRequest as e:
+            self._send_error_json(400, str(e))
         except Exception:  # pragma: no cover - last-resort safety net
             self._send_error_json(500, "internal server error")
 
@@ -219,6 +233,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._api_move(self._read_json())
             elif path == "/api/ai":
                 self._api_ai(self._read_json())
+            elif path == "/api/room/create":
+                self._api_room_create()
+            elif path == "/api/room/join":
+                self._api_room_join(self._read_json())
+            elif path == "/api/room/move":
+                self._api_room_move(self._read_json())
             else:
                 self._drain_body()
                 self._send_error_json(404, "not found")
@@ -228,6 +248,99 @@ class Handler(BaseHTTPRequestHandler):
             self._send_error_json(500, "internal server error")
 
     # -- endpoints -----------------------------------------------------------
+
+    def _api_room_create(self) -> None:
+        import secrets
+
+        with _ROOMS_LOCK:
+            room_id = secrets.token_hex(2).upper()
+            while room_id in _ROOMS:  # pragma: no cover - collision safety
+                room_id = secrets.token_hex(2).upper()
+            s = initial_state()
+            _ROOMS[room_id] = {
+                "state": s,
+                "moves": [],
+                "guest_joined": False,
+            }
+        self._send_json({"room": room_id, "player": 0, "state": state_to_dict(s)})
+
+    def _api_room_join(self, data: dict) -> None:
+        room_id = str(data.get("room", "")).strip().upper()
+        if not room_id:
+            raise BadRequest("'room' code is required")
+        with _ROOMS_LOCK:
+            room = _ROOMS.get(room_id)
+            if not room:
+                raise BadRequest(f"room '{room_id}' not found")
+            if room["guest_joined"]:
+                raise BadRequest(f"room '{room_id}' is full")
+            room["guest_joined"] = True
+            s = room["state"]
+        self._send_json({"room": room_id, "player": 1, "state": state_to_dict(s)})
+
+    def _api_room_move(self, data: dict) -> None:
+        room_id = str(data.get("room", "")).strip().upper()
+        player = data.get("player")
+        pit = data.get("pit")
+        if not room_id or player not in (0, 1) or not isinstance(pit, int) or isinstance(pit, bool):
+            raise BadRequest("valid 'room', 'player' (0 or 1), and integer 'pit' required")
+
+        with _ROOMS_LOCK:
+            room = _ROOMS.get(room_id)
+            if not room:
+                raise BadRequest(f"room '{room_id}' not found")
+            s = room["state"]
+            if s.current_player != player:
+                raise BadRequest("not your turn")
+            if pit not in legal_moves(s):
+                raise BadRequest(f"pit {pit} is not legal")
+
+            next_state, events = apply_move(s, pit)
+            room["state"] = next_state
+            seq = len(room["moves"])
+            ev_dict = {"capture": events["capture"], "extra_turn": events["extra_turn"]}
+            room["moves"].append({
+                "seq": seq,
+                "player": player,
+                "pit": pit,
+                "events": ev_dict,
+                "state": state_to_dict(next_state),
+            })
+        self._send_json({
+            "seq": seq,
+            "state": state_to_dict(next_state),
+            "events": ev_dict,
+        })
+
+    def _api_room_poll(self) -> None:
+        from urllib.parse import parse_qs
+
+        qs = parse_qs(urlsplit(self.path).query)
+        room_id = qs.get("room", [""])[0].strip().upper()
+        since_raw = qs.get("since", ["0"])[0]
+        try:
+            since = int(since_raw)
+        except ValueError:
+            raise BadRequest("'since' must be an integer sequence") from None
+
+        if not room_id:
+            raise BadRequest("'room' query parameter required")
+
+        with _ROOMS_LOCK:
+            room = _ROOMS.get(room_id)
+            if not room:
+                raise BadRequest(f"room '{room_id}' not found")
+            moves = [m for m in room["moves"] if m["seq"] >= since]
+            s = room["state"]
+            guest = room["guest_joined"]
+
+        self._send_json({
+            "room": room_id,
+            "guest_joined": guest,
+            "state": state_to_dict(s),
+            "moves": moves,
+        })
+
 
     def _api_move(self, data: dict) -> None:
         state = dict_to_state(data.get("state"))
