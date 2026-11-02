@@ -2,241 +2,697 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Turkish Mangala</title>
-<meta name="description" content="Turkish Mangala (mancala) with a strong minimax AI">
-<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Turkish Mangala (Mancala)</title>
+<meta name="description" content="Authentic Turkish Mangala game with tournament-grade minimax AI, responsive web UI, and offline play.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏺</text></svg>">
 <style>
-:root{
-  --bg0:#0e0b14; --bg1:#171226; --felt0:#1c5d4e; --felt1:#0e3b31;
-  --wood0:#5a3a1f; --wood1:#3c2512; --rim:#241408;
-  --pit0:#caa46e; --pit1:#9c763f; --pit-in:#7a5526;
-  --treas0:#e7cd9a; --treas1:#b48c52;
-  --stone0:#fff4dd; --stone1:#e6b873; --stone-edge:#a9762f;
-  --gold:#ffce3a; --p1:#5aa6ff; --p2:#ff6b6b; --green:#46d18a; --cyan:#21d6cc;
-  --text:#f1e9d6; --dim:#a99a7c; --ink:#2a1a08;
+:root {
+  --bg-dark: #0d0a14;
+  --bg-gradient: radial-gradient(1200px 800px at 50% -10%, #26193d 0%, #161026 50%, #0d0a14 100%);
+  --wood-outer: #432612;
+  --wood-mid: #5a341a;
+  --wood-inner: #30190a;
+  --wood-rim: #1f0f04;
+  --felt-dark: #082a22;
+  --felt-light: #164a3d;
+  --pit-edge: #7a5023;
+  --pit-mid: #9c6c35;
+  --pit-base: #462b11;
+  --treas-light: #cfa86e;
+  --treas-dark: #8f6a39;
+  --stone-top: #fbf7ec;
+  --stone-mid: #e3c491;
+  --stone-shadow: #7e5727;
+  --gold: #ffcf33;
+  --gold-glow: rgba(255, 207, 51, 0.45);
+  --p1-color: #5aa6ff;
+  --p1-glow: rgba(90, 166, 255, 0.4);
+  --p2-color: #ff6e6e;
+  --p2-glow: rgba(255, 110, 110, 0.4);
+  --green: #48db8c;
+  --cyan: #22d3ee;
+  --text-main: #f5eedf;
+  --text-dim: #a69880;
+  --text-dark: #2a1b08;
+  --board-max-w: 1040px;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{
-  font-family:"Segoe UI",system-ui,sans-serif;color:var(--text);
-  background:radial-gradient(1200px 700px at 50% -10%,#241a36 0%,var(--bg1) 45%,var(--bg0) 100%);
-  min-height:100vh;display:flex;align-items:center;justify-content:center;
-  overflow:hidden;user-select:none;
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body {
+  min-height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: var(--text-main);
+  background: var(--bg-gradient);
+  user-select: none;
+  -webkit-user-select: none;
 }
-.app{width:min(1100px,96vw);}
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 14px 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
 
-/* ── header ─────────────────────────────────────────────── */
-header{display:flex;align-items:center;justify-content:space-between;
-  padding:6px 4px 14px;}
-.brand{display:flex;align-items:center;gap:12px}
-.brand h1{font-family:Georgia,serif;font-size:30px;letter-spacing:.5px;
-  background:linear-gradient(90deg,#ffe6a3,#e2b15a);-webkit-background-clip:text;
-  background-clip:text;color:transparent;font-weight:700}
-.brand .dot{width:11px;height:11px;border-radius:50%;background:var(--gold);
-  box-shadow:0 0 14px var(--gold)}
-.toolbar{display:flex;gap:8px}
-.btn{font:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;
-  background:linear-gradient(180deg,#6b4824,#4a2f15);border:1px solid #2c1a09;
-  border-radius:10px;padding:9px 16px;box-shadow:0 2px 0 #2c1a09,0 6px 14px rgba(0,0,0,.35);
-  transition:transform .08s,filter .15s}
-.btn:hover{filter:brightness(1.12)}
-.btn:active{transform:translateY(2px);box-shadow:0 0 0 #2c1a09}
-.btn:disabled{opacity:.4;cursor:default;filter:none;transform:none}
-.btn.ghost{background:transparent;border:1px solid #4a3a22;color:var(--dim);
-  box-shadow:none}
-.btn.ghost:hover{color:var(--text)}
-.btn.ghost.on{color:var(--gold);border-color:var(--gold)}
+.app {
+  width: min(var(--board-max-w), 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-/* ── scoreboard ─────────────────────────────────────────── */
-.scorebar{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;
-  align-items:center;margin-bottom:14px}
-.pcard{display:flex;align-items:center;gap:14px;padding:12px 18px;border-radius:14px;
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
-  transition:box-shadow .25s,border-color .25s,background .25s}
-.pcard.right{flex-direction:row-reverse;text-align:right}
-.pcard .who{font-size:13px;letter-spacing:1px;color:var(--dim);text-transform:uppercase}
-.pcard .sc{font-size:34px;font-weight:800;line-height:1}
-.pcard .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
-  background:rgba(255,255,255,.08)}
-.pcard.p1 .sc{color:var(--p1)} .pcard.p2 .sc{color:var(--p2)}
-.pcard.active{background:rgba(255,255,255,.08)}
-.pcard.p1.active{border-color:var(--p1);box-shadow:0 0 26px rgba(90,166,255,.35)}
-.pcard.p2.active{border-color:var(--p2);box-shadow:0 0 26px rgba(255,107,107,.35)}
-.turnchip{display:flex;flex-direction:column;align-items:center;gap:4px;
-  font-size:12px;color:var(--dim);white-space:nowrap}
-.turnchip .big{font-size:15px;font-weight:700;color:var(--text)}
+/* ── Header ────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 2px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand .icon { font-size: 26px; filter: drop-shadow(0 2px 8px rgba(255,207,51,0.3)); }
+.brand h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(20px, 4vw, 28px);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, #fff2cb, #e5b760);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  background: linear-gradient(180deg, #66411f, #482c12);
+  border: 1px solid #281708;
+  border-radius: 9px;
+  padding: 8px 14px;
+  box-shadow: 0 2px 0 #201105, 0 4px 10px rgba(0,0,0,0.4);
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #201105; }
+.btn:disabled { opacity: 0.45; cursor: default; filter: none; transform: none; }
+.btn.ghost {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-dim);
+  box-shadow: none;
+}
+.btn.ghost:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.1); }
+.btn.ghost.active, .btn.ghost.on {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: rgba(255, 207, 51, 0.1);
+}
 
-/* ── board ──────────────────────────────────────────────── */
-.board{position:relative;border-radius:30px;padding:22px;
-  background:linear-gradient(160deg,var(--wood0),var(--wood1));
-  box-shadow:inset 0 2px 6px rgba(255,255,255,.12),inset 0 -8px 24px rgba(0,0,0,.5),
-    0 24px 60px rgba(0,0,0,.55);border:2px solid var(--rim)}
-.felt{display:grid;grid-template-columns:auto 1fr auto;gap:18px;
-  background:radial-gradient(120% 120% at 50% 0%,var(--felt0),var(--felt1));
-  border-radius:22px;padding:18px;border:2px solid rgba(0,0,0,.4);
-  box-shadow:inset 0 0 60px rgba(0,0,0,.45)}
-.rows{display:flex;flex-direction:column;gap:16px;justify-content:center}
-.row{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
-.rowlabel{font-size:11px;letter-spacing:2px;text-transform:uppercase;
-  color:rgba(255,255,255,.5);text-align:center;margin:2px 0}
-.rowlabel.p1{color:var(--p1)} .rowlabel.p2{color:var(--p2)}
+/* ── Scorebar ─────────────────────────────────────────── */
+.scorebar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.pcard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: all 0.25s ease;
+}
+.pcard.right { flex-direction: row-reverse; text-align: right; }
+.pcard .avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.pcard .pinfo { display: flex; flex-direction: column; }
+.pcard .who { font-size: 11px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; }
+.pcard .sc { font-size: 30px; font-weight: 800; line-height: 1; }
+.pcard .badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-top: 3px;
+  display: inline-block;
+  align-self: flex-start;
+}
+.pcard.right .badge { align-self: flex-end; }
+.pcard.p1 .sc { color: var(--p1-color); }
+.pcard.p2 .sc { color: var(--p2-color); }
+.pcard.p1.active {
+  border-color: var(--p1-color);
+  background: rgba(90, 166, 255, 0.09);
+  box-shadow: 0 0 20px var(--p1-glow);
+}
+.pcard.p2.active {
+  border-color: var(--p2-color);
+  background: rgba(255, 110, 110, 0.09);
+  box-shadow: 0 0 20px var(--p2-glow);
+}
 
-/* ── flipped board (180° rotation) ──────────────────────────
-   Rotate the felt so the other player's pits sit at the bottom,
-   then counter-rotate every text element so labels/counts stay
-   upright and readable. Purely visual — pit indices/logic unchanged. */
-.felt{transition:transform .4s cubic-bezier(.4,.1,.2,1)}
-.board.flipped .felt{transform:rotate(180deg)}
-.board.flipped .felt .count{transform:translateX(-50%) rotate(180deg)}
+.turnchip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+}
+.turnchip .big {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: 0.5px;
+}
+.turnchip .sub { font-size: 12px; color: var(--gold); }
+
+/* ── Board Layout ─────────────────────────────────────── */
+.board-wrapper { position: relative; width: 100%; }
+.board {
+  position: relative;
+  border-radius: 28px;
+  padding: clamp(10px, 2.5vw, 20px);
+  background: linear-gradient(155deg, var(--wood-mid), var(--wood-outer) 50%, var(--wood-inner));
+  border: 3px solid var(--wood-rim);
+  box-shadow:
+    inset 0 2px 6px rgba(255, 255, 255, 0.15),
+    inset 0 -8px 24px rgba(0, 0, 0, 0.6),
+    0 20px 50px rgba(0, 0, 0, 0.65);
+}
+
+.felt {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: clamp(8px, 1.8vw, 16px);
+  background: radial-gradient(130% 120% at 50% 10%, var(--felt-light), var(--felt-dark) 85%);
+  border-radius: 20px;
+  padding: clamp(10px, 2vw, 18px);
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.6);
+  transition: transform 0.4s cubic-bezier(0.4, 0.1, 0.2, 1);
+}
+
+/* 180° Visual Flip */
+.board.flipped .felt { transform: rotate(180deg); }
+.board.flipped .felt .count,
+.board.flipped .felt .kbadge { transform: translateX(-50%) rotate(180deg); }
 .board.flipped .felt .pid,
 .board.flipped .felt .tlabel,
 .board.flipped .felt .tcount,
 .board.flipped .felt .rowlabel,
-.board.flipped .felt .stones{transform:rotate(180deg)}
+.board.flipped .felt .stones { transform: rotate(180deg); }
 
-/* pit */
-.pit{position:relative;aspect-ratio:1/1.04;border-radius:50%;cursor:default;
-  background:radial-gradient(circle at 38% 30%,var(--pit0),var(--pit1) 70%,var(--pit-in));
-  box-shadow:inset 0 6px 14px rgba(0,0,0,.55),inset 0 -3px 6px rgba(255,255,255,.18),
-    0 3px 6px rgba(0,0,0,.4);
-  display:flex;align-items:center;justify-content:center;
-  transition:transform .12s,box-shadow .2s}
-.pit .count{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);
-  font-size:12px;font-weight:800;color:var(--ink);
-  background:rgba(255,244,221,.85);border-radius:10px;padding:0 7px;
-  box-shadow:0 1px 3px rgba(0,0,0,.3)}
-.pit .pid{position:absolute;font-size:10px;font-weight:700;opacity:.7}
-.row.p1row .pit .pid{bottom:-20px;color:var(--p1)}
-.row.p2row .pit .pid{top:-20px;color:var(--p2)}
-.stones{position:absolute;inset:8% ;display:flex;flex-wrap:wrap;
-  align-content:center;justify-content:center;gap:2px}
-.stone{width:13px;height:13px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%,var(--stone0),var(--stone1) 75%);
-  box-shadow:inset 0 -1px 2px var(--stone-edge),0 1px 2px rgba(0,0,0,.45);
-  animation:pop .22s ease}
-@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+/* ── Pit Rows ─────────────────────────────────────────── */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.8vw, 16px);
+  justify-content: center;
+}
+.rowlabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-align: center;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.rowlabel.p1 { color: var(--p1-color); }
+.rowlabel.p2 { color: var(--p2-color); }
+.row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: clamp(6px, 1.5vw, 14px);
+}
 
-.pit.legal{cursor:pointer;box-shadow:inset 0 6px 14px rgba(0,0,0,.45),
-  0 0 0 3px var(--gold),0 0 22px rgba(255,206,58,.55);animation:breathe 1.6s ease-in-out infinite}
-.pit.legal:hover{transform:translateY(-4px) scale(1.05)}
-@keyframes breathe{0%,100%{box-shadow:inset 0 6px 14px rgba(0,0,0,.45),0 0 0 3px var(--gold),0 0 16px rgba(255,206,58,.4)}
-  50%{box-shadow:inset 0 6px 14px rgba(0,0,0,.45),0 0 0 3px var(--gold),0 0 30px rgba(255,206,58,.75)}}
-.pit.sowing{box-shadow:inset 0 6px 14px rgba(0,0,0,.45),0 0 0 3px var(--gold),0 0 26px var(--gold)}
-.pit.source{box-shadow:inset 0 6px 14px rgba(0,0,0,.45),0 0 0 3px var(--p1),0 0 18px var(--p1)}
-.pit.capture{box-shadow:inset 0 6px 14px rgba(0,0,0,.45),0 0 0 3px var(--p2),0 0 26px var(--p2);animation:shake .4s}
-.pit.hint{box-shadow:inset 0 6px 14px rgba(0,0,0,.45),0 0 0 3px var(--cyan),0 0 26px var(--cyan);animation:breathe 1.2s ease-in-out infinite}
-.pit.invalid{animation:shake .4s}
-@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}
-  40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+/* ── Pit Styling ──────────────────────────────────────── */
+.pit {
+  position: relative;
+  aspect-ratio: 1 / 1.05;
+  border-radius: 50%;
+  cursor: default;
+  background: radial-gradient(circle at 35% 25%, var(--pit-mid), var(--pit-edge) 65%, var(--pit-base) 100%);
+  box-shadow:
+    inset 0 6px 14px rgba(0, 0, 0, 0.65),
+    inset 0 -3px 6px rgba(255, 255, 255, 0.16),
+    0 3px 6px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
 
-/* treasury */
-.treas{position:relative;width:104px;border-radius:54px;display:flex;
-  flex-direction:column;align-items:center;justify-content:center;padding:10px 0;
-  background:radial-gradient(circle at 40% 18%,var(--treas0),var(--treas1) 75%);
-  box-shadow:inset 0 8px 20px rgba(0,0,0,.5),inset 0 -4px 8px rgba(255,255,255,.2),
-    0 4px 10px rgba(0,0,0,.4);transition:box-shadow .25s}
-.treas .stones{position:relative;inset:auto;min-height:120px;align-content:flex-end;padding:6px}
-.treas .tlabel{font-size:10px;letter-spacing:1px;color:var(--ink);opacity:.7;margin-bottom:4px}
-.treas .tcount{font-size:26px;font-weight:800;color:var(--ink)}
-.treas.p1{order:2}
-.treas.glow{box-shadow:inset 0 8px 20px rgba(0,0,0,.4),0 0 0 4px var(--green),0 0 34px rgba(70,209,138,.7)}
+.pit .count {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-dark);
+  background: rgba(255, 246, 226, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  padding: 1px 7px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+  pointer-events: none;
+}
+.pit .pid {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.75;
+  pointer-events: none;
+}
+.row.p1row .pit .pid { bottom: -22px; color: var(--p1-color); }
+.row.p2row .pit .pid { top: -20px; color: var(--p2-color); }
 
-/* banner */
-.banner{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.7);
-  padding:16px 34px;border-radius:16px;font-size:26px;font-weight:800;
-  background:rgba(10,8,4,.86);border:1px solid rgba(255,255,255,.12);
-  box-shadow:0 18px 50px rgba(0,0,0,.6);opacity:0;pointer-events:none;
-  transition:opacity .2s,transform .2s;white-space:nowrap;z-index:5}
-.banner.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+/* Keyboard shortcut pill on playable pits */
+.pit .kbadge {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--gold);
+  background: #191224;
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  padding: 0 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.pit.legal .kbadge { opacity: 0.9; }
 
-/* ── footer / log ───────────────────────────────────────── */
-.footer{display:grid;grid-template-columns:1fr auto;gap:14px;margin-top:14px;align-items:start}
-.log{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.06);border-radius:12px;
-  padding:10px 14px;min-height:54px;max-height:88px;overflow:hidden}
-.log h4{font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:6px}
-.log .line{font-size:13px;margin:2px 0;opacity:0;animation:fadein .3s forwards}
-.log .line.p1{color:var(--p1)} .log .line.p2{color:var(--p2)}
-@keyframes fadein{to{opacity:1}}
-.analysis{display:flex;gap:8px}
+/* Pit Interactive States */
+.pit.legal {
+  cursor: pointer;
+  box-shadow:
+    inset 0 6px 14px rgba(0, 0, 0, 0.5),
+    0 0 0 3px var(--gold),
+    0 0 20px var(--gold-glow);
+  animation: breathe 1.8s ease-in-out infinite;
+}
+.pit.legal:hover {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow:
+    inset 0 6px 14px rgba(0, 0, 0, 0.5),
+    0 0 0 3.5px var(--gold),
+    0 0 26px var(--gold-glow);
+}
+@keyframes breathe {
+  0%, 100% { box-shadow: inset 0 6px 14px rgba(0,0,0,.5), 0 0 0 2.5px var(--gold), 0 0 14px var(--gold-glow); }
+  50% { box-shadow: inset 0 6px 14px rgba(0,0,0,.5), 0 0 0 3.5px var(--gold), 0 0 26px rgba(255,207,51,0.7); }
+}
 
-/* ── overlays (menu / win) ──────────────────────────────── */
-.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-  background:rgba(8,6,12,.78);backdrop-filter:blur(6px);z-index:20}
-.overlay.hidden{display:none}
-.panel{width:min(460px,92vw);background:linear-gradient(170deg,#241a32,#15101f);
-  border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:30px;
-  box-shadow:0 30px 80px rgba(0,0,0,.6);text-align:center}
-.panel h2{font-family:Georgia,serif;font-size:28px;margin-bottom:6px}
-.panel p.sub{color:var(--dim);margin-bottom:22px;font-size:14px}
-.menu{display:flex;flex-direction:column;gap:11px}
-.mbtn{font:inherit;font-size:16px;font-weight:600;color:var(--text);cursor:pointer;
-  padding:15px;border-radius:12px;border:1px solid rgba(255,255,255,.08);
-  background:rgba(255,255,255,.04);transition:.15s;display:flex;justify-content:space-between;align-items:center}
-.mbtn:hover{background:rgba(255,255,255,.1);transform:translateX(3px)}
-.mbtn small{color:var(--dim);font-weight:400;font-size:12px}
-.win h2{font-size:40px}
-.win .score{font-size:20px;color:var(--dim);margin:8px 0 24px}
-.row-btns{display:flex;gap:10px;justify-content:center}
-.back{margin-top:14px}
+.pit.source {
+  box-shadow: inset 0 6px 14px rgba(0,0,0,.5), 0 0 0 3px var(--p1-color), 0 0 22px var(--p1-glow);
+}
+.pit.sowing {
+  box-shadow: inset 0 6px 14px rgba(0,0,0,.5), 0 0 0 3.5px #ffe066, 0 0 28px #ffe066;
+  transform: scale(1.04);
+}
+.pit.capture {
+  box-shadow: inset 0 6px 14px rgba(0,0,0,.5), 0 0 0 3.5px #ff5252, 0 0 28px #ff5252;
+  animation: shake 0.35s ease;
+}
+.pit.hint {
+  box-shadow: inset 0 6px 14px rgba(0,0,0,.5), 0 0 0 3px var(--cyan), 0 0 24px var(--cyan);
+  animation: breathe 1.2s ease-in-out infinite;
+}
+.pit.invalid { animation: shake 0.35s ease; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-3px); }
+}
+
+/* ── Treasury (Hazine) ─────────────────────────────────── */
+.treas {
+  position: relative;
+  width: clamp(70px, 11vw, 108px);
+  border-radius: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 6px;
+  background: radial-gradient(circle at 45% 20%, var(--treas-light), var(--treas-dark) 80%);
+  border: 2px solid #5a3a14;
+  box-shadow:
+    inset 0 8px 20px rgba(0, 0, 0, 0.6),
+    inset 0 -4px 8px rgba(255, 255, 255, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.45);
+  transition: box-shadow 0.25s ease;
+}
+.treas.p1 { order: 2; }
+.treas .tlabel {
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-weight: 800;
+  color: var(--text-dark);
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+.treas .tcount {
+  font-size: clamp(22px, 3.5vw, 30px);
+  font-weight: 900;
+  color: var(--text-dark);
+  text-shadow: 0 1px 2px rgba(255,255,255,0.4);
+}
+.treas.glow {
+  box-shadow:
+    inset 0 8px 20px rgba(0, 0, 0, 0.5),
+    0 0 0 4px var(--green),
+    0 0 32px rgba(72, 219, 140, 0.7);
+}
+
+/* ── Stone Aesthetics ──────────────────────────────────── */
+.stones {
+  position: absolute;
+  inset: 10%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+.treas .stones {
+  position: relative;
+  inset: auto;
+  min-height: 110px;
+  align-content: flex-end;
+  padding: 4px;
+}
+.stone {
+  width: clamp(10px, 1.5vw, 14px);
+  height: clamp(10px, 1.5vw, 14px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--stone-top), var(--stone-mid) 75%);
+  box-shadow: inset 0 -1px 2px var(--stone-shadow), 0 1px 3px rgba(0, 0, 0, 0.5);
+  animation: pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes pop {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ── Banner Announcements ──────────────────────────────── */
+.banner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  padding: 14px 30px;
+  border-radius: 16px;
+  font-size: clamp(18px, 3vw, 24px);
+  font-weight: 800;
+  background: rgba(12, 9, 18, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.75);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  white-space: nowrap;
+  z-index: 10;
+  letter-spacing: 0.5px;
+}
+.banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+/* ── Footer / Move Log ──────────────────────────────────── */
+.footer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+.log {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 8px 14px;
+  min-height: 50px;
+  max-height: 80px;
+  overflow: hidden;
+}
+.log h4 {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.log .line {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin: 2px 0;
+  animation: fadein 0.25s forwards;
+}
+.log .line.p1 { color: var(--p1-color); }
+.log .line.p2 { color: var(--p2-color); }
+@keyframes fadein { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+.analysis { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── Modals & Overlays ─────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 12, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 100;
+  padding: 16px;
+  transition: opacity 0.2s ease;
+}
+.overlay.hidden { display: none; }
+.panel {
+  width: min(480px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: linear-gradient(165deg, #241935, #140e21);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  padding: clamp(20px, 4vw, 30px);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.7);
+  text-align: center;
+}
+.panel h2 {
+  font-family: Georgia, serif;
+  font-size: 26px;
+  margin-bottom: 6px;
+  color: #fff4d6;
+}
+.panel p.sub {
+  color: var(--text-dim);
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.menu { display: flex; flex-direction: column; gap: 10px; }
+.mbtn {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+  transition: all 0.15s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mbtn:hover {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 207, 51, 0.4);
+  transform: translateX(3px);
+}
+.mbtn small { color: var(--text-dim); font-weight: 400; font-size: 12px; }
+
+/* Rules Modal Styling */
+.rules-content {
+  text-align: left;
+  font-size: 13px;
+  color: #e5dccb;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rule-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.rule-card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Win Overlay */
+.win h2 { font-size: 34px; margin-bottom: 4px; }
+.win .score { font-size: 22px; color: var(--gold); font-weight: 800; margin: 8px 0 18px; }
+.win-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 20px;
+}
+.win-stat .val { font-size: 18px; font-weight: 800; color: var(--text-main); }
+.win-stat .lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+
+/* Mobile Adaptations */
+@media (max-width: 640px) {
+  header { justify-content: center; }
+  .brand h1 { font-size: 20px; }
+  .toolbar { justify-content: center; width: 100%; }
+  .btn { padding: 6px 10px; font-size: 12px; }
+  .felt { gap: 6px; padding: 8px; border-radius: 16px; }
+  .row { gap: 4px; }
+  .treas { width: 48px; border-radius: 24px; padding: 6px 2px; }
+  .treas .tcount { font-size: 18px; }
+  .treas .stones { min-height: 70px; }
+  .footer { grid-template-columns: 1fr; }
+  .scorebar { gap: 6px; }
+  .pcard { padding: 8px 10px; }
+  .pcard .sc { font-size: 22px; }
+}
 </style>
 </head>
 <body>
+
 <div class="app">
   <header>
-    <div class="brand"><span class="dot"></span><h1>Turkish Mangala</h1></div>
+    <div class="brand">
+      <span class="icon">🏺</span>
+      <h1>Turkish Mangala</h1>
+    </div>
     <div class="toolbar">
-      <button class="btn ghost" id="flipBtn" title="Rotate the board 180°">⟲ Flip</button>
-      <button class="btn ghost" id="speedBtn" title="Toggle animation speed">⚡ 1x</button>
-      <button class="btn ghost" id="menuBtn">Menu</button>
+      <button class="btn ghost" id="soundBtn" title="Toggle sound effects">🔊 Sound</button>
+      <button class="btn ghost" id="rulesBtn" title="How to play">📖 Rules</button>
+      <button class="btn ghost" id="flipBtn" title="Rotate board 180° (F)">⟲ Flip</button>
+      <button class="btn ghost" id="speedBtn" title="Animation speed">⚡ 1x</button>
+      <button class="btn ghost" id="menuBtn">⚙️ Modes</button>
       <button class="btn" id="newBtn">New Game</button>
     </div>
   </header>
 
   <div class="scorebar">
     <div class="pcard p1" id="card1">
-      <div><div class="who">Player 1</div><div class="sc" id="sc1">0</div></div>
-      <div class="badge" id="badge1">You</div>
+      <div class="avatar">👤</div>
+      <div class="pinfo">
+        <span class="who">Player 1</span>
+        <span class="sc" id="sc1">0</span>
+        <span class="badge" id="badge1">You</span>
+      </div>
     </div>
     <div class="turnchip">
       <span id="turnBig" class="big">—</span>
-      <span id="turnSub">choose a mode</span>
+      <span id="turnSub" class="sub">choose a mode</span>
     </div>
     <div class="pcard p2 right" id="card2">
-      <div><div class="who">Player 2</div><div class="sc" id="sc2">0</div></div>
-      <div class="badge" id="badge2">AI</div>
+      <div class="avatar" id="avatar2">🤖</div>
+      <div class="pinfo">
+        <span class="who">Player 2</span>
+        <span class="sc" id="sc2">0</span>
+        <span class="badge" id="badge2">AI (Expert)</span>
+      </div>
     </div>
   </div>
 
-  <div class="board">
-    <div class="felt">
-      <!-- P2 treasury (left) -->
-      <div class="treas p2" id="t13">
-        <div class="tlabel">P2 HAZINE</div>
-        <div class="stones"></div>
-        <div class="tcount">0</div>
-      </div>
+  <div class="board-wrapper">
+    <div class="board">
+      <div class="felt">
+        <!-- P2 Treasury (Left) -->
+        <div class="treas p2" id="t13" title="Player 2 Hazine">
+          <div class="tlabel">P2 HAZINE</div>
+          <div class="stones"></div>
+          <div class="tcount">0</div>
+        </div>
 
-      <div class="rows">
-        <div class="rowlabel p2">Player 2  ◄  sowing direction</div>
-        <div class="row p2row" id="row2"></div>
-        <div class="row p1row" id="row1"></div>
-        <div class="rowlabel p1">Player 1  ►  sowing direction</div>
-      </div>
+        <!-- Pit Rows -->
+        <div class="rows">
+          <div class="rowlabel p2"><span>Player 2</span> <span>◄ sowing direction</span></div>
+          <div class="row p2row" id="row2"></div>
+          <div class="row p1row" id="row1"></div>
+          <div class="rowlabel p1"><span>Player 1</span> <span>► sowing direction</span></div>
+        </div>
 
-      <!-- P1 treasury (right) -->
-      <div class="treas p1" id="t6">
-        <div class="tlabel">P1 HAZINE</div>
-        <div class="stones"></div>
-        <div class="tcount">0</div>
+        <!-- P1 Treasury (Right) -->
+        <div class="treas p1" id="t6" title="Player 1 Hazine">
+          <div class="tlabel">P1 HAZINE</div>
+          <div class="stones"></div>
+          <div class="tcount">0</div>
+        </div>
       </div>
+      <div class="banner" id="banner"></div>
     </div>
-    <div class="banner" id="banner"></div>
   </div>
 
   <div class="footer">
     <div class="log">
-      <h4>Last moves</h4>
+      <h4>Recent Turns</h4>
       <div id="logLines"></div>
     </div>
     <div class="analysis" id="analysisTools" style="display:none">
@@ -248,43 +704,79 @@ header{display:flex;align-items:center;justify-content:space-between;
   </div>
 </div>
 
-<!-- menu overlay -->
+<!-- Mode Selection Overlay -->
 <div class="overlay" id="menuOverlay">
   <div class="panel">
-    <h2>Turkish Mangala</h2>
+    <h2>🏺 Turkish Mangala</h2>
     <p class="sub">Choose a game mode</p>
     <div class="menu" id="modeMenu">
-      <button class="mbtn" data-mode="hvh">Human vs Human <small>local 2-player</small></button>
-      <button class="mbtn" data-mode="hva">Human vs AI <small>pick your side</small></button>
-      <button class="mbtn" data-mode="ava">AI vs AI <small>watch it play</small></button>
-      <button class="mbtn" data-mode="analysis">Analysis <small>hints · undo · pass</small></button>
+      <button class="mbtn" data-mode="hva">Human vs AI <small>challenge minimax engine</small></button>
+      <button class="mbtn" data-mode="hvh">Human vs Human <small>local hotseat 2-player</small></button>
+      <button class="mbtn" data-mode="ava">AI vs AI <small>spectate tournament play</small></button>
+      <button class="mbtn" data-mode="analysis">Analysis Sandbox <small>hints · undo · pass</small></button>
     </div>
     <div class="menu back hidden" id="sideMenu">
       <div id="diffSection">
-        <p class="sub" style="margin-bottom:8px">AI Difficulty</p>
+        <p class="sub" style="margin-bottom:8px">Select AI Difficulty</p>
         <div style="display:flex;gap:6px;justify-content:center;margin-bottom:16px">
           <button class="btn ghost diff-btn" data-level="easy">Easy</button>
           <button class="btn ghost diff-btn" data-level="medium">Medium</button>
           <button class="btn ghost diff-btn" data-level="hard">Hard</button>
-          <button class="btn ghost diff-btn active" data-level="expert" style="background:rgba(255,255,255,.15);border-color:var(--gold)">Expert</button>
+          <button class="btn ghost diff-btn active" data-level="expert" style="background:rgba(255,207,51,0.15);border-color:var(--gold);color:var(--gold)">Expert</button>
         </div>
       </div>
-      <p class="sub">Which side do you play?</p>
-      <button class="mbtn" data-side="0">Play as Player 1 <small>moves first</small></button>
-      <button class="mbtn" data-side="1">Play as Player 2 <small>moves second</small></button>
-      <button class="btn ghost" id="sideBack">‹ Back</button>
+      <p class="sub">Choose your side:</p>
+      <button class="mbtn" data-side="0">Play as Player 1 <small>moves first (bottom)</small></button>
+      <button class="mbtn" data-side="1">Play as Player 2 <small>moves second (top)</small></button>
+      <button class="btn ghost" id="sideBack" style="margin-top:10px">‹ Back</button>
     </div>
   </div>
 </div>
 
-<!-- win overlay -->
+<!-- Rules Modal Overlay -->
+<div class="overlay hidden" id="rulesOverlay">
+  <div class="panel" style="max-width:540px">
+    <h2>📖 How to Play Mangala</h2>
+    <p class="sub">Authentic Turkish rules for 48 stones across 12 pits & 2 treasuries.</p>
+    <div class="rules-content">
+      <div class="rule-card">
+        <h3>🌰 1. Sowing Rule</h3>
+        <p>Pick up all stones from one of your pits. If it has <strong>&gt; 1 stone</strong>, leave <strong>1 stone behind</strong> and sow the rest counterclockwise one by one. If it has <strong>only 1 stone</strong>, pick it up and place it in the next pit. <em>The opponent's treasury is always skipped.</em></p>
+      </div>
+      <div class="rule-card">
+        <h3>⚡ 2. Extra Turn</h3>
+        <p>If your last sown stone lands in your own treasury (Hazine), you earn an immediate <strong>bonus turn</strong>!</p>
+      </div>
+      <div class="rule-card">
+        <h3>🎯 3. Even Capture</h3>
+        <p>If your last stone lands in an opponent's pit and makes that pit's total count <strong>even</strong> (2, 4, 6...), you capture <strong>all stones from that pit</strong> into your treasury.</p>
+      </div>
+      <div class="rule-card">
+        <h3>🔄 4. Empty-Hole Capture</h3>
+        <p>If your last stone lands in your own previously empty pit (making it 1 stone), and the opposite opponent pit contains stones, you capture your stone <strong>plus all stones from the opposite pit</strong>!</p>
+      </div>
+      <div class="rule-card">
+        <h3>🏁 5. Endgame Sweep & Win</h3>
+        <p>When either player clears all 6 of their pits, the game ends. The player who cleared their pits collects <strong>all remaining stones from the opponent's side</strong>. The player with the most stones in their treasury wins!</p>
+      </div>
+    </div>
+    <button class="btn" id="closeRulesBtn" style="margin-top:18px;width:100%">Got It, Let's Play</button>
+  </div>
+</div>
+
+<!-- Win / Game Over Overlay -->
 <div class="overlay hidden" id="winOverlay">
   <div class="panel win">
     <h2 id="winTitle">Player 1 Wins!</h2>
     <div class="score" id="winScore">0 — 0</div>
-    <div class="row-btns">
+    <div class="win-stats">
+      <div class="win-stat"><div class="val" id="statMoves">0</div><div class="lbl">Moves</div></div>
+      <div class="win-stat"><div class="val" id="statCaptures">0</div><div class="lbl">Captures</div></div>
+      <div class="win-stat"><div class="val" id="statExtras">0</div><div class="lbl">Extra Turns</div></div>
+    </div>
+    <div class="row-btns" style="display:flex;gap:10px;justify-content:center">
       <button class="btn" id="winAgain">Play Again</button>
-      <button class="btn ghost" id="winMenu">Main Menu</button>
+      <button class="btn ghost" id="winMenu">Change Mode</button>
     </div>
   </div>
 </div>
@@ -292,16 +784,137 @@ header{display:flex;align-items:center;justify-content:space-between;
 <script src="engine.js"></script>
 <script src="ai.js"></script>
 <script>
-// ── constants mirroring game.py ────────────────────────────────────────────
-const P1_PITS=[0,1,2,3,4,5], P1_TREAS=6, P2_PITS=[7,8,9,10,11,12], P2_TREAS=13, TOTAL=14;
-const OPP_TREAS=[P2_TREAS,P1_TREAS], OWN_TREAS=[P1_TREAS,P2_TREAS];
-const PLAYER_PITS=[P1_PITS,P2_PITS];
+// ── Procedural Web Audio Sound Engine (Zero external dependencies) ─────────
+class SoundFX {
+  constructor() {
+    this.ctx = null;
+    this.muted = localStorage.getItem('mangala_sound_muted') === 'true';
+    this.updateIcon();
+  }
+  init() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) this.ctx = new AudioCtx();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+  toggle() {
+    this.muted = !this.muted;
+    localStorage.setItem('mangala_sound_muted', this.muted);
+    this.updateIcon();
+    if (!this.muted) this.clack(1.1);
+  }
+  updateIcon() {
+    const btn = document.getElementById('soundBtn');
+    if (btn) btn.textContent = this.muted ? '🔇 Muted' : '🔊 Sound';
+  }
+  // Realistic wooden pit click
+  clack(pitch = 1.0) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(360 * pitch, t);
+    osc.frequency.exponentialRampToValueAtTime(140 * pitch, t + 0.04);
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.045);
+  }
+  // Resonant wooden treasury thud
+  thud() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(60, t + 0.09);
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.095);
+  }
+  // Capture chime
+  capture() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [523.25, 659.25, 783.99].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.05);
+      gain.gain.setValueAtTime(0.2, t + idx * 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.05 + 0.14);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t + idx * 0.05);
+      osc.stop(t + idx * 0.05 + 0.15);
+    });
+  }
+  // Extra turn sound
+  extraTurn() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, t);
+    osc.frequency.exponentialRampToValueAtTime(880, t + 0.16);
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.17);
+  }
+  // Win celebration chime
+  win() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [392, 523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.07);
+      gain.gain.setValueAtTime(0.25, t + idx * 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.07 + 0.28);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t + idx * 0.07);
+      osc.stop(t + idx * 0.07 + 0.3);
+    });
+  }
+}
+const sfx = new SoundFX();
 
-// ── timing & speed ──────────────────────────────────────────────────────────
+// ── Game Constants ─────────────────────────────────────────────────────────
+const P1_PITS = [0,1,2,3,4,5], P1_TREAS = 6, P2_PITS = [7,8,9,10,11,12], P2_TREAS = 13, TOTAL = 14;
+const OPP_TREAS = [P2_TREAS, P1_TREAS], OWN_TREAS = [P1_TREAS, P2_TREAS];
+const PLAYER_PITS = [P1_PITS, P2_PITS];
+
+// ── Animation Speeds ───────────────────────────────────────────────────────
 const SPEEDS = [
-  { label: '⚡ 1x', sow: 210, cap: 520, banner: 1100, pause: 420, aiai: 700 },
-  { label: '⚡ 2x', sow: 90,  cap: 220, banner: 500,  pause: 180, aiai: 300 },
-  { label: '⚡ Instant', sow: 0, cap: 0, banner: 250, pause: 20,  aiai: 50 }
+  { label: '⚡ 1x', sow: 200, cap: 500, banner: 1000, pause: 380, aiai: 650 },
+  { label: '⚡ 2x', sow: 80,  cap: 200, banner: 450,  pause: 150, aiai: 260 },
+  { label: '⚡ Instant', sow: 0, cap: 0, banner: 200, pause: 10,  aiai: 40 }
 ];
 let speedIdx = 0;
 function curSpeed() { return SPEEDS[speedIdx]; }
@@ -311,93 +924,139 @@ function toggleSpeed() {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// ── state ──────────────────────────────────────────────────────────────────
-let S=null;                 // current GameState dict
-let mode=null;              // 'hvh' | 'hva' | 'ava' | 'analysis'
-let aiLevel='expert';       // 'easy' | 'medium' | 'hard' | 'expert'
-let players=['human','human'];
-let coachSide=null;         // analysis: side that gets hints
-let busy=false;             // animation / AI in progress -> ignore clicks
-let history=[];             // [{state, log}]  for analysis undo/redo
-let histIdx=-1;
-let logEntries=[];
-let flipped=false;          // board rotated 180° (other player's pits at bottom)
+// ── Game State ─────────────────────────────────────────────────────────────
+let S = null;
+let mode = null;
+let aiLevel = 'expert';
+let players = ['human', 'human'];
+let coachSide = null;
+let busy = false;
+let history = [];
+let histIdx = -1;
+let logEntries = [];
+let flipped = false;
 
-// ── DOM build ──────────────────────────────────────────────────────────────
-const pitEls={};            // index -> element
-function buildBoard(){
-  const r1=document.getElementById('row1'), r2=document.getElementById('row2');
-  r1.innerHTML=''; r2.innerHTML='';
-  // P1 pits 0..5 left->right
-  for(let i=0;i<6;i++) r1.appendChild(makePit(i, i+1));
-  // P2 pits displayed left->right as 12,11,10,9,8,7
-  for(let k=0;k<6;k++){const idx=12-k; r2.appendChild(makePit(idx, idx+1));}
-  pitEls[P1_TREAS]=document.getElementById('t6');
-  pitEls[P2_TREAS]=document.getElementById('t13');
-}
-function makePit(idx,label){
-  const el=document.createElement('div'); el.className='pit'; el.dataset.idx=idx;
-  el.innerHTML=`<div class="stones"></div><div class="count">0</div><div class="pid">${label}</div>`;
-  el.addEventListener('click',()=>onPitClick(idx));
-  pitEls[idx]=el; return el;
+// Statistics
+let matchStats = { moves: 0, captures: 0, extraTurns: 0 };
+
+// ── DOM Construction ───────────────────────────────────────────────────────
+const pitEls = {};
+function buildBoard() {
+  const r1 = document.getElementById('row1'), r2 = document.getElementById('row2');
+  r1.innerHTML = ''; r2.innerHTML = '';
+  // Player 1 pits: 0 to 5 (labeled 1..6)
+  for (let i = 0; i < 6; i++) {
+    r1.appendChild(makePit(i, i + 1, `[${i + 1}]`));
+  }
+  // Player 2 pits: displayed 12..7 (labeled 6..1)
+  for (let k = 0; k < 6; k++) {
+    const idx = 12 - k;
+    r2.appendChild(makePit(idx, 6 - k, `[${6 - k}]`));
+  }
+  pitEls[P1_TREAS] = document.getElementById('t6');
+  pitEls[P2_TREAS] = document.getElementById('t13');
 }
 
-// ── rendering ──────────────────────────────────────────────────────────────
-function stoneHTML(n){let s=''; const cap=Math.min(n,18); for(let i=0;i<cap;i++)s+='<div class="stone"></div>'; return s;}
-function renderPit(idx,n,animate){
-  const el=pitEls[idx];
-  const isTreas=(idx===P1_TREAS||idx===P2_TREAS);
-  if(isTreas) el.querySelector('.tcount').textContent=n;
-  else        el.querySelector('.count').textContent=n;
-  const box=el.querySelector('.stones');
-  if(animate) box.innerHTML=stoneHTML(n);
-  else { // avoid re-pop animation when count unchanged
-    if(box.childElementCount!==Math.min(n,18)) box.innerHTML=stoneHTML(n);
+function makePit(idx, label, keyHint) {
+  const el = document.createElement('div');
+  el.className = 'pit';
+  el.dataset.idx = idx;
+  el.setAttribute('role', 'button');
+  el.setAttribute('tabindex', '0');
+  el.setAttribute('aria-label', `Pit ${label}`);
+  el.innerHTML = `
+    <div class="kbadge">${keyHint}</div>
+    <div class="stones"></div>
+    <div class="count">0</div>
+    <div class="pid">${label}</div>
+  `;
+  el.addEventListener('click', () => onPitClick(idx));
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPitClick(idx); }
+  });
+  pitEls[idx] = el;
+  return el;
+}
+
+// ── Rendering ──────────────────────────────────────────────────────────────
+function stoneHTML(n) {
+  let s = '';
+  const cap = Math.min(n, 18);
+  for (let i = 0; i < cap; i++) s += '<div class="stone"></div>';
+  return s;
+}
+
+function renderPit(idx, n, animate) {
+  const el = pitEls[idx];
+  const isTreas = (idx === P1_TREAS || idx === P2_TREAS);
+  if (isTreas) el.querySelector('.tcount').textContent = n;
+  else el.querySelector('.count').textContent = n;
+  const box = el.querySelector('.stones');
+  if (animate) box.innerHTML = stoneHTML(n);
+  else if (box.childElementCount !== Math.min(n, 18)) {
+    box.innerHTML = stoneHTML(n);
   }
 }
-function render(state,opts={}){
-  for(let i=0;i<TOTAL;i++) renderPit(i,state.pits[i],false);
-  document.getElementById('sc1').textContent=state.pits[P1_TREAS];
-  document.getElementById('sc2').textContent=state.pits[P2_TREAS];
-  // active card
-  document.getElementById('card1').classList.toggle('active',!state.game_over&&state.current_player===0);
-  document.getElementById('card2').classList.toggle('active',!state.game_over&&state.current_player===1);
+
+function render(state) {
+  for (let i = 0; i < TOTAL; i++) renderPit(i, state.pits[i], false);
+  document.getElementById('sc1').textContent = state.pits[P1_TREAS];
+  document.getElementById('sc2').textContent = state.pits[P2_TREAS];
+
+  document.getElementById('card1').classList.toggle('active', !state.game_over && state.current_player === 0);
+  document.getElementById('card2').classList.toggle('active', !state.game_over && state.current_player === 1);
+
   clearHL();
-  if(!busy && !state.game_over && players[state.current_player]==='human'){
-    for(const m of (state.legal||[])) pitEls[m].classList.add('legal');
+  if (!busy && !state.game_over && players[state.current_player] === 'human') {
+    for (const m of (state.legal || [])) pitEls[m].classList.add('legal');
   }
   updateTurnText(state);
   updateAnalysisButtons();
 }
-function clearHL(){
-  document.querySelectorAll('.pit').forEach(p=>p.classList.remove('legal','source','sowing','capture','hint','invalid'));
-  pitEls[P1_TREAS].classList.remove('glow'); pitEls[P2_TREAS].classList.remove('glow');
-}
-function updateTurnText(state){
-  const big=document.getElementById('turnBig'), sub=document.getElementById('turnSub');
-  if(!state){big.textContent='—';sub.textContent='choose a mode';return;}
-  if(state.game_over){big.textContent='Game over';sub.textContent='';return;}
-  const p=state.current_player;
-  big.textContent=`Player ${p+1}`;
-  sub.textContent = players[p]==='ai' ? 'AI is thinking…' : "your turn";
+
+function clearHL() {
+  document.querySelectorAll('.pit').forEach(p => p.classList.remove('legal', 'source', 'sowing', 'capture', 'hint', 'invalid'));
+  pitEls[P1_TREAS].classList.remove('glow');
+  pitEls[P2_TREAS].classList.remove('glow');
 }
 
-// ── board flip (180° rotation) ──────────────────────────────────────────────
-function applyFlip(){
-  document.querySelector('.board').classList.toggle('flipped',flipped);
-  document.getElementById('flipBtn').classList.toggle('on',flipped);
+function updateTurnText(state) {
+  const big = document.getElementById('turnBig'), sub = document.getElementById('turnSub');
+  if (!state) {
+    big.textContent = '—';
+    sub.textContent = 'choose a mode';
+    return;
+  }
+  if (state.game_over) {
+    big.textContent = 'Game Over';
+    sub.textContent = 'final score tallied';
+    return;
+  }
+  const p = state.current_player;
+  big.textContent = `Player ${p + 1}'s Turn`;
+  sub.textContent = players[p] === 'ai' ? '🤖 AI is analyzing…' : '👉 your turn';
 }
-function toggleFlip(){ flipped=!flipped; applyFlip(); }
 
-// ── banners ────────────────────────────────────────────────────────────────
-async function banner(text,color){
-  if(curSpeed().banner === 0) return;
-  const b=document.getElementById('banner');
-  b.textContent=text; b.style.color=color; b.classList.add('show');
-  await sleep(curSpeed().banner); b.classList.remove('show'); await sleep(curSpeed().banner > 0 ? 100 : 0);
+// ── Board Rotation ─────────────────────────────────────────────────────────
+function applyFlip() {
+  document.querySelector('.board').classList.toggle('flipped', flipped);
+  document.getElementById('flipBtn').classList.toggle('on', flipped);
+}
+function toggleFlip() { flipped = !flipped; applyFlip(); }
+
+// ── Banner Announcements ───────────────────────────────────────────────────
+async function banner(text, color) {
+  if (curSpeed().banner === 0) return;
+  const b = document.getElementById('banner');
+  b.textContent = text;
+  b.style.color = color;
+  b.classList.add('show');
+  await sleep(curSpeed().banner);
+  b.classList.remove('show');
+  await sleep(curSpeed().banner > 0 ? 80 : 0);
 }
 
-// ── API (Dual-Mode: Python HTTP server or Standalone Client-Side) ───────────
+// ── API Bridge (Dual-Mode: Python REST or In-Browser Client Engine) ────────
 let offlineMode = (window.location.protocol === 'file:');
 
 async function localApi(path, body) {
@@ -409,10 +1068,10 @@ async function localApi(path, body) {
   }
   if (path === '/api/ai') {
     let depth = 5;
-    if (body.time_limit && body.time_limit <= 0.2) depth = 2; // easy
-    else if (body.time_limit && body.time_limit <= 0.6) depth = 4; // medium
-    else if (body.time_limit && body.time_limit <= 1.5) depth = 5; // hard
-    else depth = 6; // expert
+    if (body.time_limit && body.time_limit <= 0.2) depth = 2;
+    else if (body.time_limit && body.time_limit <= 0.6) depth = 4;
+    else if (body.time_limit && body.time_limit <= 1.5) depth = 5;
+    else depth = 6;
     const pit = window.MangalaAI.bestMove(body.state, depth);
     return { pit: pit, score: 0, depth: depth };
   }
@@ -426,7 +1085,7 @@ async function api(path, body) {
   try {
     const r = await fetch(path, {
       method: body ? 'POST' : 'GET',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined
     });
     const data = await r.json().catch(() => ({}));
@@ -434,90 +1093,118 @@ async function api(path, body) {
     return data;
   } catch (err) {
     if (window.MangalaEngine) {
-      console.info("Server unreachable; running with in-browser client engine.");
       offlineMode = true;
       return localApi(path, body);
     }
     throw err;
   }
 }
-// Surface server / network errors instead of silently freezing the board.
+
 window.addEventListener('unhandledrejection', e => {
   busy = false;
   document.getElementById('turnSub').textContent = `⚠ ${e.reason && e.reason.message || 'error'}`;
   if (S) updateAnalysisButtons();
 });
 
-// ── sow-path simulation (visual only; authoritative state from server) ──────
-function sowPath(state,pit){
-  const player=state.current_player, opp_t=OPP_TREAS[player];
-  let stones=state.pits[pit], toSow = stones>1 ? stones-1 : 1;
-  let idx=pit; const path=[];
-  for(let s=0;s<toSow;s++){ idx=(idx+1)%TOTAL; if(idx===opp_t) idx=(idx+1)%TOTAL; path.push(idx); }
-  return {toSow,path,leaveBehind: stones>1?1:0};
+// ── Sowing Simulation & Visual Path ────────────────────────────────────────
+function sowPath(state, pit) {
+  const player = state.current_player, opp_t = OPP_TREAS[player];
+  const stones = state.pits[pit], toSow = stones > 1 ? stones - 1 : 1;
+  let idx = pit;
+  const path = [];
+  for (let s = 0; s < toSow; s++) {
+    idx = (idx + 1) % TOTAL;
+    if (idx === opp_t) idx = (idx + 1) % TOTAL;
+    path.push(idx);
+  }
+  return { toSow, path, leaveBehind: stones > 1 ? 1 : 0 };
 }
 
-// ── animate a move, then commit authoritative server state ──────────────────
-async function playMove(pit){
-  busy=true; clearHL();
-  const player=S.current_player;
-  const before=S.pits.slice();
-  const {toSow,path,leaveBehind}=sowPath(S,pit);
+// ── Play & Animate Move ────────────────────────────────────────────────────
+async function playMove(pit) {
+  busy = true;
+  clearHL();
+  matchStats.moves++;
 
-  // lift from source
-  const work=before.slice();
-  work[pit]=leaveBehind;
+  const player = S.current_player;
+  const before = S.pits.slice();
+  const { toSow, path, leaveBehind } = sowPath(S, pit);
+
+  // Lift stones from origin pit
+  const work = before.slice();
+  work[pit] = leaveBehind;
   pitEls[pit].classList.add('source');
-  renderPit(pit,work[pit],true);
-  if(curSpeed().sow > 0) await sleep(curSpeed().sow+50);
+  renderPit(pit, work[pit], true);
+  sfx.clack(1.3);
+  if (curSpeed().sow > 0) await sleep(curSpeed().sow + 40);
 
-  // sow one by one
-  let last=pit;
-  for(let i=0;i<path.length;i++){
-    const idx=path[i]; work[idx]+=1; last=idx;
+  // Sow one stone at a time
+  for (let i = 0; i < path.length; i++) {
+    const idx = path[i];
+    work[idx] += 1;
     pitEls[idx].classList.add('sowing');
-    renderPit(idx,work[idx],true);
-    if(curSpeed().sow > 0) await sleep(curSpeed().sow);
+    renderPit(idx, work[idx], true);
+
+    if (idx === OWN_TREAS[player]) {
+      sfx.thud();
+    } else {
+      sfx.clack(1.0 + (i % 4) * 0.08);
+    }
+
+    if (curSpeed().sow > 0) await sleep(curSpeed().sow);
     pitEls[idx].classList.remove('sowing');
   }
   pitEls[pit].classList.remove('source');
 
-  // authoritative result
-  const {state:newState,events}=await api('/api/move',{state:S,pit});
+  // Compute authoritative outcome
+  const { state: newState, events } = await api('/api/move', { state: S, pit });
 
-  // capture flash: figure out which pit(s) emptied vs our work view
-  if(events.capture>0){
-    const drained=[];
-    for(let i=0;i<TOTAL;i++){
-      if(i===P1_TREAS||i===P2_TREAS) continue;
-      if(work[i]>0 && newState.pits[i]===0) drained.push(i);
+  // Handle Captures
+  if (events.capture > 0) {
+    matchStats.captures += events.capture;
+    sfx.capture();
+    const drained = [];
+    for (let i = 0; i < TOTAL; i++) {
+      if (i === P1_TREAS || i === P2_TREAS) continue;
+      if (work[i] > 0 && newState.pits[i] === 0) drained.push(i);
     }
-    for(const d of drained) pitEls[d].classList.add('capture');
-    if(curSpeed().cap > 0) await sleep(curSpeed().cap);
-    for(const d of drained) pitEls[d].classList.remove('capture');
+    for (const d of drained) pitEls[d].classList.add('capture');
+    if (curSpeed().cap > 0) await sleep(curSpeed().cap);
+    for (const d of drained) pitEls[d].classList.remove('capture');
     pitEls[OWN_TREAS[player]].classList.add('glow');
   }
 
-  S=newState;
-  render(S);
-  for(let i=0;i<TOTAL;i++) renderPit(i,S.pits[i],true);
+  // Handle Extra Turns
+  if (events.extra_turn) {
+    matchStats.extraTurns++;
+    sfx.extraTurn();
+  }
 
-  // event banner
-  if(events.capture>0 && events.extra_turn) await banner(`Captured ${events.capture}  +  Extra Turn!`,'#ffce3a');
-  else if(events.capture>0) await banner(`Captured ${events.capture} stone${events.capture!==1?'s':''}!`,'#ff6b6b');
-  else if(events.extra_turn) await banner('Extra Turn!','#46d18a');
+  S = newState;
+  render(S);
+  for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], true);
+
+  // Event Banner Display
+  if (events.capture > 0 && events.extra_turn) {
+    await banner(`✦ Captured ${events.capture}  +  ↺ Extra Turn!`, '#ffce3a');
+  } else if (events.capture > 0) {
+    await banner(`✦ Captured ${events.capture} stone${events.capture !== 1 ? 's' : ''}!`, '#ff6e6e');
+  } else if (events.extra_turn) {
+    await banner('↺ Extra Turn!', '#48db8c');
+  }
 
   pitEls[OWN_TREAS[player]].classList.remove('glow');
-  addLog(player,pit,events);
-  busy=false;
+  addLog(player, pit, events);
+  busy = false;
 }
 
-// ── turn flow ──────────────────────────────────────────────────────────────
-async function onPitClick(idx){
-  if(busy||!S||S.game_over) return;
-  if(players[S.current_player]!=='human') return;
-  if(!(S.legal||[]).includes(idx)){
-    pitEls[idx].classList.add('invalid'); setTimeout(()=>pitEls[idx].classList.remove('invalid'),400);
+// ── Turn Flow ──────────────────────────────────────────────────────────────
+async function onPitClick(idx) {
+  if (busy || !S || S.game_over) return;
+  if (players[S.current_player] !== 'human') return;
+  if (!(S.legal || []).includes(idx)) {
+    pitEls[idx].classList.add('invalid');
+    setTimeout(() => pitEls[idx].classList.remove('invalid'), 350);
     return;
   }
   await playMove(idx);
@@ -526,9 +1213,8 @@ async function onPitClick(idx){
   await advance();
 }
 
-async function advance(){
-  // drive AI turns automatically until it's a human's turn or game ends
-  while(S && !S.game_over && players[S.current_player]==='ai' && !busy){
+async function advance() {
+  while (S && !S.game_over && players[S.current_player] === 'ai' && !busy) {
     updateTurnText(S);
     let tl = 2.5;
     if (aiLevel === 'easy') tl = 0.1;
@@ -536,184 +1222,266 @@ async function advance(){
     else if (aiLevel === 'hard') tl = 1.0;
     else tl = 2.5;
     if (mode === 'ava') tl = 0.5;
-    const {pit}=await api('/api/ai',{state:S,time_limit:tl});
-    if(pit===null||pit===undefined) break;
+
+    const { pit } = await api('/api/ai', { state: S, time_limit: tl });
+    if (pit === null || pit === undefined) break;
+
     await playMove(pit);
     pushHistory();
     render(S);
-    if(curSpeed().pause > 0) await sleep(mode==='ava'?curSpeed().aiai:curSpeed().pause);
+    if (curSpeed().pause > 0) await sleep(mode === 'ava' ? curSpeed().aiai : curSpeed().pause);
   }
-  if(S && S.game_over) showWin();
+  if (S && S.game_over) showWin();
   else render(S);
 }
 
-// ── move log ───────────────────────────────────────────────────────────────
-function addLog(player,pit,events){
-  let parts=[`P${player+1}`,`pit ${pit+1}`];
-  if(events.capture>0) parts.push(`✦ captured ${events.capture}`);
-  if(events.extra_turn) parts.push('↺ extra turn');
-  logEntries.push({player,text:parts.join('   ')});
+// ── Move Log ───────────────────────────────────────────────────────────────
+function addLog(player, pit, events) {
+  const parts = [`P${player + 1}`, `pit ${pit + 1}`];
+  if (events.capture > 0) parts.push(`✦ +${events.capture}`);
+  if (events.extra_turn) parts.push('↺ extra turn');
+  logEntries.push({ player, text: parts.join('   ') });
   renderLog();
 }
-function renderLog(){
-  const box=document.getElementById('logLines'); box.innerHTML='';
-  logEntries.slice(-3).reverse().forEach(e=>{
-    const d=document.createElement('div'); d.className='line p'+(e.player+1);
-    d.textContent=e.text; box.appendChild(d);
+function renderLog() {
+  const box = document.getElementById('logLines');
+  box.innerHTML = '';
+  logEntries.slice(-3).reverse().forEach(e => {
+    const d = document.createElement('div');
+    d.className = 'line p' + (e.player + 1);
+    d.textContent = e.text;
+    box.appendChild(d);
   });
 }
 
-// ── analysis: history / undo / redo / pass / hint ──────────────────────────
-function pushHistory(){
-  if(mode!=='analysis') return;
-  history=history.slice(0,histIdx+1);
-  history.push({state:JSON.parse(JSON.stringify(S)),log:logEntries.slice()});
-  histIdx=history.length-1;
+// ── Analysis Sandbox ───────────────────────────────────────────────────────
+function pushHistory() {
+  if (mode !== 'analysis') return;
+  history = history.slice(0, histIdx + 1);
+  history.push({ state: JSON.parse(JSON.stringify(S)), log: logEntries.slice() });
+  histIdx = history.length - 1;
 }
-function updateAnalysisButtons(){
-  if(mode!=='analysis') return;
-  document.getElementById('undoBtn').disabled = busy||histIdx<=0;
-  document.getElementById('redoBtn').disabled = busy||histIdx>=history.length-1;
-  document.getElementById('passBtn').disabled = busy||!S||S.game_over;
-  document.getElementById('hintBtn').disabled = busy||!S||S.game_over;
+function updateAnalysisButtons() {
+  if (mode !== 'analysis') return;
+  document.getElementById('undoBtn').disabled = busy || histIdx <= 0;
+  document.getElementById('redoBtn').disabled = busy || histIdx >= history.length - 1;
+  document.getElementById('passBtn').disabled = busy || !S || S.game_over;
+  document.getElementById('hintBtn').disabled = busy || !S || S.game_over;
 }
-function undo(){ if(busy||histIdx<=0)return; histIdx--; restore(); }
-function redo(){ if(busy||histIdx>=history.length-1)return; histIdx++; restore(); }
-function restore(){
-  const h=history[histIdx]; S=JSON.parse(JSON.stringify(h.state)); logEntries=h.log.slice();
-  renderLog(); render(S); for(let i=0;i<TOTAL;i++) renderPit(i,S.pits[i],true);
+function undo() { if (busy || histIdx <= 0) return; histIdx--; restore(); }
+function redo() { if (busy || histIdx >= history.length - 1) return; histIdx++; restore(); }
+function restore() {
+  const h = history[histIdx];
+  S = JSON.parse(JSON.stringify(h.state));
+  logEntries = h.log.slice();
+  renderLog();
+  render(S);
+  for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], true);
 }
-async function passTurn(){
-  if(busy||!S||S.game_over) return;
-  const p=S.current_player;
-  S={pits:S.pits.slice(),current_player:1-p,game_over:false,winner:null,
-     legal: PLAYER_PITS[1-p].filter(i=>S.pits[i]>0)};
-  logEntries.push({player:p,text:`P${p+1}   passed`}); renderLog();
-  pushHistory(); render(S);
+async function passTurn() {
+  if (busy || !S || S.game_over) return;
+  const p = S.current_player;
+  S = {
+    pits: S.pits.slice(),
+    current_player: 1 - p,
+    game_over: false,
+    winner: null,
+    legal: PLAYER_PITS[1 - p].filter(i => S.pits[i] > 0)
+  };
+  logEntries.push({ player: p, text: `P${p + 1}   passed` });
+  renderLog();
+  pushHistory();
+  render(S);
 }
-async function hint(){
-  if(busy||!S||S.game_over) return;
-  const hb=document.getElementById('hintBtn'); hb.disabled=true; hb.textContent='💡 …';
-  const {pit}=await api('/api/ai',{state:S,time_limit:2.5});
-  hb.textContent='💡 Hint';
-  if(pit!=null){ clearHL(); pitEls[pit].classList.add('hint');
-    document.getElementById('turnSub').textContent=`AI suggests pit ${pit+1}`;}
+async function hint() {
+  if (busy || !S || S.game_over) return;
+  const hb = document.getElementById('hintBtn');
+  hb.disabled = true;
+  hb.textContent = '💡 …';
+  const { pit } = await api('/api/ai', { state: S, time_limit: 2.5 });
+  hb.textContent = '💡 Hint';
+  if (pit != null) {
+    clearHL();
+    pitEls[pit].classList.add('hint');
+    document.getElementById('turnSub').textContent = `AI suggests pit ${pit + 1}`;
+  }
   updateAnalysisButtons();
 }
 
-// ── win screen ─────────────────────────────────────────────────────────────
-function showWin(){
-  const o=document.getElementById('winOverlay'); o.classList.remove('hidden');
-  const p1=S.pits[P1_TREAS], p2=S.pits[P2_TREAS];
-  const t=document.getElementById('winTitle');
-  if(S.winner===-1){t.textContent="It's a Tie!";t.style.color='#ffce3a';}
-  else {t.textContent=`Player ${S.winner+1} Wins!`;t.style.color=S.winner===0?'#5aa6ff':'#ff6b6b';}
-  document.getElementById('winScore').textContent=`${p1} — ${p2}`;
+// ── Game Over Screen ───────────────────────────────────────────────────────
+function showWin() {
+  sfx.win();
+  const o = document.getElementById('winOverlay');
+  o.classList.remove('hidden');
+  const p1 = S.pits[P1_TREAS], p2 = S.pits[P2_TREAS];
+  const t = document.getElementById('winTitle');
+  if (S.winner === -1) {
+    t.textContent = "It's a Tie!";
+    t.style.color = '#ffce3a';
+  } else {
+    t.textContent = `Player ${S.winner + 1} Wins!`;
+    t.style.color = S.winner === 0 ? '#5aa6ff' : '#ff6e6e';
+  }
+  document.getElementById('winScore').textContent = `${p1} — ${p2}`;
+  document.getElementById('statMoves').textContent = matchStats.moves;
+  document.getElementById('statCaptures').textContent = matchStats.captures;
+  document.getElementById('statExtras').textContent = matchStats.extraTurns;
 }
 
-// ── game setup ─────────────────────────────────────────────────────────────
-async function startGame(){
-  const {state}=await api('/api/new');
-  S=state; logEntries=[]; history=[]; histIdx=-1; busy=false;
-  renderLog(); render(S); for(let i=0;i<TOTAL;i++) renderPit(i,S.pits[i],true);
-  // badges
-  document.getElementById('badge1').textContent = players[0]==='ai'?'AI':'You';
-  document.getElementById('badge2').textContent = players[1]==='ai'?'AI':'You';
-  document.getElementById('analysisTools').style.display = mode==='analysis'?'flex':'none';
+// ── Setup & Modes ──────────────────────────────────────────────────────────
+async function startGame() {
+  const { state } = await api('/api/new');
+  S = state;
+  logEntries = [];
+  history = [];
+  histIdx = -1;
+  busy = false;
+  matchStats = { moves: 0, captures: 0, extraTurns: 0 };
+
+  renderLog();
+  render(S);
+  for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], true);
+
+  // Update card labels
+  document.getElementById('badge1').textContent = players[0] === 'ai' ? `AI (${aiLevel})` : 'You';
+  document.getElementById('badge2').textContent = players[1] === 'ai' ? `AI (${aiLevel})` : 'You';
+  document.getElementById('avatar2').textContent = players[1] === 'ai' ? '🤖' : '👤';
+  document.getElementById('analysisTools').style.display = mode === 'analysis' ? 'flex' : 'none';
+
   pushHistory();
   await advance();
 }
 
-function chooseMode(m,side){
-  mode=m;
-  if(m==='hvh') players=['human','human'];
-  else if(m==='ava') players=['ai','ai'];
-  else if(m==='hva'){players=['ai','ai']; players[side]='human';}
-  else if(m==='analysis'){players=['human','human']; coachSide=side;}
-  // Auto-orient the board so the human's pits sit at the bottom when
-  // playing as Player 2 (hva) or coaching Player 2 (analysis).
-  flipped = (side===1);
+function chooseMode(m, side) {
+  mode = m;
+  if (m === 'hvh') players = ['human', 'human'];
+  else if (m === 'ava') players = ['ai', 'ai'];
+  else if (m === 'hva') { players = ['ai', 'ai']; players[side] = 'human'; }
+  else if (m === 'analysis') { players = ['human', 'human']; coachSide = side; }
+
+  flipped = (side === 1);
   applyFlip();
   document.getElementById('menuOverlay').classList.add('hidden');
   startGame();
 }
 
-// ── menu wiring ────────────────────────────────────────────────────────────
-let pendingMode=null;
-document.querySelectorAll('#modeMenu .mbtn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    const m=b.dataset.mode;
-    if(m==='hva'||m==='analysis'){pendingMode=m;
+// ── Menu Wiring ────────────────────────────────────────────────────────────
+let pendingMode = null;
+document.querySelectorAll('#modeMenu .mbtn').forEach(b => {
+  b.addEventListener('click', () => {
+    const m = b.dataset.mode;
+    if (m === 'hva' || m === 'analysis') {
+      pendingMode = m;
       document.getElementById('modeMenu').classList.add('hidden');
       document.getElementById('sideMenu').classList.remove('hidden');
-    } else chooseMode(m,null);
+    } else chooseMode(m, null);
   });
 });
-document.querySelectorAll('#sideMenu .mbtn').forEach(b=>{
-  b.addEventListener('click',()=>chooseMode(pendingMode,parseInt(b.dataset.side)));
+
+document.querySelectorAll('#sideMenu .mbtn').forEach(b => {
+  b.addEventListener('click', () => chooseMode(pendingMode, parseInt(b.dataset.side)));
 });
-document.getElementById('sideBack').addEventListener('click',()=>{
+
+document.getElementById('sideBack').addEventListener('click', () => {
   document.getElementById('sideMenu').classList.add('hidden');
   document.getElementById('modeMenu').classList.remove('hidden');
 });
-function openMenu(){
+
+function openMenu() {
   document.getElementById('winOverlay').classList.add('hidden');
+  document.getElementById('rulesOverlay').classList.add('hidden');
   document.getElementById('menuOverlay').classList.remove('hidden');
   document.getElementById('sideMenu').classList.add('hidden');
   document.getElementById('modeMenu').classList.remove('hidden');
 }
-document.querySelectorAll('.diff-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.diff-btn').forEach(b=>{
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => {
       b.classList.remove('active');
-      b.style.background='';
-      b.style.borderColor='';
+      b.style.background = '';
+      b.style.borderColor = '';
+      b.style.color = '';
     });
     btn.classList.add('active');
-    btn.style.background='rgba(255,255,255,.15)';
-    btn.style.borderColor='var(--gold)';
-    aiLevel=btn.dataset.level;
+    btn.style.background = 'rgba(255,207,51,0.15)';
+    btn.style.borderColor = 'var(--gold)';
+    btn.style.color = 'var(--gold)';
+    aiLevel = btn.dataset.level;
   });
 });
 
-document.getElementById('speedBtn').addEventListener('click',toggleSpeed);
-document.getElementById('flipBtn').addEventListener('click',toggleFlip);
-document.getElementById('menuBtn').addEventListener('click',openMenu);
-document.getElementById('newBtn').addEventListener('click',()=>{if(mode)startGame();else openMenu();});
-document.getElementById('winAgain').addEventListener('click',()=>{
-  document.getElementById('winOverlay').classList.add('hidden'); startGame();});
-document.getElementById('winMenu').addEventListener('click',openMenu);
-document.getElementById('undoBtn').addEventListener('click',undo);
-document.getElementById('redoBtn').addEventListener('click',redo);
-document.getElementById('passBtn').addEventListener('click',passTurn);
-document.getElementById('hintBtn').addEventListener('click',hint);
-document.addEventListener('keydown',e=>{
-  if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')) return;
-  if(!document.getElementById('menuOverlay').classList.contains('hidden')) return;
-  if(!document.getElementById('winOverlay').classList.contains('hidden')) return;
+// Toolbar buttons
+document.getElementById('soundBtn').addEventListener('click', () => sfx.toggle());
+document.getElementById('rulesBtn').addEventListener('click', () => {
+  document.getElementById('rulesOverlay').classList.remove('hidden');
+});
+document.getElementById('closeRulesBtn').addEventListener('click', () => {
+  document.getElementById('rulesOverlay').classList.add('hidden');
+});
+document.getElementById('speedBtn').addEventListener('click', toggleSpeed);
+document.getElementById('flipBtn').addEventListener('click', toggleFlip);
+document.getElementById('menuBtn').addEventListener('click', openMenu);
+document.getElementById('newBtn').addEventListener('click', () => {
+  if (mode) startGame(); else openMenu();
+});
+document.getElementById('winAgain').addEventListener('click', () => {
+  document.getElementById('winOverlay').classList.add('hidden');
+  startGame();
+});
+document.getElementById('winMenu').addEventListener('click', openMenu);
+document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('redoBtn').addEventListener('click', redo);
+document.getElementById('passBtn').addEventListener('click', passTurn);
+document.getElementById('hintBtn').addEventListener('click', hint);
 
-  if(e.key>='1'&&e.key<='6'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
-    if(busy||!S||S.game_over||players[S.current_player]!=='human') return;
-    const num=parseInt(e.key)-1;
+// ── Keyboard Controls ──────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (!document.getElementById('menuOverlay').classList.contains('hidden')) return;
+  if (!document.getElementById('winOverlay').classList.contains('hidden')) return;
+  if (!document.getElementById('rulesOverlay').classList.contains('hidden')) {
+    if (e.key === 'Escape') document.getElementById('rulesOverlay').classList.add('hidden');
+    return;
+  }
+
+  // Keys 1 to 6 for pit sowing
+  if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (busy || !S || S.game_over || players[S.current_player] !== 'human') return;
+    const num = parseInt(e.key) - 1;
     let pit;
-    if(S.current_player===0){
-      pit=num;
+    if (S.current_player === 0) {
+      pit = num;
     } else {
-      pit=flipped?(7+num):(12-num);
+      pit = flipped ? (7 + num) : (12 - num);
     }
-    if((S.legal||[]).includes(pit)){
+    if ((S.legal || []).includes(pit)) {
       onPitClick(pit);
     }
     return;
   }
 
-  if((e.key==='f'||e.key==='F')&&!e.ctrlKey&&!e.metaKey){e.preventDefault();toggleFlip();return;}
-  if(mode!=='analysis')return;
-  if(e.ctrlKey&&e.key==='z'){e.preventDefault();undo();}
-  if(e.ctrlKey&&e.key==='y'){e.preventDefault();redo();}
+  // F to toggle flip
+  if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    toggleFlip();
+    return;
+  }
+
+  // M to toggle sound
+  if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    sfx.toggle();
+    return;
+  }
+
+  // Analysis hotkeys
+  if (mode !== 'analysis') return;
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+  if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
 });
 
-// ── init ───────────────────────────────────────────────────────────────────
+// ── Initialization ─────────────────────────────────────────────────────────
 buildBoard();
 updateTurnText(null);
 </script>
