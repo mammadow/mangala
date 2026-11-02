@@ -284,12 +284,48 @@ def test_enhanced_evaluation_features() -> None:
     pits_sweep = [0] * TOTAL
     pits_sweep[0] = 1
     pits_sweep[7] = 5
-    pits_sweep[6] = 21
-    pits_sweep[13] = 21
+    pits_sweep[6] = 18
+    pits_sweep[13] = 18
     s_sweep = GameState(pits=pits_sweep, current_player=0)
     eval_sweep = _evaluate(s_sweep, 0)
     # own_stones = 1 vs opp_stones = 5: sweep bonus overcomes stone deficit
     assert eval_sweep > 0.1
+
+
+def test_twenty_five_stone_threshold_victory_and_suppression() -> None:
+    from mangala.ai import _WIN, Searcher, _evaluate, best_move
+
+    # 1. Evaluate gives immediate forced win score when treasury has >= 25 stones
+    pits_win = [0] * TOTAL
+    pits_win[0] = 1
+    pits_win[6] = 25   # Player 0 has 25 stones (majority of 48)
+    pits_win[7] = 2
+    pits_win[13] = 20
+    s_win = GameState(pits=pits_win, current_player=0)
+    score_p0 = _evaluate(s_win, 0)
+    assert score_p0 >= _WIN
+
+    # Player 1's perspective: opponent has 25 stones -> forced loss
+    score_p1 = _evaluate(s_win, 1)
+    assert score_p1 <= -_WIN
+
+    # 2. Searcher orders winning move (reaching >= 25 stones) with maximum priority (20,000,000)
+    pits_turn = [0] * TOTAL
+    pits_turn[5] = 1   # Lands directly into treasury (pit 6), turning 24 into 25!
+    pits_turn[1] = 4   # Alternative move
+    pits_turn[6] = 24
+    pits_turn[13] = 19
+    s_turn = GameState(pits=pits_turn, current_player=0)
+
+    searcher = Searcher()
+    ordered = searcher._ordered_children(s_turn)
+    # Pit 5 must be ordered first as the decisive 25-stone win
+    assert ordered[0][0] == 5
+
+    # 3. best_move finds the immediate winning 25-stone capture/step
+    m = best_move(s_turn, depth=2)
+    assert m == 5
+
 
 
 

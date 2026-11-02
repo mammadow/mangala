@@ -124,14 +124,31 @@ def _evaluate(state: GameState, root: int) -> float:
     own_pits  = _OWN_PITS_TUPLE[root]
     opp_pits  = _OPP_PITS_TUPLE[root]
     own_treas = _OWN_TREAS_TUPLE[root]
+    opp_treas = _OPP_TREAS_TUPLE[root]
     own_min, own_max = OWN_PITS_RANGE[root]
     opp_min, opp_max = OPP_PITS_RANGE[root]
     landing_table = SOW_LANDING[root]
     opp_landing_table = SOW_LANDING[1 - root]
 
     pits = state.pits
+    own_t = pits[own_treas]
+    opp_t = pits[opp_treas]
+
+    # Mathematical win threshold: >= 25 stones in treasury guarantees victory (48 - 25 = 23 max for opp)
+    if own_t >= 25:
+        return _WIN + (own_t - opp_t)
+    if opp_t >= 25:
+        return -_WIN + (own_t - opp_t)
+
     own_stones = sum(pits[i] for i in own_pits)
     opp_stones = sum(pits[i] for i in opp_pits)
+
+    # Threshold urgency: escalating value when closing in on 25 stones, and high alert if opponent is
+    threshold_bonus = 0.0
+    if own_t >= 20:
+        threshold_bonus += (own_t - 19) * 0.5
+    if opp_t >= 20:
+        threshold_bonus -= (opp_t - 19) * 0.6
 
     # Extra-turn potential, regular capture offense & empty-hole offense
     extra_bonus = 0.0
@@ -201,7 +218,8 @@ def _evaluate(state: GameState, root: int) -> float:
             + empty_hole_offense
             - capture_exposure
             - empty_hole_exposure
-            + sweep_bonus)
+            + sweep_bonus
+            + threshold_bonus)
 
 
 # ---------------------------------------------------------------------------
@@ -254,10 +272,14 @@ class Searcher:
         scored = []
         killers = self.killer_moves[ply] if ply < len(self.killer_moves) else []
         curr_p = state.current_player
+        curr_treas = _OWN_TREAS_TUPLE[curr_p]
 
         for m in legal_moves(state):
             child, ev = apply_move(state, m, self.rules)
-            if m == pv_move:
+            if child.pits[curr_treas] >= 25:
+                # Immediate forced win: securing 25+ stones wins outright
+                priority = 20_000_000
+            elif m == pv_move:
                 priority = 10_000_000
             elif ev['extra_turn']:
                 priority = 5_000_000 + ev['capture'] * 10_000
@@ -336,9 +358,17 @@ class Searcher:
         if state.game_over:
             return _terminal_value(state, root)
 
+        # Immediate threshold win: 25+ stones in treasury is unassailable
+        pits = state.pits
+        own_t = pits[_OWN_TREAS_TUPLE[root]]
+        opp_t = pits[_OPP_TREAS_TUPLE[root]]
+        if own_t >= 25:
+            return _WIN + (own_t - opp_t)
+        if opp_t >= 25:
+            return -_WIN + (own_t - opp_t)
+
         # Endgame exact solver: when few stones remain the tree is tiny;
         # override depth and search all the way to terminal.
-        pits = state.pits
         stones_on_board = sum(pits[0:6]) + sum(pits[7:13])
         if stones_on_board <= _ENDGAME_STONES and depth < _ENDGAME_DEPTH:
             depth = _ENDGAME_DEPTH

@@ -1,6 +1,6 @@
 /**
  * ai.js — Tournament-grade Client-side AI with PVS, Killer Heuristic,
- * and Opening Book for Turkish Mangala (Browser & Node.js).
+ * 25-Stone Victory Threshold, and Opening Book for Turkish Mangala (Browser & Node.js).
  */
 (function(root) {
   const Engine = typeof require !== 'undefined' ? require('./engine') : root.MangalaEngine;
@@ -14,12 +14,18 @@
   const PVS_EPSILON = 1e-4;
 
   function evaluate(state, rootPlayer) {
-    const p1 = state.pits[Engine.P1_TREAS], p2 = state.pits[Engine.P2_TREAS];
-    const treasDiff = (rootPlayer === 0) ? (p1 - p2) : (p2 - p1);
+    const ownTreas = Engine.PLAYER_TREAS[rootPlayer];
+    const oppTreas = Engine.PLAYER_TREAS[1 - rootPlayer];
+    const ownT = state.pits[ownTreas];
+    const oppT = state.pits[oppTreas];
 
+    // Mathematical victory threshold: >= 25 stones guarantees win outright
+    if (ownT >= 25) return WIN + (ownT - oppT);
+    if (oppT >= 25) return -WIN + (ownT - oppT);
+
+    const treasDiff = ownT - oppT;
     const ownPits = Engine.PLAYER_PITS[rootPlayer];
     const oppPits = Engine.PLAYER_PITS[1 - rootPlayer];
-    const ownTreas = Engine.PLAYER_TREAS[rootPlayer];
     const [ownMin, ownMax] = Engine.OWN_PITS_RANGE[rootPlayer];
     const [oppMin, oppMax] = Engine.OPP_PITS_RANGE[rootPlayer];
     const landingTable = Engine.SOW_LANDING[rootPlayer];
@@ -28,6 +34,11 @@
     let ownStones = 0, oppStones = 0;
     for (const p of ownPits) ownStones += state.pits[p];
     for (const p of oppPits) oppStones += state.pits[p];
+
+    // Threshold urgency & opponent suppression
+    let thresholdBonus = 0;
+    if (ownT >= 20) thresholdBonus += (ownT - 19) * 0.5;
+    if (oppT >= 20) thresholdBonus -= (oppT - 19) * 0.6;
 
     let extraBonus = 0;
     let captureOffense = 0;
@@ -91,7 +102,8 @@
       + emptyOffense
       - captureExposure
       - emptyHoleExposure
-      + sweepBonus;
+      + sweepBonus
+      + thresholdBonus;
   }
 
   function quiescence(state, alpha, beta, rootPlayer, qDepth) {
@@ -100,6 +112,13 @@
       const diff = (rootPlayer === 0) ? (p1 - p2) : (p2 - p1);
       return diff > 0 ? (WIN + diff) : (diff < 0 ? (-WIN + diff) : 0);
     }
+
+    // 25-stone victory cutoff
+    const ownT = state.pits[Engine.PLAYER_TREAS[rootPlayer]];
+    const oppT = state.pits[Engine.PLAYER_TREAS[1 - rootPlayer]];
+    if (ownT >= 25) return WIN + (ownT - oppT);
+    if (oppT >= 25) return -WIN + (ownT - oppT);
+
     const standPat = evaluate(state, rootPlayer);
     if (qDepth <= 0) return standPat;
 
@@ -139,6 +158,13 @@
       const diff = (rootPlayer === 0) ? (p1 - p2) : (p2 - p1);
       return diff > 0 ? (WIN + diff) : (diff < 0 ? (-WIN + diff) : 0);
     }
+
+    // 25-stone victory cutoff
+    const ownT = state.pits[Engine.PLAYER_TREAS[rootPlayer]];
+    const oppT = state.pits[Engine.PLAYER_TREAS[1 - rootPlayer]];
+    if (ownT >= 25) return WIN + (ownT - oppT);
+    if (oppT >= 25) return -WIN + (ownT - oppT);
+
     if (depth <= 0) return quiescence(state, alpha, beta, rootPlayer, Q_DEPTH);
 
     const moves = Engine.legalMoves(state);
@@ -146,13 +172,15 @@
 
     const isMax = (state.current_player === rootPlayer);
     let bestVal = isMax ? -INF : INF;
+    const currTreas = Engine.PLAYER_TREAS[state.current_player];
 
-    // Order moves: extra turn > capture > others
+    // Order moves: winning move >= 25 > extra turn > capture > others
     const scored = [];
     for (const m of moves) {
       const {state: child, events} = Engine.applyMove(state, m);
       let score = 0;
-      if (events.extra_turn) score += 50000 + events.capture * 100;
+      if (child.pits[currTreas] >= 25) score += 200000;
+      else if (events.extra_turn) score += 50000 + events.capture * 100;
       else if (events.capture > 0) score += 30000 + events.capture * 100;
       scored.push({m, child, score});
     }
@@ -205,6 +233,14 @@
     }
 
     const rootPlayer = state.current_player;
+    const ownTreas = Engine.PLAYER_TREAS[rootPlayer];
+
+    // Fast-path: immediate winning move securing 25+ stones
+    for (const m of moves) {
+      const {state: child} = Engine.applyMove(state, m);
+      if (child.pits[ownTreas] >= 25) return m;
+    }
+
     let bestMv = moves[0];
     let bestScore = -INF;
 
