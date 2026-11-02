@@ -51,7 +51,18 @@
   function getBookMove(state) {
     const key = `[${state.pits.join(", ")}]:${state.current_player}`;
     const mv = OPENING_BOOK[key];
-    return (mv !== undefined) ? mv : null;
+    if (mv !== undefined) return mv;
+
+    // 180-degree rotational symmetry involution
+    const rotPits = state.pits.slice(7, 14).concat(state.pits.slice(0, 7));
+    const rotPlayer = 1 - state.current_player;
+    const rotKey = `[${rotPits.join(", ")}]:${rotPlayer}`;
+    const rotMv = OPENING_BOOK[rotKey];
+    if (rotMv !== undefined) {
+      return (rotMv + 7) % 14;
+    }
+
+    return null;
   }
 
   const MangalaBook = { getBookMove, OPENING_BOOK };

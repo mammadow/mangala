@@ -55,5 +55,23 @@ OPENING_BOOK: dict[tuple[tuple[int, ...], int], int] = {
 
 
 def get_book_move(state: GameState) -> int | None:
-    """Return precomputed optimal move, or None if off-book."""
-    return OPENING_BOOK.get((tuple(state.pits), state.current_player))
+    """Return precomputed optimal move, or None if off-book.
+
+    Exploits 180-degree rotational symmetry between Player 1 and Player 2:
+    if the direct state is not found, rotates the board by 7 pits and maps
+    the resulting canonical move back.
+    """
+    key = (tuple(state.pits), state.current_player)
+    direct_mv = OPENING_BOOK.get(key)
+    if direct_mv is not None:
+        return direct_mv
+
+    # 180-degree rotational symmetry involution
+    rot_pits = state.pits[7:14] + state.pits[0:7]
+    rot_player = 1 - state.current_player
+    rot_key = (tuple(rot_pits), rot_player)
+    rot_mv = OPENING_BOOK.get(rot_key)
+    if rot_mv is not None:
+        return (rot_mv + 7) % 14
+
+    return None

@@ -248,6 +248,11 @@ def test_opening_book_lookup_and_fastpath() -> None:
     assert res.nodes == 1
     assert res.pv == [mv]
 
+    # Test 180-degree rotational symmetry involution for Player 2
+    s_p1 = GameState(pits=list(s0.pits), current_player=1)
+    mv_p1 = get_book_move(s_p1)
+    assert mv_p1 == (mv + 7) % 14
+
 
 def test_searcher_heuristics_and_ordering() -> None:
     from mangala.ai import Searcher
@@ -325,6 +330,14 @@ def test_twenty_five_stone_threshold_victory_and_suppression() -> None:
     # 3. best_move finds the immediate winning 25-stone capture/step
     m = best_move(s_turn, depth=2)
     assert m == 5
+
+    # 4. Exact endgame solver activates when board stones <= 12
+    pits_12 = [0] * TOTAL
+    pits_12[0] = 2; pits_12[2] = 2; pits_12[4] = 2; pits_12[6] = 18
+    pits_12[7] = 2; pits_12[9] = 2; pits_12[11] = 2; pits_12[13] = 18
+    s_12 = GameState(pits=pits_12, current_player=0)
+    res_12 = analyse(s_12, depth=5)
+    assert res_12.is_forced_result
 
 
 

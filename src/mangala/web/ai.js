@@ -1,6 +1,7 @@
 /**
  * ai.js — Tournament-grade Client-side AI with PVS, Killer Heuristic,
- * 25-Stone Victory Threshold, and Opening Book for Turkish Mangala (Browser & Node.js).
+ * 25-Stone Victory Threshold, Exact Endgame Solver, and Opening Book
+ * for Turkish Mangala (Browser & Node.js).
  */
 (function(root) {
   const Engine = typeof require !== 'undefined' ? require('./engine') : root.MangalaEngine;
@@ -164,6 +165,12 @@
     const oppT = state.pits[Engine.PLAYER_TREAS[1 - rootPlayer]];
     if (ownT >= 25) return WIN + (ownT - oppT);
     if (oppT >= 25) return -WIN + (ownT - oppT);
+
+    // Exact endgame solver: when <= 16 stones remain on the board, solve to terminal
+    let stonesOnBoard = 0;
+    for (let i = 0; i < 6; i++) stonesOnBoard += state.pits[i];
+    for (let i = 7; i < 13; i++) stonesOnBoard += state.pits[i];
+    if (stonesOnBoard <= 16 && depth < 64) depth = 64;
 
     if (depth <= 0) return quiescence(state, alpha, beta, rootPlayer, Q_DEPTH);
 

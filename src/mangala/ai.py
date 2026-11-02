@@ -368,9 +368,9 @@ class Searcher:
             return -_WIN + (own_t - opp_t)
 
         # Endgame exact solver: when few stones remain the tree is tiny;
-        # override depth and search all the way to terminal.
+        # override depth and search all the way to terminal for competitive modes.
         stones_on_board = sum(pits[0:6]) + sum(pits[7:13])
-        if stones_on_board <= _ENDGAME_STONES and depth < _ENDGAME_DEPTH:
+        if stones_on_board <= _ENDGAME_STONES and depth >= 4 and depth < _ENDGAME_DEPTH:
             depth = _ENDGAME_DEPTH
 
         if depth == 0:
