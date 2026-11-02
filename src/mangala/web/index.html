@@ -559,7 +559,62 @@ header {
   border-color: rgba(255, 207, 51, 0.4);
   transform: translateX(3px);
 }
+.mbtn.active {
+  background: rgba(255, 207, 51, 0.14);
+  border-color: var(--gold);
+  box-shadow: 0 0 16px rgba(255, 207, 51, 0.25);
+  color: #fff9e6;
+}
+.mbtn.active small { color: #ecdca5; }
+.mbtn-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+.mbtn .mcheck {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gold);
+  background: rgba(255, 207, 51, 0.2);
+  border: 1px solid var(--gold);
+  padding: 3px 9px;
+  border-radius: 12px;
+  margin-left: 10px;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
 .mbtn small { color: var(--text-dim); font-weight: 400; font-size: 12px; }
+
+.diff-btn.active {
+  background: rgba(255, 207, 51, 0.22) !important;
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+  box-shadow: 0 0 12px rgba(255, 207, 51, 0.35);
+}
+.modal-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  z-index: 5;
+}
+.modal-close-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.1);
+}
+.panel { position: relative; }
+#badge2 { cursor: pointer; transition: opacity 0.15s ease; }
+#badge2:hover { opacity: 0.85; }
 
 /* Rules Modal Styling */
 .rules-content {
@@ -707,13 +762,39 @@ header {
 <!-- Mode Selection Overlay -->
 <div class="overlay" id="menuOverlay">
   <div class="panel">
+    <button class="modal-close-btn hidden" id="closeMenuBtn" title="Resume game">✕</button>
     <h2>🏺 Turkish Mangala</h2>
     <p class="sub">Choose a game mode</p>
     <div class="menu" id="modeMenu">
-      <button class="mbtn" data-mode="hva">Human vs AI <small>challenge minimax engine</small></button>
-      <button class="mbtn" data-mode="hvh">Human vs Human <small>local hotseat 2-player</small></button>
-      <button class="mbtn" data-mode="ava">AI vs AI <small>spectate tournament play</small></button>
-      <button class="mbtn" data-mode="analysis">Analysis Sandbox <small>hints · undo · pass</small></button>
+      <button class="mbtn" data-mode="hva">
+        <div class="mbtn-text">
+          <span>Human vs AI</span>
+          <small>challenge minimax engine</small>
+        </div>
+        <span class="mcheck hidden">✓ Current</span>
+      </button>
+      <button class="mbtn" data-mode="hvh">
+        <div class="mbtn-text">
+          <span>Human vs Human</span>
+          <small>local hotseat 2-player</small>
+        </div>
+        <span class="mcheck hidden">✓ Current</span>
+      </button>
+      <button class="mbtn" data-mode="ava">
+        <div class="mbtn-text">
+          <span>AI vs AI</span>
+          <small>spectate tournament play</small>
+        </div>
+        <span class="mcheck hidden">✓ Current</span>
+      </button>
+      <button class="mbtn" data-mode="analysis">
+        <div class="mbtn-text">
+          <span>Analysis Sandbox</span>
+          <small>hints · undo · pass</small>
+        </div>
+        <span class="mcheck hidden">✓ Current</span>
+      </button>
+      <button class="btn ghost hidden" id="resumeGameBtn" style="margin-top:14px;width:100%;border-color:rgba(255,207,51,0.4);color:var(--gold);font-weight:700">▶ Resume Current Game</button>
     </div>
     <div class="menu back hidden" id="sideMenu">
       <div id="diffSection">
@@ -722,13 +803,28 @@ header {
           <button class="btn ghost diff-btn" data-level="easy">Easy</button>
           <button class="btn ghost diff-btn" data-level="medium">Medium</button>
           <button class="btn ghost diff-btn" data-level="hard">Hard</button>
-          <button class="btn ghost diff-btn active" data-level="expert" style="background:rgba(255,207,51,0.15);border-color:var(--gold);color:var(--gold)">Expert</button>
+          <button class="btn ghost diff-btn active" data-level="expert">Expert</button>
         </div>
       </div>
       <p class="sub">Choose your side:</p>
-      <button class="mbtn" data-side="0">Play as Player 1 <small>moves first (bottom)</small></button>
-      <button class="mbtn" data-side="1">Play as Player 2 <small>moves second (top)</small></button>
-      <button class="btn ghost" id="sideBack" style="margin-top:10px">‹ Back</button>
+      <button class="mbtn" data-side="0">
+        <div class="mbtn-text">
+          <span>Play as Player 1</span>
+          <small>moves first (bottom)</small>
+        </div>
+        <span class="mcheck hidden">✓ Selected</span>
+      </button>
+      <button class="mbtn" data-side="1">
+        <div class="mbtn-text">
+          <span>Play as Player 2</span>
+          <small>moves second (top)</small>
+        </div>
+        <span class="mcheck hidden">✓ Selected</span>
+      </button>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn ghost" id="sideBack" style="flex:1">‹ Back</button>
+        <button class="btn ghost hidden" id="sideResumeBtn" style="flex:1;border-color:rgba(255,207,51,0.4);color:var(--gold)">Resume Game</button>
+      </div>
     </div>
   </div>
 </div>
@@ -736,6 +832,7 @@ header {
 <!-- Rules Modal Overlay -->
 <div class="overlay hidden" id="rulesOverlay">
   <div class="panel" style="max-width:540px">
+    <button class="modal-close-btn" id="closeRulesXBtn" title="Close">✕</button>
     <h2>📖 How to Play Mangala</h2>
     <p class="sub">Authentic Turkish rules for 48 stones across 12 pits & 2 treasuries.</p>
     <div class="rules-content">
@@ -1342,14 +1439,83 @@ async function startGame() {
   render(S);
   for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], true);
 
-  // Update card labels
-  document.getElementById('badge1').textContent = players[0] === 'ai' ? `AI (${aiLevel})` : 'You';
-  document.getElementById('badge2').textContent = players[1] === 'ai' ? `AI (${aiLevel})` : 'You';
+  // Update card labels and badges
+  updateAiBadges();
+  if (players[0] !== 'ai') document.getElementById('badge1').textContent = 'You';
+  if (players[1] !== 'ai') document.getElementById('badge2').textContent = 'You';
   document.getElementById('avatar2').textContent = players[1] === 'ai' ? '🤖' : '👤';
   document.getElementById('analysisTools').style.display = mode === 'analysis' ? 'flex' : 'none';
+  updateToolbarMenuBtn();
 
   pushHistory();
   await advance();
+}
+
+function updateAiBadges() {
+  const cap = aiLevel.charAt(0).toUpperCase() + aiLevel.slice(1);
+  if (players[0] === 'ai') document.getElementById('badge1').textContent = `AI (${cap})`;
+  if (players[1] === 'ai') document.getElementById('badge2').textContent = `AI (${cap})`;
+  updateToolbarMenuBtn();
+}
+
+function updateToolbarMenuBtn() {
+  const menuBtn = document.getElementById('menuBtn');
+  if (!menuBtn) return;
+  if (!mode) {
+    menuBtn.textContent = '⚙️ Modes';
+    return;
+  }
+  if (mode === 'hva') {
+    const cap = aiLevel.charAt(0).toUpperCase() + aiLevel.slice(1);
+    menuBtn.textContent = `⚙️ vs AI (${cap})`;
+  } else if (mode === 'hvh') {
+    menuBtn.textContent = '⚙️ vs Human';
+  } else if (mode === 'ava') {
+    menuBtn.textContent = '⚙️ AI vs AI';
+  } else if (mode === 'analysis') {
+    menuBtn.textContent = '⚙️ Sandbox';
+  }
+}
+
+function updateMenuUI() {
+  const hasGame = (S !== null && !S.game_over);
+
+  const closeBtn = document.getElementById('closeMenuBtn');
+  const resumeBtn = document.getElementById('resumeGameBtn');
+  const sideResumeBtn = document.getElementById('sideResumeBtn');
+  if (closeBtn) closeBtn.classList.toggle('hidden', !hasGame);
+  if (resumeBtn) resumeBtn.classList.toggle('hidden', !hasGame);
+  if (sideResumeBtn) sideResumeBtn.classList.toggle('hidden', !hasGame);
+
+  // Update mode buttons
+  document.querySelectorAll('#modeMenu .mbtn').forEach(btn => {
+    const isCur = (mode !== null && btn.dataset.mode === mode);
+    btn.classList.toggle('active', isCur);
+    const chk = btn.querySelector('.mcheck');
+    if (chk) chk.classList.toggle('hidden', !isCur);
+  });
+
+  // Update AI difficulty buttons
+  document.querySelectorAll('.diff-btn').forEach(btn => {
+    const isCur = (btn.dataset.level === aiLevel);
+    btn.classList.toggle('active', isCur);
+  });
+
+  // Update side buttons
+  let curSide = 0;
+  if (mode === 'hva') {
+    curSide = (players[1] === 'human') ? 1 : 0;
+  } else if (mode === 'analysis') {
+    curSide = coachSide || 0;
+  }
+  document.querySelectorAll('#sideMenu .mbtn').forEach(btn => {
+    const isCur = (mode !== null && parseInt(btn.dataset.side) === curSide);
+    btn.classList.toggle('active', isCur);
+    const chk = btn.querySelector('.mcheck');
+    if (chk) chk.classList.toggle('hidden', !isCur);
+  });
+
+  updateToolbarMenuBtn();
 }
 
 function chooseMode(m, side) {
@@ -1374,7 +1540,10 @@ document.querySelectorAll('#modeMenu .mbtn').forEach(b => {
       pendingMode = m;
       document.getElementById('modeMenu').classList.add('hidden');
       document.getElementById('sideMenu').classList.remove('hidden');
-    } else chooseMode(m, null);
+      updateMenuUI();
+    } else {
+      chooseMode(m, null);
+    }
   });
 });
 
@@ -1385,6 +1554,7 @@ document.querySelectorAll('#sideMenu .mbtn').forEach(b => {
 document.getElementById('sideBack').addEventListener('click', () => {
   document.getElementById('sideMenu').classList.add('hidden');
   document.getElementById('modeMenu').classList.remove('hidden');
+  updateMenuUI();
 });
 
 function openMenu() {
@@ -1393,22 +1563,51 @@ function openMenu() {
   document.getElementById('menuOverlay').classList.remove('hidden');
   document.getElementById('sideMenu').classList.add('hidden');
   document.getElementById('modeMenu').classList.remove('hidden');
+  updateMenuUI();
+}
+
+function closeMenu() {
+  if (S !== null) {
+    document.getElementById('menuOverlay').classList.add('hidden');
+  }
 }
 
 document.querySelectorAll('.diff-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.diff-btn').forEach(b => {
-      b.classList.remove('active');
-      b.style.background = '';
-      b.style.borderColor = '';
-      b.style.color = '';
-    });
-    btn.classList.add('active');
-    btn.style.background = 'rgba(255,207,51,0.15)';
-    btn.style.borderColor = 'var(--gold)';
-    btn.style.color = 'var(--gold)';
     aiLevel = btn.dataset.level;
+    updateMenuUI();
+    updateAiBadges();
   });
+});
+
+document.getElementById('closeMenuBtn').addEventListener('click', closeMenu);
+document.getElementById('resumeGameBtn').addEventListener('click', closeMenu);
+document.getElementById('sideResumeBtn').addEventListener('click', closeMenu);
+document.getElementById('closeRulesXBtn').addEventListener('click', () => {
+  document.getElementById('rulesOverlay').classList.add('hidden');
+});
+
+// Click outside panel to dismiss overlays
+document.getElementById('menuOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'menuOverlay' && S !== null) {
+    closeMenu();
+  }
+});
+document.getElementById('rulesOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'rulesOverlay') {
+    document.getElementById('rulesOverlay').classList.add('hidden');
+  }
+});
+
+// Click AI badge in scorebar to quickly tweak difficulty
+document.getElementById('badge2').addEventListener('click', () => {
+  if (players[1] === 'ai' || players[0] === 'ai') {
+    openMenu();
+    pendingMode = mode || 'hva';
+    document.getElementById('modeMenu').classList.add('hidden');
+    document.getElementById('sideMenu').classList.remove('hidden');
+    updateMenuUI();
+  }
 });
 
 // Toolbar buttons
@@ -1438,12 +1637,24 @@ document.getElementById('hintBtn').addEventListener('click', hint);
 // ── Keyboard Controls ──────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+
+  // Escape key to close overlays
+  if (e.key === 'Escape') {
+    const rulesO = document.getElementById('rulesOverlay');
+    const menuO = document.getElementById('menuOverlay');
+    if (!rulesO.classList.contains('hidden')) {
+      rulesO.classList.add('hidden');
+      return;
+    }
+    if (!menuO.classList.contains('hidden') && S !== null) {
+      closeMenu();
+      return;
+    }
+  }
+
   if (!document.getElementById('menuOverlay').classList.contains('hidden')) return;
   if (!document.getElementById('winOverlay').classList.contains('hidden')) return;
-  if (!document.getElementById('rulesOverlay').classList.contains('hidden')) {
-    if (e.key === 'Escape') document.getElementById('rulesOverlay').classList.add('hidden');
-    return;
-  }
+  if (!document.getElementById('rulesOverlay').classList.contains('hidden')) return;
 
   // Keys 1 to 6 for pit sowing
   if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -1484,6 +1695,7 @@ document.addEventListener('keydown', e => {
 // ── Initialization ─────────────────────────────────────────────────────────
 buildBoard();
 updateTurnText(null);
+updateMenuUI();
 </script>
 </body>
 </html>
