@@ -169,3 +169,78 @@ def test_not_found(server_url: str) -> None:
 def test_path_traversal_blocked(server_url: str) -> None:
     code, _, res = _request(f"{server_url}/../pyproject.toml")
     assert code == 404
+
+
+def test_serve_static_engine_js(server_url: str) -> None:
+    code, headers, body = _request(f"{server_url}/engine.js")
+    assert code == 200
+    assert "javascript" in headers.get("Content-Type", "")
+    assert "applyMove" in body
+
+
+def test_api_unknown_endpoints(server_url: str) -> None:
+    code, _, res = _request(f"{server_url}/api/unknown_route")
+    assert code == 404
+    assert res["error"] == "not found"
+
+    code, _, res = _request(f"{server_url}/api/unknown_route", method="POST", data={})
+    assert code == 404
+    assert res["error"] == "not found"
+
+
+def test_api_move_invalid_pit_types(server_url: str) -> None:
+    code, _, new_res = _request(f"{server_url}/api/new")
+    s0 = new_res["state"]
+
+    # String pit
+    code, _, res = _request(f"{server_url}/api/move", method="POST", data={"state": s0, "pit": "three"})
+    assert code == 400
+    assert "pit" in res["error"]
+
+    # Boolean pit
+    code, _, res = _request(f"{server_url}/api/move", method="POST", data={"state": s0, "pit": True})
+    assert code == 400
+    assert "pit" in res["error"]
+
+
+def test_api_bad_request_payloads(server_url: str) -> None:
+    # Not an object
+    code, _, res = _request(f"{server_url}/api/move", method="POST", data={"state": "string_state", "pit": 0})
+    assert code == 400
+    assert "must be an object" in res["error"]
+
+    # Missing field in state
+    code, _, res = _request(f"{server_url}/api/move", method="POST", data={"state": {"pits": [4] * 14}, "pit": 0})
+    assert code == 400
+    assert "missing field" in res["error"]
+
+    # Malformed JSON
+    code, _, res = _request(f"{server_url}/api/move", method="POST", raw_data=b"{bad-json")
+    assert code == 400
+    assert "valid JSON" in res["error"]
+
+    # JSON array instead of dict
+    code, _, res = _request(f"{server_url}/api/move", method="POST", raw_data=b"[1, 2, 3]")
+    assert code == 400
+    assert "JSON object" in res["error"]
+
+    # Empty payload
+    code, _, res = _request(f"{server_url}/api/move", method="POST", raw_data=b"")
+    assert code == 400
+    assert "request body required" in res["error"]
+
+
+def test_server_main_version() -> None:
+    from mangala.server import main
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+
+
+def test_server_main_run_and_stop() -> None:
+    from unittest.mock import patch
+    from mangala.server import main
+
+    with patch("http.server.ThreadingHTTPServer.serve_forever", side_effect=KeyboardInterrupt):
+        with patch("webbrowser.open"):
+            main(["--port", "0", "--no-browser", "--verbose"])

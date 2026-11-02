@@ -211,9 +211,12 @@ def _game_loop(players: list, level: str, watch_mode: bool) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    # Force UTF-8 output on Windows so special chars work in old consoles.
-    if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    # Ensure UTF-8 output on Windows consoles without closing or replacing the stream
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
     print("\n" + "=" * 55)
     print("           WELCOME TO MANGALA")

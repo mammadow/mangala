@@ -125,3 +125,28 @@ def test_concurrent_searches_thread_safety() -> None:
     # deadline, causing long to terminate at ~0.1s!
     assert results["short"] < 0.35
     assert results["long"] >= 0.50
+
+
+def test_search_result_properties_and_terminal_tie() -> None:
+    from mangala.ai import SearchResult, _terminal_value
+    r_normal = SearchResult(move=0, score=2.5, depth=4, nodes=100, elapsed=0.01)
+    assert not r_normal.is_forced_result
+
+    r_forced = SearchResult(move=0, score=10010.0, depth=4, nodes=100, elapsed=0.01)
+    assert r_forced.is_forced_result
+
+    # Terminal tie evaluation
+    pits = [0] * 14
+    pits[6] = 24
+    pits[13] = 24
+    s_tie = GameState(pits=pits, current_player=0, game_over=True, winner=-1)
+    assert _terminal_value(s_tie, root=0) == 0.0
+
+
+def test_tiny_time_budget_fallback() -> None:
+    s = initial_state()
+    # A microscopic budget guarantees _TimeUp occurs before iteration 1 finishes
+    res = analyse(s, time_limit=1e-12)
+    assert res.move in legal_moves(s)
+    assert res.depth == 0
+

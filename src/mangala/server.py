@@ -195,6 +195,15 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send_error_json(404, "not found")
 
+    def _drain_body(self) -> None:
+        """Drain any pending request body to avoid connection reset errors on Windows/HTTP 1.1."""
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            if 0 < length <= MAX_BODY_BYTES:
+                self.rfile.read(length)
+        except Exception:
+            pass
+
     def do_POST(self) -> None:  # noqa: N802
         path = self._route()
         try:
@@ -203,6 +212,7 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/ai":
                 self._api_ai(self._read_json())
             else:
+                self._drain_body()
                 self._send_error_json(404, "not found")
         except BadRequest as e:
             self._send_error_json(400, str(e))

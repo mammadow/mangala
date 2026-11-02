@@ -187,6 +187,7 @@ header{display:flex;align-items:center;justify-content:space-between;
     <div class="brand"><span class="dot"></span><h1>Turkish Mangala</h1></div>
     <div class="toolbar">
       <button class="btn ghost" id="flipBtn" title="Rotate the board 180°">⟲ Flip</button>
+      <button class="btn ghost" id="speedBtn" title="Toggle animation speed">⚡ 1x</button>
       <button class="btn ghost" id="menuBtn">Menu</button>
       <button class="btn" id="newBtn">New Game</button>
     </div>
@@ -259,6 +260,15 @@ header{display:flex;align-items:center;justify-content:space-between;
       <button class="mbtn" data-mode="analysis">Analysis <small>hints · undo · pass</small></button>
     </div>
     <div class="menu back hidden" id="sideMenu">
+      <div id="diffSection">
+        <p class="sub" style="margin-bottom:8px">AI Difficulty</p>
+        <div style="display:flex;gap:6px;justify-content:center;margin-bottom:16px">
+          <button class="btn ghost diff-btn" data-level="easy">Easy</button>
+          <button class="btn ghost diff-btn" data-level="medium">Medium</button>
+          <button class="btn ghost diff-btn" data-level="hard">Hard</button>
+          <button class="btn ghost diff-btn active" data-level="expert" style="background:rgba(255,255,255,.15);border-color:var(--gold)">Expert</button>
+        </div>
+      </div>
       <p class="sub">Which side do you play?</p>
       <button class="mbtn" data-side="0">Play as Player 1 <small>moves first</small></button>
       <button class="mbtn" data-side="1">Play as Player 2 <small>moves second</small></button>
@@ -287,13 +297,24 @@ const P1_PITS=[0,1,2,3,4,5], P1_TREAS=6, P2_PITS=[7,8,9,10,11,12], P2_TREAS=13, 
 const OPP_TREAS=[P2_TREAS,P1_TREAS], OWN_TREAS=[P1_TREAS,P2_TREAS];
 const PLAYER_PITS=[P1_PITS,P2_PITS];
 
-// ── timing ─────────────────────────────────────────────────────────────────
-const SOW_DELAY=210, CAP_DELAY=520, BANNER_MS=1100, AI_PAUSE=420, AIAI_PAUSE=700;
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+// ── timing & speed ──────────────────────────────────────────────────────────
+const SPEEDS = [
+  { label: '⚡ 1x', sow: 210, cap: 520, banner: 1100, pause: 420, aiai: 700 },
+  { label: '⚡ 2x', sow: 90,  cap: 220, banner: 500,  pause: 180, aiai: 300 },
+  { label: '⚡ Instant', sow: 0, cap: 0, banner: 250, pause: 20,  aiai: 50 }
+];
+let speedIdx = 0;
+function curSpeed() { return SPEEDS[speedIdx]; }
+function toggleSpeed() {
+  speedIdx = (speedIdx + 1) % SPEEDS.length;
+  document.getElementById('speedBtn').textContent = SPEEDS[speedIdx].label;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ── state ──────────────────────────────────────────────────────────────────
 let S=null;                 // current GameState dict
 let mode=null;              // 'hvh' | 'hva' | 'ava' | 'analysis'
+let aiLevel='expert';       // 'easy' | 'medium' | 'hard' | 'expert'
 let players=['human','human'];
 let coachSide=null;         // analysis: side that gets hints
 let busy=false;             // animation / AI in progress -> ignore clicks
@@ -370,9 +391,10 @@ function toggleFlip(){ flipped=!flipped; applyFlip(); }
 
 // ── banners ────────────────────────────────────────────────────────────────
 async function banner(text,color){
+  if(curSpeed().banner === 0) return;
   const b=document.getElementById('banner');
   b.textContent=text; b.style.color=color; b.classList.add('show');
-  await sleep(BANNER_MS); b.classList.remove('show'); await sleep(160);
+  await sleep(curSpeed().banner); b.classList.remove('show'); await sleep(curSpeed().banner > 0 ? 100 : 0);
 }
 
 // ── API (Dual-Mode: Python HTTP server or Standalone Client-Side) ───────────
@@ -386,7 +408,11 @@ async function localApi(path, body) {
     return window.MangalaEngine.applyMove(body.state, body.pit);
   }
   if (path === '/api/ai') {
-    const depth = (body.time_limit && body.time_limit <= 1.0) ? 4 : 5;
+    let depth = 5;
+    if (body.time_limit && body.time_limit <= 0.2) depth = 2; // easy
+    else if (body.time_limit && body.time_limit <= 0.6) depth = 4; // medium
+    else if (body.time_limit && body.time_limit <= 1.5) depth = 5; // hard
+    else depth = 6; // expert
     const pit = window.MangalaAI.bestMove(body.state, depth);
     return { pit: pit, score: 0, depth: depth };
   }
@@ -443,7 +469,7 @@ async function playMove(pit){
   work[pit]=leaveBehind;
   pitEls[pit].classList.add('source');
   renderPit(pit,work[pit],true);
-  await sleep(SOW_DELAY+60);
+  if(curSpeed().sow > 0) await sleep(curSpeed().sow+50);
 
   // sow one by one
   let last=pit;
@@ -451,7 +477,7 @@ async function playMove(pit){
     const idx=path[i]; work[idx]+=1; last=idx;
     pitEls[idx].classList.add('sowing');
     renderPit(idx,work[idx],true);
-    await sleep(SOW_DELAY);
+    if(curSpeed().sow > 0) await sleep(curSpeed().sow);
     pitEls[idx].classList.remove('sowing');
   }
   pitEls[pit].classList.remove('source');
@@ -467,7 +493,7 @@ async function playMove(pit){
       if(work[i]>0 && newState.pits[i]===0) drained.push(i);
     }
     for(const d of drained) pitEls[d].classList.add('capture');
-    await sleep(CAP_DELAY);
+    if(curSpeed().cap > 0) await sleep(curSpeed().cap);
     for(const d of drained) pitEls[d].classList.remove('capture');
     pitEls[OWN_TREAS[player]].classList.add('glow');
   }
@@ -504,13 +530,18 @@ async function advance(){
   // drive AI turns automatically until it's a human's turn or game ends
   while(S && !S.game_over && players[S.current_player]==='ai' && !busy){
     updateTurnText(S);
-    const tl = mode==='ava' ? 1.0 : 2.5;
+    let tl = 2.5;
+    if (aiLevel === 'easy') tl = 0.1;
+    else if (aiLevel === 'medium') tl = 0.4;
+    else if (aiLevel === 'hard') tl = 1.0;
+    else tl = 2.5;
+    if (mode === 'ava') tl = 0.5;
     const {pit}=await api('/api/ai',{state:S,time_limit:tl});
     if(pit===null||pit===undefined) break;
     await playMove(pit);
     pushHistory();
     render(S);
-    await sleep(mode==='ava'?AIAI_PAUSE:AI_PAUSE);
+    if(curSpeed().pause > 0) await sleep(mode==='ava'?curSpeed().aiai:curSpeed().pause);
   }
   if(S && S.game_over) showWin();
   else render(S);
@@ -631,6 +662,21 @@ function openMenu(){
   document.getElementById('sideMenu').classList.add('hidden');
   document.getElementById('modeMenu').classList.remove('hidden');
 }
+document.querySelectorAll('.diff-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.diff-btn').forEach(b=>{
+      b.classList.remove('active');
+      b.style.background='';
+      b.style.borderColor='';
+    });
+    btn.classList.add('active');
+    btn.style.background='rgba(255,255,255,.15)';
+    btn.style.borderColor='var(--gold)';
+    aiLevel=btn.dataset.level;
+  });
+});
+
+document.getElementById('speedBtn').addEventListener('click',toggleSpeed);
 document.getElementById('flipBtn').addEventListener('click',toggleFlip);
 document.getElementById('menuBtn').addEventListener('click',openMenu);
 document.getElementById('newBtn').addEventListener('click',()=>{if(mode)startGame();else openMenu();});
@@ -642,6 +688,25 @@ document.getElementById('redoBtn').addEventListener('click',redo);
 document.getElementById('passBtn').addEventListener('click',passTurn);
 document.getElementById('hintBtn').addEventListener('click',hint);
 document.addEventListener('keydown',e=>{
+  if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')) return;
+  if(!document.getElementById('menuOverlay').classList.contains('hidden')) return;
+  if(!document.getElementById('winOverlay').classList.contains('hidden')) return;
+
+  if(e.key>='1'&&e.key<='6'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+    if(busy||!S||S.game_over||players[S.current_player]!=='human') return;
+    const num=parseInt(e.key)-1;
+    let pit;
+    if(S.current_player===0){
+      pit=num;
+    } else {
+      pit=flipped?(7+num):(12-num);
+    }
+    if((S.legal||[]).includes(pit)){
+      onPitClick(pit);
+    }
+    return;
+  }
+
   if((e.key==='f'||e.key==='F')&&!e.ctrlKey&&!e.metaKey){e.preventDefault();toggleFlip();return;}
   if(mode!=='analysis')return;
   if(e.ctrlKey&&e.key==='z'){e.preventDefault();undo();}

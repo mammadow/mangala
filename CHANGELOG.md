@@ -26,18 +26,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Web Front-End & HTTP Backend (`mangala.server`, `src/mangala/web/index.html`)**:
   - Stateless JSON REST API (`GET /api/new`, `POST /api/move`, `POST /api/ai`).
   - Single-file modern web UI featuring felt/wood aesthetics, animated stone sowing, move log, analysis tools (undo, redo, pass, AI hint), and 180° board flip.
-  - Request body size limits ($4096$ bytes), time limit clamping ($[0.05, 5.0]$ seconds), and concurrent search throttling.
+  - Difficulty selector pills (Easy, Medium, Hard, Expert) and animation speed controls (⚡ 1x, 2x, Instant).
+  - Keyboard navigation for rapid play (keys `1`–`6` for pits, `F` to flip board).
+  - Dual-mode operation: seamless automatic fallback to client-side JavaScript engine for offline play and static GitHub Pages hosting.
+  - Request body size limits ($4096$ bytes), time limit clamping ($[0.05, 5.0]$ seconds), request body draining, and concurrent search throttling.
   - Strict security headers (CSP, X-Frame-Options, X-Content-Type-Options) and path traversal protections.
+- **Cross-Language Engine & Parity Testing (`src/mangala/web/engine.js`, `ai.js`, `tests/test_parity.mjs`)**:
+  - Client-side JavaScript rules and minimax AI engines matching Python implementation.
+  - Fixture generator (`tools/generate_parity_fixtures.py`) creating 629 corner-case and playout state transitions.
+  - Cross-language parity runner (`node --test tests/test_parity.mjs`) validating 100% equivalence in under 10ms.
 - **Terminal CLI (`mangala.cli`)**:
   - ASCII board visualizer with active player indicators and ANSI color support.
   - Interactive Human vs Human, Human vs AI, and AI vs AI modes with selectable difficulty levels.
+  - Safe UTF-8 console reconfiguring for Windows without destroying stream descriptors.
 - **Pygame Desktop GUI (`mangala.gui_pygame`)**:
   - Desktop interface with smooth frame animation, capture banners, move log, and analysis mode.
+  - Headless test support with dummy video driver fallback.
 - **Development & Packaging**:
   - PEP 621 compliant `pyproject.toml` with `hatchling` build backend.
-  - Comprehensive test suite covering engine rules, AI pruning, property-based hypothesis tests, and REST API endpoints.
+  - PEP 561 `py.typed` marker file for library type checker compliance.
+  - Comprehensive 78-test suite with 97% overall code coverage.
   - AI-vs-AI tournament benchmark arena tool (`tools/selfplay.py`).
-  - GitHub Actions CI matrix across Linux & Windows on Python 3.10 through 3.13.
+  - GitHub Actions CI matrix across Linux & Windows on Python 3.10 through 3.13 and Node.js parity testing.
 
 ### Fixed
 - Fixed race condition where concurrent AI calls shared a module-level deadline and cut off longer searches prematurely.

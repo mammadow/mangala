@@ -63,7 +63,7 @@ _WIN = 10_000.0           # terminal scores are +/- (_WIN + stone difference)
 _Q_DEPTH = 4              # maximum extra plies in quiescence
 _ENDGAME_STONES = 12      # solve exactly when this few stones remain on board
 _ENDGAME_DEPTH = 64
-_TIME_CHECK_MASK = 0x3FF  # check the clock every 1024 nodes
+_TIME_CHECK_MASK = 0x7F   # check the clock every 128 nodes
 
 DEFAULT_TIME_LIMIT = 2.5
 
@@ -437,6 +437,8 @@ class Searcher:
             done_depth = 0
             d = 1
             while True:
+                if _time.monotonic() >= self._deadline:
+                    break
                 try:
                     # Root ordering uses the best move of the previous iteration.
                     pv = self.tt[root_key][3] if root_key in self.tt else -1

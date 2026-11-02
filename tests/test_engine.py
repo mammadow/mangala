@@ -59,9 +59,17 @@ def test_validate_state_errors() -> None:
     with pytest.raises(ValueError, match="current_player must be 0 or 1"):
         validate_state(GameState(pits=list(s.pits), current_player=2))
 
+    # Invalid game_over type
+    with pytest.raises(ValueError, match="game_over must be a boolean"):
+        validate_state(GameState(pits=list(s.pits), current_player=0, game_over="invalid"))  # type: ignore[arg-type]
+
     # Invalid winner
     with pytest.raises(ValueError, match="winner must be null, 0, 1 or -1"):
         validate_state(GameState(pits=list(s.pits), current_player=0, winner=5))
+
+    # Invalid Rules variant
+    with pytest.raises(ValueError, match="unknown sweep_to variant"):
+        Rules(sweep_to="non_existent")
 
 
 def test_legal_moves() -> None:
@@ -275,6 +283,19 @@ def test_endgame_tie() -> None:
     p1, p2 = score(ns)
     assert p1 == 24 and p2 == 24
     assert is_terminal(ns)
+
+
+def test_endgame_player2_wins() -> None:
+    pits = [0] * TOTAL
+    pits[5] = 1
+    pits[P1_TREASURY] = 10
+    pits[P2_TREASURY] = 37
+    s = GameState(pits=pits, current_player=0)
+    ns, _ = apply_move(s, 5)
+    assert ns.game_over
+    assert ns.winner == 1
+    p1, p2 = score(ns)
+    assert p1 == 11 and p2 == 37
 
 
 def test_illegal_move_raises() -> None:

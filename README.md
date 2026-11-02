@@ -136,7 +136,9 @@ flowchart TD
 
 ```text
 mangala/
-├── .github/workflows/ci.yml       # GitHub Actions Multi-OS CI
+├── .github/workflows/
+│   ├── ci.yml                     # Multi-OS CI (Python 3.10-3.13 + Node.js)
+│   └── pages.yml                  # GitHub Pages automated deployment
 ├── docs/
 │   ├── rules.md                   # Complete rules specification
 │   ├── architecture.md            # System design & algorithm details
@@ -147,17 +149,30 @@ mangala/
 │   ├── engine.py                  # Pure rules engine & immutable GameState
 │   ├── ai.py                      # Thread-safe Minimax / TT / Quiescence
 │   ├── server.py                  # Hardened stdlib HTTP server & JSON API
-│   ├── cli.py                     # Terminal interface
+│   ├── cli.py                     # Terminal interface with ANSI board
 │   ├── board.py                   # ASCII board renderer
 │   ├── gui_pygame.py              # Pygame desktop UI
-│   └── web/index.html             # Single-file modern web UI
+│   ├── py.typed                   # PEP 561 type annotation marker
+│   └── web/
+│       ├── index.html             # Responsive web UI with SVG aesthetics
+│       ├── engine.js              # Client-side JavaScript rules engine
+│       └── ai.js                  # Client-side minimax & quiescence AI
 ├── tests/
+│   ├── fixtures/
+│   │   └── engine_parity_fixtures.json  # 629 cross-language test fixtures
 │   ├── test_engine.py             # Engine unit tests & rule verification
-│   ├── test_ai.py                 # AI search, pruning, and thread-safety tests
+│   ├── test_ai.py                 # AI search, pruning, and thread safety
 │   ├── test_server.py             # REST API & security hardening tests
-│   └── test_properties.py         # Hypothesis fuzzing & conservation tests
+│   ├── test_cli.py                # Terminal interactive game loop tests
+│   ├── test_board.py              # Board formatting tests
+│   ├── test_gui.py                # Headless Pygame desktop tests
+│   ├── test_selfplay.py           # Selfplay tournament runner tests
+│   ├── test_fixtures_parity.py    # Python parity validation against fixtures
+│   ├── test_parity.mjs            # Node.js cross-language parity runner
+│   └── test_properties.py         # Hypothesis fuzzing & stone conservation
 ├── tools/
-│   └── selfplay.py                # AI benchmarking & self-play arena
+│   ├── selfplay.py                # AI benchmarking & self-play arena
+│   └── generate_parity_fixtures.py# Parity fixture generator
 ├── pyproject.toml                 # PEP 621 package & tool configurations
 ├── LICENSE                        # MIT License
 └── README.md
@@ -170,15 +185,17 @@ mangala/
 Run the test suite:
 
 ```bash
-# Run all tests with coverage
+# Run all Python tests with 97%+ coverage
 pytest --cov=mangala tests/
 
-# Run property-based hypothesis tests
+# Run cross-language Python <-> JavaScript parity suite (629 test cases)
+node --test tests/test_parity.mjs
+
+# Run property-based hypothesis fuzzing
 pytest tests/test_properties.py
 
-# Lint and type check
-ruff check .
-mypy src/mangala/
+# Build source distribution and binary wheel
+python -m build
 ```
 
 ---
