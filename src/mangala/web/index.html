@@ -2426,24 +2426,37 @@ async function playMove(pit) {
   // Compute authoritative outcome
   const { state: newState, events } = await api('/api/move', { state: S, pit });
 
-  // Handle Captures
-  if (events.capture > 0) {
-    matchStats.captures += events.capture;
+  // Handle Captures & Endgame Sweeps
+  const drained = [];
+  for (let i = 0; i < TOTAL; i++) {
+    if (i === P1_TREAS || i === P2_TREAS) continue;
+    if (work[i] > 0 && newState.pits[i] === 0) {
+      drained.push({ pit: i, count: work[i] });
+    }
+  }
+
+  if (drained.length > 0) {
+    if (events.capture > 0) matchStats.captures += events.capture;
     sfx.capture();
-    const drained = [];
-    for (let i = 0; i < TOTAL; i++) {
-      if (i === P1_TREAS || i === P2_TREAS) continue;
-      if (work[i] > 0 && newState.pits[i] === 0) drained.push(i);
-    }
+
+    // 1. Immediately scoop stones from the captured pit(s) (pit count goes to 0)
     for (const d of drained) {
-      pitEls[d].classList.add('capture');
-      if (curSpeed().cap > 0) {
-        animateCaptureSwarm(d, OWN_TREAS[player], work[d]);
-      }
+      pitEls[d.pit].classList.add('capture');
+      work[d.pit] = 0;
+      renderPit(d.pit, 0, true);
     }
-    if (curSpeed().cap > 0) await sleep(curSpeed().cap);
-    for (const d of drained) pitEls[d].classList.remove('capture');
-    pitEls[OWN_TREAS[player]].classList.add('glow');
+
+    // 2. Animate the captured stones streaming in flight to the player's treasury
+    const targetTreas = OWN_TREAS[player];
+    if (curSpeed().cap > 0) {
+      await Promise.all(drained.map(d => animateCaptureSwarm(d.pit, targetTreas, d.count)));
+    }
+
+    // 3. Update the treasury count upon arrival and trigger shockwave glow
+    work[targetTreas] = newState.pits[targetTreas];
+    renderPit(targetTreas, work[targetTreas], true);
+    pitEls[targetTreas].classList.add('glow');
+    for (const d of drained) pitEls[d.pit].classList.remove('capture');
   }
 
   // Handle Extra Turns
