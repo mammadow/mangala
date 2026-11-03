@@ -74,9 +74,10 @@ _UPPER_BOUND = 2   # stored value is an upper bound (failed low)
 
 _WIN = 10_000.0           # terminal scores are +/- (_WIN + stone difference)
 _Q_DEPTH = 4              # maximum extra plies in quiescence
-_ENDGAME_STONES = 12      # solve exactly when this few stones remain on board
+_ENDGAME_STONES = 16      # solve exactly when 16 or fewer stones remain on board
 _ENDGAME_DEPTH = 64
 _TIME_CHECK_MASK = 0x7F   # check the clock every 128 nodes
+_ASPIRATION_WINDOW = 0.5  # initial aspiration search half-window
 
 DEFAULT_TIME_LIMIT = 2.5
 
@@ -150,8 +151,10 @@ def _evaluate(state: GameState, root: int) -> float:
     if opp_t >= 20:
         threshold_bonus -= (opp_t - 19) * 0.6
 
-    # Extra-turn potential, regular capture offense & empty-hole offense
+    # Extra-turn potential, ladder cascades, regular capture offense & empty-hole offense
     extra_bonus = 0.0
+    own_ladders = 0
+    opp_ladders = 0
     capture_offense = 0.0
     empty_hole_offense = 0.0
 
@@ -164,6 +167,7 @@ def _evaluate(state: GameState, root: int) -> float:
         if pos == own_treas:
             # Extra turn into treasury; bonus higher for direct single-step ladder
             extra_bonus += 0.6 if n == 1 and i == own_max else 0.4
+            own_ladders += 1
         elif own_min <= pos <= own_max and pits[pos] == 0:
             # Rule 4: Empty pit capture on own side
             opposite = 12 - pos
@@ -173,7 +177,7 @@ def _evaluate(state: GameState, root: int) -> float:
             # Rule 3: Regular capture on opponent's side (lands on odd pit, making it even)
             capture_offense += 0.35 * (pits[pos] + 1)
 
-    # Threat exposure: check if opponent's moves threaten capture on our side
+    # Threat exposure: check if opponent's moves threaten capture or extra turns
     capture_exposure = 0.0
     for j in opp_pits:
         m = pits[j]
@@ -181,9 +185,18 @@ def _evaluate(state: GameState, root: int) -> float:
             continue
         sow_count = m - 1 if m > 1 else 1
         pos = opp_landing_table[j][sow_count % 13]
-        if own_min <= pos <= own_max and pits[pos] > 0 and (pits[pos] + 1) % 2 == 0:
+        if pos == opp_treas:
+            opp_ladders += 1
+        elif own_min <= pos <= own_max and pits[pos] > 0 and (pits[pos] + 1) % 2 == 0:
             # Opponent landing in our pit makes count even if it was odd
             capture_exposure += 0.35 * (pits[pos] + 1)
+
+    # Multi-step ladder cascade (Merdiven Serisi): chaining consecutive bonus turns
+    ladder_cascade_bonus = 0.0
+    if own_ladders >= 2:
+        ladder_cascade_bonus += 0.35 * (own_ladders - 1)
+    if opp_ladders >= 2:
+        ladder_cascade_bonus -= 0.35 * (opp_ladders - 1)
 
     # Empty-hole exposure: check if opponent lands in their own empty pit opposite our stones
     empty_hole_exposure = 0.0
@@ -203,6 +216,28 @@ def _evaluate(state: GameState, root: int) -> float:
                 empty_hole_exposure += 0.25 * (pits[opposite] + 1)
                 break
 
+    # Even-parity defensive shield (Çift Sayı Kalkanı):
+    # Pits with even counts cannot be captured under Rule 3 when sown into (+1 makes them odd)
+    parity_shield = 0.0
+    for i in own_pits:
+        n = pits[i]
+        if n > 0:
+            parity_shield += 0.08 if n % 2 == 0 else -0.06
+    for j in opp_pits:
+        m = pits[j]
+        if m > 0:
+            parity_shield += 0.06 if m % 2 != 0 else -0.08
+
+    # Deep fortress reserves (Kuyu Saklama):
+    # Back pits (0/1 for P1, 7/8 for P2) with >= 8 stones threaten full-board sowing sweeps
+    fortress_bonus = 0.0
+    for i in (own_min, own_min + 1):
+        if pits[i] >= 8:
+            fortress_bonus += 0.20
+    for j in (opp_min, opp_min + 1):
+        if pits[j] >= 8:
+            fortress_bonus -= 0.20
+
     # Endgame sweep ("kuyu kurutma") proximity:
     # Under Turkish rules, player whose side empties first takes all opponent stones
     sweep_bonus = 0.0
@@ -214,10 +249,13 @@ def _evaluate(state: GameState, root: int) -> float:
     return (treasury_diff
             + 0.1 * (own_stones - opp_stones)
             + extra_bonus
+            + ladder_cascade_bonus
             + capture_offense
             + empty_hole_offense
             - capture_exposure
             - empty_hole_exposure
+            + parity_shield
+            + fortress_bonus
             + sweep_bonus
             + threshold_bonus)
 
@@ -459,7 +497,7 @@ class Searcher:
     # -- root --------------------------------------------------------------
 
     def _search_root(self, state: GameState, depth: int,
-                     pv_move: int) -> tuple[int, float]:
+                     pv_move: int, alpha: float = -_INF, beta: float = _INF) -> tuple[int, float]:
         """Search every root move at *depth*; return (best_move, value)."""
         root = state.current_player
         best_val = -_INF
@@ -468,16 +506,19 @@ class Searcher:
 
         for i, (m, child) in enumerate(children):
             if i == 0:
-                val = self._search(child, depth - 1, best_val, _INF, root, ply=1)
+                val = self._search(child, depth - 1, alpha, beta, root, ply=1)
             else:
                 # Scout search
-                val = self._search(child, depth - 1, best_val, best_val + _PVS_EPSILON, root, ply=1)
-                if val > best_val:
-                    val = self._search(child, depth - 1, val, _INF, root, ply=1)
+                scout_alpha = max(alpha, best_val)
+                val = self._search(child, depth - 1, scout_alpha, scout_alpha + _PVS_EPSILON, root, ply=1)
+                if val > best_val and val < beta:
+                    val = self._search(child, depth - 1, val, beta, root, ply=1)
 
             if val > best_val or best_m == -1:
                 best_val = val
                 best_m = m
+            if best_val >= beta:
+                break
         return best_m, best_val
 
     def _extract_pv(self, state: GameState, first: int, max_len: int) -> list[int]:
@@ -558,7 +599,16 @@ class Searcher:
                 try:
                     # Root ordering uses the best move of the previous iteration.
                     pv = self.tt[root_key][3] if root_key in self.tt else -1
-                    cand_m, cand_val = self._search_root(state, d, pv)
+                    if d >= 3 and abs(best_val) < _WIN:
+                        # Aspiration search with narrow window around previous score
+                        asp_alpha = best_val - _ASPIRATION_WINDOW
+                        asp_beta = best_val + _ASPIRATION_WINDOW
+                        cand_m, cand_val = self._search_root(state, d, pv, asp_alpha, asp_beta)
+                        if cand_val <= asp_alpha or cand_val >= asp_beta:
+                            # Re-search with full window (-inf, +inf) if aspiration window failed
+                            cand_m, cand_val = self._search_root(state, d, pv, -_INF, _INF)
+                    else:
+                        cand_m, cand_val = self._search_root(state, d, pv)
                 except _TimeUp:
                     break   # keep the result of the last completed iteration
                 # Full iteration completed — commit the result.
