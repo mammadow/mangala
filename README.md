@@ -54,17 +54,19 @@
 
 ### Installation
 
-Install via `pip`:
+#### Option 1: Direct from GitHub via `pip` (Recommended)
+
+Install directly into your Python environment without cloning:
 
 ```bash
 # Standard installation (Web GUI + CLI, zero external dependencies)
-pip install mangala-game
+pip install git+https://github.com/mammadow/mangala.git
 
-# Optional Pygame desktop GUI
-pip install "mangala-game[gui]"
+# With Pygame desktop arcade GUI
+pip install "mangala-game[gui] @ git+https://github.com/mammadow/mangala.git"
 ```
 
-Or clone the repository to run from source:
+#### Option 2: Clone & Run from Source
 
 ```bash
 git clone https://github.com/mammadow/mangala.git
@@ -73,6 +75,16 @@ python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e ".[dev,gui]"
 ```
+
+#### Option 3: Local Wheel Install
+
+Install the pre-built distribution wheel in `dist/`:
+
+```bash
+pip install dist/mangala_game-0.2.0-py3-none-any.whl
+```
+
+*(To publish `mangala-game` to the public PyPI registry so that bare `pip install mangala-game` works worldwide, see [Publishing to PyPI](#-publishing-to-pypi).)*
 
 ---
 

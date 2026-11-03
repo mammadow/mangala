@@ -2029,7 +2029,7 @@ let lastMoveSeq = 0;
 
 async function createRoom() {
   if (offlineMode || window.location.hostname.endsWith('github.io')) {
-    alert("ℹ️ Remote Room Multiplayer requires the Python server (run 'pip install mangala-game' and 'mangala').\n\nOn GitHub Pages, enjoy 1-Player vs AI, AI vs AI, Hotseat 2-Player, and Tactical Puzzles!");
+    alert("ℹ️ Remote Room Multiplayer requires the Python server (run 'pip install git+https://github.com/mammadow/mangala.git' and 'mangala').\n\nOn GitHub Pages, enjoy 1-Player vs AI, AI vs AI, Hotseat 2-Player, and Tactical Puzzles!");
     return;
   }
   try {
@@ -2050,7 +2050,7 @@ async function createRoom() {
 
 async function joinRoom(code) {
   if (offlineMode || window.location.hostname.endsWith('github.io')) {
-    alert("ℹ️ Remote Room Multiplayer requires the Python server (run 'pip install mangala-game' and 'mangala').\n\nOn GitHub Pages, enjoy 1-Player vs AI, AI vs AI, Hotseat 2-Player, and Tactical Puzzles!");
+    alert("ℹ️ Remote Room Multiplayer requires the Python server (run 'pip install git+https://github.com/mammadow/mangala.git' and 'mangala').\n\nOn GitHub Pages, enjoy 1-Player vs AI, AI vs AI, Hotseat 2-Player, and Tactical Puzzles!");
     return;
   }
   if (!code) {
