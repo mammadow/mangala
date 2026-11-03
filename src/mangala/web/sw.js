@@ -2,7 +2,7 @@
  * sw.js - Service Worker for Turkish Mangala Progressive Web App (PWA).
  * Provides full offline gameplay and asset caching.
  */
-const CACHE_NAME = 'mangala-v3';
+const CACHE_NAME = 'mangala-v4';
 const ASSETS = [
   './',
   './index.html',

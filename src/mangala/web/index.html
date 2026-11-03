@@ -1547,6 +1547,7 @@ let coachSide = null;
 let busy = false;
 let history = [];
 let histIdx = -1;
+let matchHistory = [];
 let logEntries = [];
 let flipped = false;
 
@@ -1766,7 +1767,7 @@ function generateMPGN() {
 }
 
 function openReview() {
-  if (!history || history.length < 2) {
+  if (!matchHistory || matchHistory.length < 2) {
     alert("Play at least one move to generate a Match Review!");
     return;
   }
@@ -1778,9 +1779,9 @@ function openReview() {
     { best: 0, good: 0, inacc: 0, mistake: 0, blunder: 0, losses: [] }
   ];
 
-  for (let i = 1; i < history.length; i++) {
-    const prev = history[i - 1];
-    const curr = history[i];
+  for (let i = 1; i < matchHistory.length; i++) {
+    const prev = matchHistory[i - 1];
+    const curr = matchHistory[i];
     const player = prev.current_player;
     try {
       const ePrev = window.MangalaAI.evaluate(prev, player);
@@ -2466,6 +2467,7 @@ async function playMove(pit) {
   }
 
   S = newState;
+  matchHistory.push(JSON.parse(JSON.stringify(S)));
   render(S);
   for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], true);
 
@@ -2670,6 +2672,7 @@ async function startGame() {
   clearHoverPreview();
   const { state } = await api('/api/new');
   S = state;
+  matchHistory = [JSON.parse(JSON.stringify(S))];
   logEntries = [];
   history = [];
   histIdx = -1;
