@@ -2741,6 +2741,12 @@ async function joinRoom(code) {
     return;
   }
 
+  // Immediately hide mode selector overlay so player sees board & connecting status
+  document.getElementById('menuOverlay').classList.add('hidden');
+  onlinePlayerSide = 1;
+  currentRoom = cleanCode;
+  showP2PHUD(cleanCode);
+
   const joinStatusText = document.getElementById('p2pJoinStatusText');
   const joinPill = document.getElementById('p2pJoinStatus');
   if (joinStatusText) joinStatusText.textContent = `Connecting to room ${cleanCode}…`;
@@ -2796,6 +2802,10 @@ async function joinRoom(code) {
 
       p2pPeer.on('error', (err) => {
         console.warn('Peer connection error:', err);
+        hideP2PHUD();
+        document.getElementById('menuOverlay').classList.remove('hidden');
+        const joinTab = document.getElementById('p2pTabJoin');
+        if (joinTab) joinTab.click();
         if (joinStatusText) joinStatusText.textContent = `Failed to connect to room ${cleanCode}.`;
         alert(`Could not connect to room "${cleanCode}". Make sure the host has the room open.`);
       });
@@ -3546,6 +3556,9 @@ function syncMenuDOM() {
   document.getElementById('timeSection').style.display = showTime ? 'block' : 'none';
   document.getElementById('onlineSection').style.display = showOnline ? 'block' : 'none';
 
+  const startBtn = document.getElementById('startConfigBtn');
+  if (startBtn) startBtn.style.display = (selectedMode === 'online') ? 'none' : 'block';
+
   // Update difficulty pills
   document.querySelectorAll('#diffSection .pill-btn').forEach(pill => {
     pill.classList.toggle('active', pill.dataset.level === selectedLevel);
@@ -3944,7 +3957,8 @@ if (savedP2PSession) {
 }
 
 if (!sessionRestored && roomParam) {
-  setTimeout(() => joinRoom(roomParam), 350);
+  document.getElementById('menuOverlay').classList.add('hidden');
+  setTimeout(() => joinRoom(roomParam), 150);
 }
 
 // ── Progressive Web App (Offline Service Worker) ───────────────────────────
