@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.2] - 2026-11-03
+
+### Added
+- **Automated PyPI Publishing**:
+  - Added GitHub Actions workflow (`.github/workflows/publish.yml`) supporting PyPI Trusted Publishing (OIDC).
+  - Publishes automatically on release publication, version tag pushes (`v*.*.*`), or manual dispatch.
+- **Modern Online P2P Multiplayer Hub**:
+  - Overhauled multiplayer lobby with distinct 👑 Host Room & 🔗 Join Friend tabs.
+  - Large segmented 4-character room code display (`[ 7 ] [ K ] [ 2 ] [ X ]`).
+  - Native Web Share API (`navigator.share`) integration with fallback to 1-click clipboard copy.
+  - One-click clipboard paste button (`📋`) and auto-sanitization for 4-letter room codes.
+- **In-Game Live HUD & Reconnection Overlay**:
+  - Slim in-game HUD bar displaying real-time round-trip latency (`📶 X ms`), room code, player role indicator, and leave match button.
+  - Floating auto-reconnection notification badge (`#p2pReconnectOverlay`) with retry progress.
+- **Resilient Multiplayer State Machine & Heartbeat Recovery**:
+  - Persistent match storage via `sessionStorage` (`mangala_p2p_active`) enabling full state recovery across page reloads.
+  - 3.5-second keepalive ping-pong heartbeats with desync self-healing: detects turn or move count discrepancies and automatically requests authoritative state sync.
+  - Bidirectional sync handshake (`request_sync`) on peer connection open.
+  - Immortal Host room listener: host peer never destroys itself on guest disconnect, allowing instant reconnects.
+  - Clean `beforeunload` peer destruction ensuring PeerJS signaling servers release room IDs immediately.
+  - Instant dismissal of mode selection overlay (`#menuOverlay`) upon room joining.
+
+## [0.2.1] - 2026-11-03
+
+### Added
+- **Python 3.14 Support**:
+  - Configured conditional dependency on `pygame-ce>=2.5` for Python $\ge 3.13$ to eliminate MSVC compilation failures caused by the removal of `distutils`.
+  - Maintained `pygame>=2.5` for Python $< 3.13$.
+
+### Fixed
+- Fixed race condition where incoming P2P sync packets updated state mid-animation and triggered illegal move errors.
+- Fixed disappearing legal move highlights during opponent moves by restoring `busy = false` before rendering.
+
+---
+
 ## [0.1.0] - 2026-11-02
 
 ### Added
