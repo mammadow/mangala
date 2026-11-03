@@ -2318,7 +2318,7 @@ function showP2PHUD(room) {
   const hud = document.getElementById('p2pHUD');
   if (!hud) return;
   const roomEl = document.getElementById('p2pHUDRoom');
-  if (roomEl) roomEl.textContent = `ROOM: ${room}`;
+  if (roomEl) roomEl.textContent = `ROOM: ${room} · You: P${onlinePlayerSide + 1}`;
   hud.classList.remove('hidden');
 }
 
@@ -2350,7 +2350,14 @@ function startP2PHeartbeat(conn) {
   p2pLastPong = Date.now();
   p2pHeartbeat = setInterval(() => {
     if (conn && conn.open) {
-      try { conn.send({ type: 'ping', t: Date.now() }); } catch (_) {}
+      try {
+        conn.send({
+          type: 'ping',
+          t: Date.now(),
+          curPlayer: S ? S.current_player : null,
+          moves: matchStats ? matchStats.moves : 0
+        });
+      } catch (_) {}
       if (Date.now() - p2pLastPong > 14000 && mode === 'online' && !p2pReconnecting) {
         triggerP2PReconnect("Heartbeat timeout");
       }
@@ -2410,13 +2417,17 @@ function attemptP2PReconnect() {
     return;
   }
 
-  // Cleanup old peer and connection
+  // Close stale connection
   if (p2pConn) { try { p2pConn.close(); } catch (_) {} p2pConn = null; }
-  if (p2pPeer) { try { p2pPeer.destroy(); } catch (_) {} p2pPeer = null; }
 
   try {
     if (onlinePlayerSide === 0) {
-      // Host reclaims mangala-room-XXXX
+      // Host: if peer is ALREADY active and open, do NOT destroy it! Just wait for guest.
+      if (p2pPeer && !p2pPeer.destroyed && p2pPeer.open) {
+        console.log("Host peer is already active on room:", currentRoom);
+        return;
+      }
+      // If peer was closed/destroyed, re-open mangala-room-XXXX
       const peerId = 'mangala-room-' + currentRoom;
       p2pPeer = new Peer(peerId, PEER_CONFIG);
       p2pPeer.on('open', () => {
@@ -2428,14 +2439,25 @@ function attemptP2PReconnect() {
         const overlay = document.getElementById('p2pReconnectOverlay');
         if (overlay) overlay.classList.add('hidden');
         banner(`🟢 Opponent reconnected! Game resumed.`, '#48db8c');
-        conn.send({ type: 'sync', state: S, history: matchHistory, log: logEntries });
+        conn.send({ type: 'sync', state: S, history: matchHistory, log: logEntries, room: currentRoom, side: 1 });
       });
       p2pPeer.on('error', (err) => {
         console.warn("Host reconnect peer error:", err);
-        p2pReconnectTimer = setTimeout(attemptP2PReconnect, Math.min(1000 * Math.pow(1.4, p2pReconnectAttempts), 5000));
+        if (err.type === 'unavailable-id') {
+          // ID temporarily held on peerjs server; retry in 1.5s
+          p2pReconnectTimer = setTimeout(attemptP2PReconnect, 1500);
+        } else {
+          p2pReconnectTimer = setTimeout(attemptP2PReconnect, Math.min(1000 * Math.pow(1.4, p2pReconnectAttempts), 5000));
+        }
       });
     } else {
       // Guest reconnects to mangala-room-XXXX
+      if (p2pPeer && !p2pPeer.destroyed && p2pPeer.open) {
+        const targetPeerId = 'mangala-room-' + currentRoom;
+        const conn = p2pPeer.connect(targetPeerId, { reliable: true, serialization: 'json' });
+        setupP2PConnection(conn);
+        return;
+      }
       p2pPeer = new Peer(PEER_CONFIG);
       p2pPeer.on('open', () => {
         const targetPeerId = 'mangala-room-' + currentRoom;
@@ -2468,6 +2490,8 @@ function leaveP2PMatch() {
   hideP2PHUD();
   p2pReconnecting = false;
   mode = null;
+  // Clean URL room param
+  try { window.history.replaceState(null, '', window.location.pathname); } catch (_) {}
   openMenu();
 }
 
@@ -2513,15 +2537,17 @@ function setupP2PConnection(conn) {
     document.getElementById('menuOverlay').classList.add('hidden');
 
     if (onlinePlayerSide === 0) {
-      // Ensure host has authoritative clean state
+      // Host: send current state to newly connected guest
       if (!S || S.game_over) {
         S = window.MangalaEngine.initialState();
         matchHistory = [JSON.parse(JSON.stringify(S))];
       }
-      conn.send({ type: 'sync', state: S, room: currentRoom, history: matchHistory, log: logEntries });
+      conn.send({ type: 'sync', state: S, room: currentRoom, history: matchHistory, log: logEntries, side: 1 });
       render(S);
       banner(`🎉 Friend connected to Room ${currentRoom}! Game begins!`, '#48db8c');
     } else {
+      // Guest: actively request sync from host upon connection open
+      conn.send({ type: 'request_sync' });
       banner(`🟢 Connected to Room ${currentRoom}! You are Player 2.`, '#48db8c');
     }
     saveP2PSession();
@@ -2531,9 +2557,22 @@ function setupP2PConnection(conn) {
     if (!data) return;
 
     if (data.type === 'ping') {
-      try { conn.send({ type: 'pong', t: data.t }); } catch (_) {}
+      try {
+        conn.send({ type: 'pong', t: data.t });
+      } catch (_) {}
+
+      // Heartbeat self-healing: if opponent's turn or moves differ from local state, request sync
+      if (S && !S.game_over && typeof data.curPlayer === 'number' && data.curPlayer !== S.current_player) {
+        console.warn(`Turn mismatch detected (local=${S.current_player}, peer=${data.curPlayer}). Requesting sync.`);
+        if (onlinePlayerSide === 1) {
+          try { conn.send({ type: 'request_sync' }); } catch (_) {}
+        } else {
+          try { conn.send({ type: 'sync', state: S, history: matchHistory, log: logEntries, room: currentRoom, side: 1 }); } catch (_) {}
+        }
+      }
       return;
     }
+
     if (data.type === 'pong') {
       p2pLastPong = Date.now();
       if (typeof data.t === 'number') {
@@ -2542,6 +2581,17 @@ function setupP2PConnection(conn) {
       }
       return;
     }
+
+    if (data.type === 'request_sync') {
+      // Opponent requested immediate authoritative state sync
+      if (S) {
+        try {
+          conn.send({ type: 'sync', state: S, history: matchHistory, log: logEntries, room: currentRoom, side: 1 });
+        } catch (_) {}
+      }
+      return;
+    }
+
     if (data.type === 'leave') {
       banner("Opponent has left the match.", "#ff6e6e");
       clearP2PSession();
@@ -2580,16 +2630,23 @@ function setupP2PConnection(conn) {
 
   conn.on('close', () => {
     stopP2PHeartbeat();
-    if (mode === 'online' && S && !S.game_over) {
-      triggerP2PReconnect("Connection closed by peer");
+    if (onlinePlayerSide === 0) {
+      // Host stays open; merely wait for guest to reconnect
+      p2pConn = null;
+      banner('⚠️ Opponent disconnected. Waiting for reconnection…', '#ffce3a');
     } else {
-      banner('⚠️ Opponent left the room', '#ff6e6e');
+      // Guest triggers reconnect to host
+      if (mode === 'online' && S && !S.game_over) {
+        triggerP2PReconnect("Connection closed by peer");
+      } else {
+        banner('⚠️ Opponent left the room', '#ff6e6e');
+      }
     }
   });
 
   conn.on('error', (err) => {
     console.warn('P2P connection error:', err);
-    if (mode === 'online' && S && !S.game_over) {
+    if (onlinePlayerSide === 1 && mode === 'online' && S && !S.game_over) {
       triggerP2PReconnect("Connection error: " + err.message);
     }
   });
@@ -2628,6 +2685,8 @@ async function createRoom() {
         displayRoomCodeDigits(currentRoom);
         if (statusText) statusText.textContent = "Waiting for friend to join…";
         banner(`Room ${currentRoom} created! Share code or link with your friend.`, 'var(--gold)');
+        try { window.history.replaceState(null, '', '?room=' + currentRoom); } catch (_) {}
+        saveP2PSession();
       });
 
       p2pPeer.on('connection', (conn) => {
@@ -2687,10 +2746,25 @@ async function joinRoom(code) {
   if (joinStatusText) joinStatusText.textContent = `Connecting to room ${cleanCode}…`;
   if (joinPill) joinPill.className = "p2p-status-pill waiting";
 
-  // Initialize fresh local state for guest
-  S = window.MangalaEngine.initialState();
-  matchHistory = [JSON.parse(JSON.stringify(S))];
-  logEntries = [];
+  // Initialize fresh local state for guest or restore if session already exists for this room
+  const savedP2PSession = sessionStorage.getItem('mangala_p2p_active');
+  let restored = false;
+  if (savedP2PSession) {
+    try {
+      const sData = JSON.parse(savedP2PSession);
+      if (sData.room === cleanCode && sData.state) {
+        S = sData.state;
+        matchHistory = sData.matchHistory || [JSON.parse(JSON.stringify(S))];
+        logEntries = sData.logEntries || [];
+        restored = true;
+      }
+    } catch (_) {}
+  }
+  if (!restored) {
+    S = window.MangalaEngine.initialState();
+    matchHistory = [JSON.parse(JSON.stringify(S))];
+    logEntries = [];
+  }
   busy = false;
 
   if (typeof Peer !== 'undefined') {
@@ -2716,6 +2790,8 @@ async function joinRoom(code) {
         applyFlip();
         updateToolbarMenuBtn();
         updateOnlineBadges();
+        try { window.history.replaceState(null, '', '?room=' + cleanCode); } catch (_) {}
+        saveP2PSession();
       });
 
       p2pPeer.on('error', (err) => {
@@ -3829,19 +3905,25 @@ buildBoard();
 updateTurnText(null);
 syncMenuDOM();
 
+// Window Unload: cleanly disconnect PeerJS so room ID is freed immediately on signaling server
+window.addEventListener('beforeunload', () => {
+  if (p2pConn) { try { p2pConn.close(); } catch (_) {} }
+  if (p2pPeer) { try { p2pPeer.destroy(); } catch (_) {} }
+});
+
 // Auto-join room from URL query parameter (?room=ABCD) or restore active session
 const urlParams = new URLSearchParams(window.location.search);
 const roomParam = urlParams.get('room');
 const savedP2PSession = sessionStorage.getItem('mangala_p2p_active');
 
-if (roomParam) {
-  setTimeout(() => joinRoom(roomParam), 350);
-} else if (savedP2PSession) {
+let sessionRestored = false;
+if (savedP2PSession) {
   try {
     const sData = JSON.parse(savedP2PSession);
-    if (sData.room && (Date.now() - sData.ts < 15 * 60 * 1000) && sData.state && !sData.state.game_over) {
+    // If the saved session matches the room param (or no param given) and is recent (< 30 min)
+    if (sData.room && (!roomParam || roomParam.toUpperCase() === sData.room.toUpperCase()) && (Date.now() - sData.ts < 30 * 60 * 1000) && sData.state && !sData.state.game_over) {
       currentRoom = sData.room;
-      onlinePlayerSide = sData.side;
+      onlinePlayerSide = (typeof sData.side === 'number') ? sData.side : 0;
       S = sData.state;
       matchHistory = sData.matchHistory || [JSON.parse(JSON.stringify(S))];
       logEntries = sData.logEntries || [];
@@ -3855,9 +3937,14 @@ if (roomParam) {
       updateOnlineBadges();
       showP2PHUD(currentRoom);
       document.getElementById('menuOverlay').classList.add('hidden');
+      sessionRestored = true;
       setTimeout(() => triggerP2PReconnect("Resuming active session from sessionStorage"), 400);
     }
   } catch (_) {}
+}
+
+if (!sessionRestored && roomParam) {
+  setTimeout(() => joinRoom(roomParam), 350);
 }
 
 // ── Progressive Web App (Offline Service Worker) ───────────────────────────
