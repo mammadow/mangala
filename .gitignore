@@ -32,3 +32,10 @@ Thumbs.db
 .claude/
 .gemini/
 GEMINI.md
+
+# Local Reference Repositories & Search Index
+.references/
+corpora/
+xerj-data/
+.xerj/
+.xerj-code/

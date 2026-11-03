@@ -101,6 +101,29 @@ flowchart TD
 
 ---
 
+## 🔍 Reference-Guided Engineering (XERJ)
+
+To ensure game-theoretic algorithms match or exceed state-of-the-art open-source engines, this repository uses **[XERJ](https://xerj.org)** for semantic codebase indexing and reference coding across peer implementations:
+
+### 1. Workspace Indexing
+- The Turkish Mangala codebase (`src/`, `tests/`, `docs/`) is indexed under the `mangala` prefix.
+- Search definitions, call graphs, and symbol passages:
+  ```powershell
+  xerj search --prefix mangala "EvalWeights"
+  xerj def --prefix mangala "find_best_move"
+  ```
+
+### 2. Peer Reference Corpus (`mancala-reference`)
+- Open-source reference repositories (`CaganKiper/mancala-ai`, `cypreess/py-mancala`) are indexed in the `mancala-reference` corpus.
+- Query algorithmic approaches (move ordering, quiescence search, transposition tables, multiprocessing) before implementing new engine phases:
+  ```powershell
+  xerj code mancala-reference "transposition table move ordering"
+  xerj code mancala-reference "quiescence search alpha beta"
+  ```
+- *License Policy:* All search results display automated license attribution (`NONE-FOUND: adapt the APPROACH, do not copy the code`). We adapt algorithmic strategies while maintaining clean-room, zero-dependency implementations.
+
+---
+
 ## 🎯 Verification & Quality Contract
 - Zero external runtime dependencies.
 - 100% test pass rate across `pytest` (100+ tests), Node parity suite (629 cases), Ruff (0 warnings), and Mypy (0 errors).
