@@ -2034,6 +2034,7 @@ let lastMoveSeq = 0;
 let p2pPeer = null;
 let p2pConn = null;
 let p2pHeartbeat = null;
+let pendingSyncState = null;
 
 const PEER_CONFIG = {
   debug: 1,
@@ -2106,6 +2107,10 @@ function setupP2PConnection(conn) {
     if (data.type === 'ping') return;
 
     if (data.type === 'sync' && data.state) {
+      if (busy) {
+        pendingSyncState = data.state;
+        return;
+      }
       const isInitial = (matchHistory.length <= 1);
       S = data.state;
       if (matchHistory.length === 0) matchHistory = [JSON.parse(JSON.stringify(S))];
@@ -2116,9 +2121,6 @@ function setupP2PConnection(conn) {
     } else if (data.type === 'move' && typeof data.pit === 'number') {
       if (S && !S.game_over) {
         await playMove(data.pit);
-        if (data.state) {
-          S = data.state;
-        }
         pushHistory();
         render(S);
       }
@@ -2594,9 +2596,13 @@ async function playMove(pit) {
   clearHL();
   matchStats.moves++;
 
-  const player = S.current_player;
-  const before = S.pits.slice();
-  const { toSow, path, leaveBehind } = sowPath(S, pit);
+  const stateBefore = JSON.parse(JSON.stringify(S));
+  const player = stateBefore.current_player;
+  const before = stateBefore.pits.slice();
+  const { toSow, path, leaveBehind } = sowPath(stateBefore, pit);
+
+  // Compute authoritative outcome immediately against stateBefore
+  const { state: newState, events } = await api('/api/move', { state: stateBefore, pit });
 
   // Mark origin pit as active source (keep its stones visible until lifted)
   const work = before.slice();
@@ -2632,9 +2638,6 @@ async function playMove(pit) {
     pitEls[idx].classList.remove('sowing');
   }
   pitEls[pit].classList.remove('source');
-
-  // Compute authoritative outcome
-  const { state: newState, events } = await api('/api/move', { state: S, pit });
 
   // Handle Captures & Endgame Sweeps
   const drained = [];
@@ -2675,11 +2678,6 @@ async function playMove(pit) {
     sfx.extraTurn();
   }
 
-  S = newState;
-  matchHistory.push(JSON.parse(JSON.stringify(S)));
-  render(S);
-  for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], true);
-
   // Event Banner Display
   if (events.capture > 0 && events.extra_turn) {
     await banner(`✦ Captured ${events.capture}  +  ↺ Extra Turn!`, '#ffce3a');
@@ -2695,7 +2693,19 @@ async function playMove(pit) {
     clocks[player] += INCREMENTS[selectedTime] || 0;
     updateClockDisplay();
   }
+
+  // Apply buffered sync state if received during active animation
+  if (pendingSyncState) {
+    S = pendingSyncState;
+    pendingSyncState = null;
+  } else {
+    S = newState;
+  }
+
+  matchHistory.push(JSON.parse(JSON.stringify(S)));
   busy = false;
+  render(S);
+  for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], true);
 }
 
 // ── Turn Flow ──────────────────────────────────────────────────────────────
