@@ -39,8 +39,8 @@
 | **Tournament-Grade AI** | PVS with null-window scouting, 2-tier killer heuristic, history heuristic table, 25-stone mathematical win threshold, 180° opening book involution, and depth 64 endgame solver. |
 | **Real-Time Evaluation Bar** | Live win probability and stone evaluation gauge rendered continuously during matches. |
 | **Visual Board Themes** | 4 luxury hand-crafted visual palettes: *Classic Walnut*, *Carrara Marble*, *Obsidian Night*, and *Anatolian Terracotta*. |
-| **Tactical Puzzle Trainer** | 8 authentic curated Turkish Mangala tactical scenarios with live solution validation and hint guidance. |
-| **Interactive Playable Tutorial** | 5-step guided onboarding walkthrough with glowing pit cues explaining sowing, extra turns, even captures, empty-hole captures, and sweeps. |
+| **Tactical Puzzle Trainer** | 16 authentic curated Turkish Mangala tactical scenarios across 3 tiers (*Apprentice*, *Master*, *Grandmaster*) with multi-move combination handling, live validation, and progress tracking. |
+| **Interactive Playable Tutorial** | 7-step guided onboarding walkthrough directly on the game board covering 100% of authentic Turkish rules in one continuous session with pulsating pit highlights. |
 | **Competitive Clocks & Timers** | Tournament time controls: *Casual (Unlimited)*, *Bullet (1m+1s)*, *Blitz (3m+2s)*, and *Rapid (5m+3s)* with timeout flag-fall handling. |
 | **Post-Game Review & Accuracy** | Move-by-move evaluation analysis, centipawn loss calculation, and move classifications (*Best*, *Good*, *Inaccuracy*, *Mistake*, *Blunder*). |
 | **P2P Multiplayer & Room Codes** | Play with friends across local networks or the web using fast 4-letter room codes or serverless WebRTC data channels. |

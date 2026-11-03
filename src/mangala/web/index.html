@@ -1223,6 +1223,138 @@ header {
   from { transform: translate(-50%, -100%); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
 }
+
+/* ── Interactive In-Game HUD (Tutorial & Tactical Puzzles) ─── */
+.interactive-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  background: rgba(18, 12, 28, 0.94);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 207, 51, 0.4);
+  border-radius: 14px;
+  padding: 10px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 16px rgba(255, 207, 51, 0.15);
+  animation: slideDown 0.25s ease;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.interactive-hud.hidden { display: none !important; }
+.ihud-main {
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+}
+.ihud-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ihud-badge {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 207, 51, 0.2);
+  color: var(--gold);
+  border: 1px solid rgba(255, 207, 51, 0.4);
+}
+.ihud-badge.tier-apprentice {
+  background: rgba(72, 219, 140, 0.15);
+  color: #48db8c;
+  border-color: rgba(72, 219, 140, 0.4);
+}
+.ihud-badge.tier-master {
+  background: rgba(255, 207, 51, 0.2);
+  color: var(--gold);
+  border-color: rgba(255, 207, 51, 0.4);
+}
+.ihud-badge.tier-grandmaster {
+  background: rgba(180, 105, 255, 0.2);
+  color: #d199ff;
+  border-color: rgba(180, 105, 255, 0.4);
+}
+.ihud-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.ihud-progress {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.ihud-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.ihud-dot.active {
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
+  transform: scale(1.3);
+}
+.ihud-dot.done {
+  background: #48db8c;
+}
+.ihud-prompt {
+  font-size: 13px;
+  color: var(--gold);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.ihud-feedback {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(72, 219, 140, 0.15);
+  color: #48db8c;
+  border: 1px solid rgba(72, 219, 140, 0.3);
+  display: inline-block;
+  align-self: flex-start;
+}
+.ihud-feedback.hidden { display: none !important; }
+.ihud-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ihud-next-pulse {
+  animation: pulseGoldBtn 1.5s infinite alternate !important;
+}
+@keyframes pulseGoldBtn {
+  0% { transform: scale(1); box-shadow: 0 0 6px rgba(255,207,51,0.5); }
+  100% { transform: scale(1.05); box-shadow: 0 0 16px rgba(255,207,51,0.9); }
+}
+.pit.tut-target {
+  box-shadow: 0 0 0 4px #00e5ff, 0 0 25px rgba(0, 229, 255, 0.85) !important;
+  animation: tutTargetPulse 1.2s infinite alternate !important;
+}
+@keyframes tutTargetPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 3px #00e5ff, 0 0 16px rgba(0, 229, 255, 0.6); }
+  100% { transform: scale(1.06); box-shadow: 0 0 0 5px #ffcf33, 0 0 30px rgba(255, 207, 51, 0.9); }
+}
+.pit.tut-focus, .treas.tut-focus {
+  box-shadow: 0 0 0 3px #48db8c, 0 0 22px rgba(72, 219, 140, 0.8) !important;
+  animation: tutFocusGlow 1.5s infinite alternate !important;
+}
+@keyframes tutFocusGlow {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.3); }
+}
 </style>
 </head>
 <body>
@@ -1234,11 +1366,12 @@ header {
       <h1>Turkish Mangala</h1>
     </div>
     <div class="toolbar">
+      <button class="btn ghost" id="tutToolbarBtn" title="Interactive Tutorial — Master All Rules in One Go">🎓 Tutorial</button>
+      <button class="btn ghost" id="puzzleBtn" title="Tactical Puzzles Trainer (16 Scenarios)">🧩 Puzzles</button>
       <button class="btn ghost" id="soundBtn" title="Toggle sound effects">🔊 Sound</button>
       <button class="btn ghost" id="themeBtn" title="Switch board theme (Walnut / Marble / Obsidian / Terracotta)">🎨 Walnut</button>
-      <button class="btn ghost" id="puzzleBtn" title="Tactical Puzzles Trainer">🧩 Puzzles</button>
       <button class="btn ghost" id="reviewBtn" title="View Match Analysis & Accuracy">📊 Review</button>
-      <button class="btn ghost" id="rulesBtn" title="Rules & Interactive Tutorial">📖 Guide</button>
+      <button class="btn ghost" id="rulesBtn" title="Rules & Interactive Guide">📖 Guide</button>
       <button class="btn ghost" id="flipBtn" title="Rotate board 180° (F)">⟲ Flip</button>
       <button class="btn ghost" id="speedBtn" title="Animation speed">⚡ 1x</button>
       <button class="btn ghost" id="menuBtn">⚙️ Modes</button>
@@ -1265,6 +1398,27 @@ header {
     <div class="p2p-live-dot warn" style="animation: pulse-dot 1s infinite;"></div>
     <span id="p2pReconnectText">Connection interrupted. Reconnecting (attempt 1/5)…</span>
     <button class="btn ghost" id="p2pCancelReconnectBtn" style="font-size:11px;padding:2px 8px;color:#ff6e6e;">Cancel</button>
+  </div>
+
+  <!-- In-Game Interactive Mode Bar (Tutorial & Tactical Puzzles) -->
+  <div class="interactive-hud hidden" id="interactiveHUD">
+    <div class="ihud-main">
+      <div class="ihud-header">
+        <span class="ihud-badge" id="ihudBadge">🎓 Tutorial</span>
+        <span class="ihud-title" id="ihudTitle">Step 1: The Sowing Rule</span>
+        <div class="ihud-progress" id="ihudProgress"></div>
+      </div>
+      <div class="ihud-prompt" id="ihudPrompt">
+        Pick up stones from Pit 4: 1 stone stays behind, 3 advance counterclockwise!
+      </div>
+      <div class="ihud-feedback hidden" id="ihudFeedback"></div>
+    </div>
+    <div class="ihud-actions">
+      <button class="btn ghost" id="ihudHintBtn" title="Show helpful hint">💡 Hint</button>
+      <button class="btn ghost" id="ihudResetBtn" title="Reset this scenario">↺ Reset</button>
+      <button class="btn" id="ihudNextBtn" title="Advance to next step">Next ▶</button>
+      <button class="btn ghost" id="ihudExitBtn" title="Exit to game modes">✕ Exit</button>
+    </div>
   </div>
 
   <div class="scorebar">
@@ -1363,6 +1517,18 @@ header {
         <div class="mcard-icon">👤 vs 👤</div>
         <div class="mcard-title">2 Players</div>
         <div class="mcard-desc">Local hotseat play</div>
+      </button>
+      <button class="mcard" data-mode="tutorial">
+        <div class="mcard-badge">✓ Selected</div>
+        <div class="mcard-icon">🎓</div>
+        <div class="mcard-title">Tutorial</div>
+        <div class="mcard-desc">Learn all rules in one go</div>
+      </button>
+      <button class="mcard" data-mode="puzzle">
+        <div class="mcard-badge">✓ Selected</div>
+        <div class="mcard-icon">🧩</div>
+        <div class="mcard-title">Puzzles</div>
+        <div class="mcard-desc">16 tactical scenarios</div>
       </button>
       <button class="mcard" data-mode="ava">
         <div class="mcard-badge">✓ Selected</div>
@@ -1511,6 +1677,16 @@ header {
 
     <!-- Static Rules Content -->
     <div class="rules-content" id="rulesTextContent">
+      <div class="tutorial-hero-card" style="background: linear-gradient(135deg, rgba(255, 207, 51, 0.16), rgba(72, 219, 140, 0.16)); border: 1.5px solid var(--gold); border-radius: 12px; padding: 14px; margin-bottom: 14px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.3);">
+        <h4 style="color: var(--gold); font-size: 16px; margin-bottom: 4px; font-weight: 800;">🎓 Interactive Walkthrough</h4>
+        <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.4;">
+          Learn all 5 authentic Turkish Mangala rules in one guided, interactive board session (takes 2 minutes)!
+        </p>
+        <button class="btn" id="startFullTutorialHeroBtn" style="width: 100%; padding: 10px; font-weight: 700; font-size: 13px;">
+          🚀 Start Tutorial (All Rules in One Go)
+        </button>
+      </div>
+
       <div class="rule-card">
         <h3>🌰 1. Sowing Rule</h3>
         <p>Pick up all stones from one of your pits. If it has <strong>&gt; 1 stone</strong>, leave <strong>1 stone behind</strong> and sow the rest counterclockwise one by one. If it has <strong>only 1 stone</strong>, pick it up and place it in the next pit. <em>The opponent's treasury is always skipped.</em></p>
@@ -1536,7 +1712,7 @@ header {
 
     <!-- Interactive Tutorial Step Content -->
     <div id="tutorialContent" style="display:none; text-align: left;">
-      <div class="rule-card" style="margin-bottom: 12px;">
+      <div class="rule-card" style="margin-bottom: 14px;">
         <h3 id="tutStepTitle">Step 1: The Sowing Rule</h3>
         <p id="tutStepDesc" style="color:var(--text-main);font-size:13px;line-height:1.5;margin-top:6px;">
           Learn how to distribute stones counterclockwise, leaving 1 stone in the pit.
@@ -1547,7 +1723,7 @@ header {
       </div>
       <div style="display:flex;gap:10px;justify-content:space-between;">
         <button class="btn ghost" id="tutPrevBtn">◀ Previous</button>
-        <button class="btn" id="tutPlayStepBtn">Try on Board</button>
+        <button class="btn" id="tutPlayStepBtn">🚀 Start Walkthrough on Board</button>
         <button class="btn ghost" id="tutNextBtn">Next ▶</button>
       </div>
     </div>
@@ -1608,17 +1784,35 @@ header {
 
 <!-- Tactical Puzzles Overlay -->
 <div class="overlay hidden" id="puzzleOverlay">
-  <div class="panel" style="max-width: 520px;">
+  <div class="panel" style="max-width: 540px;">
     <button class="modal-close-btn" id="closePuzzleBtn" title="Close">✕</button>
     <h2>🧩 Tactical Puzzles</h2>
-    <p class="sub" id="puzzleSubtitle">Sharpen your calculation with authentic tactical scenarios</p>
+    <p class="sub" id="puzzleSubtitle">Sharpen your calculation across 16 authentic scenarios</p>
+
+    <div class="pill-group" style="margin-bottom: 10px;" id="puzzleTierTabs">
+      <button class="pill-btn active" data-tier="all">All (16)</button>
+      <button class="pill-btn" data-tier="apprentice">🟢 Apprentice (5)</button>
+      <button class="pill-btn" data-tier="master">🟡 Master (5)</button>
+      <button class="pill-btn" data-tier="grandmaster">🟣 Grandmaster (6)</button>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:11px;color:var(--text-dim);">
+      <span>Mastery Progress</span>
+      <span id="puzzleProgressText">0 / 16 solved</span>
+    </div>
+    <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-bottom: 12px;">
+      <div id="puzzleProgressFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #48db8c, #ffcf33); transition: width 0.3s ease;"></div>
+    </div>
 
     <div style="display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap" id="puzzlePills">
-      <!-- 8 numbered puzzle pills generated by JS -->
+      <!-- 16 numbered puzzle pills generated by JS -->
     </div>
 
     <div class="rule-card" style="margin-bottom: 16px; text-align: left;">
-      <h3 id="puzzleTitle">Puzzle 1: Extra-Turn Ladder</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <h3 id="puzzleTitle">Puzzle 1: Extra-Turn Ladder</h3>
+        <span class="ihud-badge tier-apprentice" id="puzzleTierBadge">Apprentice</span>
+      </div>
       <p id="puzzlePrompt" style="margin-top: 6px; color: var(--text-main); font-size: 13px; line-height: 1.5;">
         Find the move for Player 1 that secures a continuous treasury chain.
       </p>
@@ -1631,6 +1825,42 @@ header {
       <button class="btn ghost" id="puzzleHintBtn">💡 Hint</button>
       <button class="btn ghost" id="puzzleResetBtn">↺ Reset</button>
       <button class="btn" id="puzzlePlayBtn">Load on Board</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tutorial Completion Modal -->
+<div class="overlay hidden" id="tutCompleteOverlay">
+  <div class="panel" style="max-width: 480px; text-align: center;">
+    <button class="modal-close-btn" id="closeTutCompleteBtn" title="Close">✕</button>
+    <div style="font-size: 48px; margin-bottom: 8px;">🎓🏆</div>
+    <h2>Mangala Master!</h2>
+    <p class="sub" style="font-size: 14px; color: var(--gold); margin-bottom: 14px;">
+      You've mastered all 5 authentic Turkish Mangala rules!
+    </p>
+    <div class="rules-content" style="text-align: left; margin-bottom: 16px; font-size: 13px;">
+      <div class="rule-card" style="padding: 10px 12px; line-height: 1.6;">
+        <div>🌰 <strong>Sowing</strong>: Leave 1 stone behind, sow counterclockwise.</div>
+        <div>💎 <strong>Single Stone</strong>: Moves to adjacent pit with 0 left behind.</div>
+        <div>🚫 <strong>Opponent Hazine</strong>: Always skipped during sowing.</div>
+        <div>⚡ <strong>Extra Turn</strong>: Last stone in your Hazine earns bonus move.</div>
+        <div>🎯 <strong>Even Capture</strong>: Last stone making opponent pit even takes all.</div>
+        <div>🔄 <strong>Empty Hole</strong>: Last stone in own empty pit snatches opposite stones.</div>
+        <div>🏁 <strong>Endgame Sweep</strong>: First to empty takes all remaining stones!</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px; flex-direction: column;">
+      <button class="btn" id="tutPlayAIBtn" style="padding: 12px; font-size: 14px; font-weight: 700;">
+        🤖 Challenge the AI
+      </button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn ghost" id="tutPlayPuzzlesBtn" style="flex: 1;">
+          🧩 Solve Tactical Puzzles
+        </button>
+        <button class="btn ghost" id="tutPlayOnlineBtn" style="flex: 1;">
+          🌐 Play Online Friend
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -2071,83 +2301,221 @@ function openReview() {
   reviewOverlay.classList.remove('hidden');
 }
 
-// ── Tactical Puzzle Trainer ────────────────────────────────────────────────
+// ── Tactical Puzzle Trainer & Interactive Rules Tutorial ──────────────────
 const PUZZLES = [
+  // ── Tier 1: Apprentice (Puzzles 1–5) ─────────────────────────
   {
     id: 1,
-    title: "Extra-Turn Treasury Ladder",
-    prompt: "Player 1 to move: Find the pit that lands exactly in your Hazine and earns an immediate bonus turn.",
+    tier: 'apprentice',
+    title: "Treasury Step",
+    prompt: "Player 1 to move: Find the pit that lands directly in your Hazine for an immediate extra turn.",
     pits: [2, 4, 3, 4, 4, 1, 6, 4, 4, 4, 4, 4, 4, 0],
     player: 0,
     solution: 5,
-    hint: "Pit 6 (index 5) has 1 stone and sits right next to your Hazine!"
+    hint: "Pit 6 (index 5) has 1 stone right beside your Hazine!",
+    explanation: "🎯 Pit 6 with 1 stone dropped directly into your Hazine, granting an immediate bonus turn!"
   },
   {
     id: 2,
+    tier: 'apprentice',
     title: "Even Capture Snipe",
-    prompt: "Player 1 to move: Opponent's pit 7 has 3 stones. Sow into it to make it 4 and capture all stones!",
+    prompt: "Player 1 to move: Opponent's Pit 7 has 3 stones (odd). Turn it even and capture all stones!",
     pits: [4, 4, 4, 4, 4, 2, 0, 3, 4, 4, 4, 4, 4, 3],
     player: 0,
     solution: 5,
-    hint: "Pit 6 (index 5) has 2 stones. It will deposit 1 in Hazine and 1 into pit 7!"
+    hint: "Pit 6 has 2 stones: 1 lands in Hazine, and 1 reaches Pit 7 making it 4 (even)!",
+    explanation: "🎯 Pit 6 deposited 1 in Hazine and 1 in Pit 7, turning 3 into 4 (even) and capturing all 4 stones!"
   },
   {
     id: 3,
+    tier: 'apprentice',
     title: "Empty-Hole Opposite Sweep",
-    prompt: "Player 1 to move: Your pit 2 is empty, while opponent pit 10 holds 6 stones. Execute an empty-hole capture!",
+    prompt: "Player 1 to move: Your Pit 3 is empty, while opponent Pit 10 has 6 stones. Execute an empty-hole capture!",
     pits: [4, 2, 0, 4, 4, 4, 2, 4, 4, 4, 6, 4, 4, 2],
     player: 0,
     solution: 1,
-    hint: "Pit 2 (index 1) has 2 stones. Sowing leaves 1 and lands the final stone in empty pit 3 (index 2)!"
+    hint: "Sowing from Pit 2 (index 1) leaves 1 stone and drops the last stone in empty Pit 3!",
+    explanation: "🎯 Sowing from Pit 2 landed in empty Pit 3, capturing your stone plus all 6 opposite stones from Pit 10!"
   },
   {
     id: 4,
-    title: "The 25th Stone Victory",
-    prompt: "Player 1 to move: You hold 23 stones in Hazine. Find the move that immediately secures 25+ stones for victory!",
+    tier: 'apprentice',
+    title: "The 25th-Stone Threshold",
+    prompt: "Player 1 to move: You hold 23 stones in Hazine. Find the move that immediately secures the 25-stone victory threshold!",
     pits: [0, 0, 0, 0, 2, 0, 23, 3, 4, 4, 4, 4, 4, 0],
     player: 0,
     solution: 4,
-    hint: "Sowing from pit 5 (index 4) reaches Hazine or creates a capture securing the 25-stone threshold."
+    hint: "Pit 5 (index 4) has 2 stones. Its last stone lands in Hazine, bringing your total to 24 with a bonus turn!",
+    explanation: "🎯 Pit 5 earned an extra turn and brought your score to the winning 25-stone threshold!"
   },
   {
     id: 5,
-    title: "Opponent Starvation",
-    prompt: "Player 1 to move: Deny the opponent any capture on their upcoming turn.",
-    pits: [4, 4, 4, 4, 1, 4, 3, 1, 4, 4, 4, 4, 4, 2],
+    tier: 'apprentice',
+    title: "Single Stone Advance",
+    prompt: "Player 1 to move: Your Pit 1 has 1 stone. Pick it up to escape capture and advance to Pit 2.",
+    pits: [1, 4, 4, 4, 4, 4, 5, 2, 4, 4, 4, 4, 4, 5],
     player: 0,
-    solution: 4,
-    hint: "Advance isolated single stones before the opponent can target them."
+    solution: 0,
+    hint: "Pit 1 has 1 stone. Moving it leaves nothing behind and secures the stone in Pit 2.",
+    explanation: "🎯 Pit 1 advanced cleanly, preserving your formation and escaping opponent pressure!"
   },
+
+  // ── Tier 2: Master (Puzzles 6–10) ───────────────────────────
   {
     id: 6,
+    tier: 'master',
     title: "Double Threat Fork",
-    prompt: "Player 1 to move: Create multiple simultaneous capture threats across the opponent's row.",
+    prompt: "Player 1 to move: Sow deep across the opponent's row to create multiple simultaneous capture threats.",
     pits: [4, 4, 5, 4, 4, 4, 1, 3, 5, 4, 4, 4, 4, 1],
     player: 0,
     solution: 2,
-    hint: "Sow deep into enemy territory to make multiple pits even."
+    hint: "Sowing from Pit 3 (index 2) reaches deep into enemy territory, creating unavoidable capturing threats.",
+    explanation: "🎯 Sowing from Pit 3 penetrated deep across the board, setting up decisive captures on your next turn!"
   },
   {
     id: 7,
+    tier: 'master',
     title: "Hazine Rapid Re-Entry",
-    prompt: "Player 1 to move: String together multiple consecutive extra turns.",
+    prompt: "Player 1 to move: Start a multi-step ladder sequence chaining consecutive bonus turns.",
     pits: [1, 2, 3, 4, 5, 1, 2, 4, 4, 4, 4, 4, 4, 1],
     player: 0,
     solution: 5,
-    hint: "Start with pit 6 (index 5) right next to your treasury."
+    hint: "Always initiate the ladder from the pit closest to your Hazine!",
+    explanation: "🎯 Pit 6 landed in Hazine, keeping the turn active so you can cascade into the next ladder rung!"
   },
   {
     id: 8,
-    title: "The Grandmaster Sweep",
-    prompt: "Player 1 to move: Clear your last remaining pits to trigger the endgame sweep and collect all remaining stones!",
+    tier: 'master',
+    title: "Cross-Board Even Snipe",
+    prompt: "Player 1 to move: Opponent's Pit 9 has 5 stones. Find the pit whose long sowing lands in Pit 9 to make it 6!",
+    pits: [4, 4, 4, 5, 2, 1, 3, 4, 4, 5, 4, 4, 4, 2],
+    player: 0,
+    solution: 3,
+    hint: "Pit 4 (index 3) has 5 stones. Sowing deposits in pits 4, 5, Hazine, 7, and lands squarely in Pit 9!",
+    explanation: "🎯 Pit 4 sowed 4 stones across the board, making Pit 9 count 6 (even) and capturing all 6 stones!"
+  },
+  {
+    id: 9,
+    tier: 'master',
+    title: "Parity Shield Defense",
+    prompt: "Player 1 to move: Your Pit 5 has 3 stones (odd, vulnerable). Defend it into an uncapturable even pit!",
+    pits: [4, 4, 3, 4, 3, 1, 4, 4, 4, 4, 4, 4, 4, 2],
+    player: 0,
+    solution: 5,
+    hint: "Take the single stone from Pit 6 into Hazine first, maintaining the initiative!",
+    explanation: "🎯 By utilizing the extra turn on Pit 6, you maintain tempo and neutralize the opponent's capture threat!"
+  },
+  {
+    id: 10,
+    tier: 'master',
+    title: "The Treasury Trapdoor",
+    prompt: "Player 1 to move: Execute an extra turn that sets up an immediate empty-hole ambush.",
+    pits: [3, 2, 0, 4, 4, 1, 8, 4, 4, 4, 7, 4, 4, 3],
+    player: 0,
+    solution: 5,
+    followUp: {
+      solution: 1,
+      prompt: "⚡ Bonus turn earned! Now land in your empty Pit 3 to snatch Pit 10's 7 stones!"
+    },
+    hint: "Step into Hazine first with Pit 6 (index 5) to claim a free move!",
+    explanation: "🎯 Pit 6 landed in Hazine for an extra turn, followed by Pit 2 capturing 8 stones from Pit 10!"
+  },
+
+  // ── Tier 3: Grandmaster (Puzzles 11–16) ──────────────────────
+  {
+    id: 11,
+    tier: 'grandmaster',
+    title: "Kuyu Saklama (Full-Board Loop)",
+    prompt: "Player 1 to move: You've stored 10 stones in Pit 1. Sow the full board, skip opponent Hazine, and dominate!",
+    pits: [10, 2, 2, 2, 2, 2, 5, 3, 3, 3, 3, 3, 3, 3],
+    player: 0,
+    solution: 0,
+    hint: "Sow your deep fortress reserve from Pit 1 (index 0). It will loop through both rows and return home!",
+    explanation: "🎯 The 10-stone fortress reserve looped around the board, skipping P2 Hazine and crushing the opponent!"
+  },
+  {
+    id: 12,
+    tier: 'grandmaster',
+    title: "Starvation Squeeze",
+    prompt: "Player 1 to move: Restrict the opponent to non-capturing quiet moves, forcing an inevitable positional collapse.",
+    pits: [4, 4, 4, 4, 1, 4, 3, 1, 4, 4, 4, 4, 4, 2],
+    player: 0,
+    solution: 4,
+    hint: "Advance isolated single stones before the opponent can target them.",
+    explanation: "🎯 Squeezed! Opponent has zero capturing responses and must surrender stones on their turn!"
+  },
+  {
+    id: 13,
+    tier: 'grandmaster',
+    title: "Double-Turn Decisive Strike",
+    prompt: "Player 1 to move: Execute a two-stage tactical combination to sweep the board.",
+    pits: [0, 2, 0, 4, 4, 1, 14, 4, 4, 4, 8, 4, 4, 2],
+    player: 0,
+    solution: 5,
+    followUp: {
+      solution: 1,
+      prompt: "⚡ Extra turn claimed! Now trigger the empty-hole capture on Pit 10!"
+    },
+    hint: "Take the extra turn on Pit 6 first!",
+    explanation: "🎯 Extra turn taken on Pit 6, leaving you in complete command to sweep Pit 10 opposite Pit 3!"
+  },
+  {
+    id: 14,
+    tier: 'grandmaster',
+    title: "The 25th-Stone Decisive Heist",
+    prompt: "Player 1 to move: With 21 stones in Hazine, find the move that triggers an even capture to cross 25 stones immediately.",
+    pits: [2, 3, 4, 2, 3, 4, 21, 3, 4, 4, 4, 4, 4, 3],
+    player: 0,
+    solution: 5,
+    hint: "Pit 6 has 4 stones. Sowing deposits in Hazine (22), and pits 7, 8, and 9 (making Pit 9 even with 4 stones)!",
+    explanation: "🎯 Pit 6 landed in Pit 9, capturing 4 stones plus 1 in Hazine to reach 26 stones—instant mathematical victory!"
+  },
+  {
+    id: 15,
+    tier: 'grandmaster',
+    title: "The 8-Stone Ambush",
+    prompt: "Player 1 to move: Opponent's Pit 9 has 8 stones. Land in your empty Pit 4 to snatch all 8 stones!",
+    pits: [4, 4, 2, 0, 4, 4, 6, 2, 2, 8, 2, 2, 2, 4],
+    player: 0,
+    solution: 2,
+    hint: "Pit 3 (index 2) has 2 stones. It deposits 1 and lands the final stone in empty Pit 4 opposite Pit 9!",
+    explanation: "🎯 Pit 3 landed in empty Pit 4, capturing your stone plus all 8 stones in Pit 9 for a 9-stone haul!"
+  },
+  {
+    id: 16,
+    tier: 'grandmaster',
+    title: "The Grandmaster Sweep (Kuyu Kurutma)",
+    prompt: "Player 1 to move: Clear your last remaining pit to trigger the Endgame Sweep and claim all remaining opponent stones!",
     pits: [0, 0, 0, 0, 0, 1, 18, 5, 5, 5, 5, 4, 4, 1],
     player: 0,
     solution: 5,
-    hint: "Emptying your entire row triggers the rule where you claim all opponent stones!"
+    hint: "Emptying your entire row triggers the Turkish rule where you claim all opponent stones on the board!",
+    explanation: "🎯 Pit 6 emptied your row! Under Turkish rules, you swept all 28 remaining opponent stones for a total blowout victory!"
   }
 ];
 
+// Solved Puzzles Persistence
+function getSolvedPuzzles() {
+  try {
+    const raw = localStorage.getItem('mangala_puzzles_solved');
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function savePuzzleSolved(id) {
+  try {
+    const solved = getSolvedPuzzles();
+    solved.add(id);
+    localStorage.setItem('mangala_puzzles_solved', JSON.stringify([...solved]));
+    renderPuzzlePills();
+  } catch (_) {}
+}
+
 let curPuzzleIdx = 0;
+let puzzleTierFilter = 'all';
+let puzzleFollowUpStep = false;
 
 function openPuzzles() {
   renderPuzzlePills();
@@ -2159,11 +2527,26 @@ function renderPuzzlePills() {
   const box = document.getElementById('puzzlePills');
   if (!box) return;
   box.innerHTML = '';
+
+  const solved = getSolvedPuzzles();
+  const totalSolved = solved.size;
+  const pct = Math.round((totalSolved / PUZZLES.length) * 100);
+
+  const progTxt = document.getElementById('puzzleProgressText');
+  const progFill = document.getElementById('puzzleProgressFill');
+  if (progTxt) progTxt.textContent = `${totalSolved} / ${PUZZLES.length} solved (${pct}%)`;
+  if (progFill) progFill.style.width = pct + '%';
+
   PUZZLES.forEach((p, idx) => {
+    if (puzzleTierFilter !== 'all' && p.tier !== puzzleTierFilter) return;
+
     const btn = document.createElement('button');
-    btn.className = 'pill-btn' + (idx === curPuzzleIdx ? ' active' : '');
-    btn.textContent = `#${p.id}`;
-    btn.style.minWidth = '42px';
+    const isDone = solved.has(p.id);
+    btn.className = 'pill-btn' + (idx === curPuzzleIdx ? ' active' : '') + (isDone ? ' done' : '');
+    btn.textContent = (isDone ? '✓ ' : '') + `#${p.id}`;
+    btn.title = `${p.title} (${p.tier})`;
+    btn.style.minWidth = '46px';
+    btn.style.fontSize = '12px';
     btn.addEventListener('click', () => selectPuzzle(idx));
     box.appendChild(btn);
   });
@@ -2171,15 +2554,33 @@ function renderPuzzlePills() {
 
 function selectPuzzle(idx) {
   curPuzzleIdx = idx;
+  puzzleFollowUpStep = false;
   const p = PUZZLES[idx];
-  document.getElementById('puzzleTitle').textContent = `Puzzle ${p.id}: ${p.title}`;
-  document.getElementById('puzzlePrompt').textContent = p.prompt;
-  document.getElementById('puzzleStatus').textContent = "👉 Your turn: click the best pit!";
-  document.getElementById('puzzleStatus').style.color = "var(--gold)";
+  const tierBadges = {
+    apprentice: '<span class="ihud-badge tier-apprentice">🟢 Apprentice</span>',
+    master: '<span class="ihud-badge tier-master">🟡 Master</span>',
+    grandmaster: '<span class="ihud-badge tier-grandmaster">🟣 Grandmaster</span>'
+  };
+
+  const titleEl = document.getElementById('puzzleTitle');
+  const badgeEl = document.getElementById('puzzleTierBadge');
+  const promptEl = document.getElementById('puzzlePrompt');
+  const statusEl = document.getElementById('puzzleStatus');
+
+  if (titleEl) titleEl.textContent = `Puzzle ${p.id}: ${p.title}`;
+  if (badgeEl) badgeEl.outerHTML = tierBadges[p.tier] || '';
+  if (promptEl) promptEl.textContent = p.prompt;
+  if (statusEl) {
+    const isSolved = getSolvedPuzzles().has(p.id);
+    statusEl.textContent = isSolved ? "✅ Solved! Click 'Load on Board' to replay." : "👉 Your turn: click the best pit!";
+    statusEl.style.color = isSolved ? "#48db8c" : "var(--gold)";
+  }
   renderPuzzlePills();
 }
 
-function loadPuzzleOnBoard() {
+function loadPuzzleOnBoard(idx = curPuzzleIdx) {
+  curPuzzleIdx = idx;
+  puzzleFollowUpStep = false;
   const p = PUZZLES[curPuzzleIdx];
   mode = 'puzzle';
   players = ['human', 'ai'];
@@ -2194,64 +2595,175 @@ function loadPuzzleOnBoard() {
   applyFlip();
   updateToolbarMenuBtn();
   document.getElementById('puzzleOverlay').classList.add('hidden');
+  document.getElementById('menuOverlay').classList.add('hidden');
   matchHistory = [JSON.parse(JSON.stringify(S))];
+
+  showPuzzleHUD(p);
   render(S);
   banner(`🧩 Loaded Puzzle ${p.id}: ${p.title}`, 'var(--gold)');
 }
 
-// ── Interactive Rules Tutorial ─────────────────────────────────────────────
+function showPuzzleHUD(p) {
+  const hud = document.getElementById('interactiveHUD');
+  if (!hud) return;
+  hud.classList.remove('hidden');
+
+  const badge = document.getElementById('ihudBadge');
+  const title = document.getElementById('ihudTitle');
+  const prompt = document.getElementById('ihudPrompt');
+  const feedback = document.getElementById('ihudFeedback');
+  const nextBtn = document.getElementById('ihudNextBtn');
+
+  if (badge) {
+    badge.className = `ihud-badge tier-${p.tier}`;
+    badge.textContent = `🧩 ${p.tier.toUpperCase()}`;
+  }
+  if (title) title.textContent = `Puzzle ${p.id}: ${p.title}`;
+  if (prompt) prompt.textContent = p.prompt;
+  if (feedback) feedback.classList.add('hidden');
+  if (nextBtn) {
+    nextBtn.textContent = 'Next Puzzle ▶';
+    nextBtn.classList.remove('ihud-next-pulse');
+  }
+
+  // Render puzzle progress dots
+  const progBox = document.getElementById('ihudProgress');
+  if (progBox) {
+    progBox.innerHTML = '';
+    const solved = getSolvedPuzzles();
+    PUZZLES.forEach((pz, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'ihud-dot' + (i === curPuzzleIdx ? ' active' : '') + (solved.has(pz.id) ? ' done' : '');
+      dot.title = `Puzzle ${pz.id}: ${pz.title}`;
+      dot.addEventListener('click', () => loadPuzzleOnBoard(i));
+      progBox.appendChild(dot);
+    });
+  }
+}
+
+function showPuzzleHint() {
+  const p = PUZZLES[curPuzzleIdx];
+  const feedback = document.getElementById('ihudFeedback');
+  if (feedback) {
+    feedback.textContent = '💡 Hint: ' + p.hint;
+    feedback.classList.remove('hidden');
+  }
+  banner('💡 Hint: ' + p.hint, 'var(--gold)');
+}
+
+function resetCurrentPuzzle() {
+  loadPuzzleOnBoard(curPuzzleIdx);
+}
+
+function nextPuzzle() {
+  const nextIdx = (curPuzzleIdx + 1) % PUZZLES.length;
+  loadPuzzleOnBoard(nextIdx);
+}
+
+function onPuzzleMoveCompleted(curP) {
+  if (curP.followUp && !puzzleFollowUpStep) {
+    puzzleFollowUpStep = true;
+    S.legal = [curP.followUp.solution];
+    const prompt = document.getElementById('ihudPrompt');
+    if (prompt) prompt.textContent = curP.followUp.prompt;
+    banner('⚡ Extra Turn! Find the follow-up strike!', 'var(--gold)');
+    return;
+  }
+
+  savePuzzleSolved(curP.id);
+  sfx.win();
+  const feedback = document.getElementById('ihudFeedback');
+  if (feedback) {
+    feedback.textContent = curP.explanation;
+    feedback.classList.remove('hidden');
+  }
+  const nextBtn = document.getElementById('ihudNextBtn');
+  if (nextBtn) nextBtn.classList.add('ihud-next-pulse');
+  banner('🎉 Brilliant! Tactical Solution Discovered!', '#48db8c');
+}
+
+// ── Interactive Rules Tutorial ("All Rules in One Go") ─────────────────────
 const TUTORIAL_STEPS = [
   {
-    title: "Step 1: Sowing Rule",
-    desc: "When a pit has > 1 stone, 1 stone stays behind, and the rest sow counterclockwise one-by-one into consecutive pits.",
-    instruction: "👉 Click pit 4 (index 3) to see 1 stone remain behind while 3 stones advance!",
+    step: 1,
+    title: "1. The Sowing Rule (>1 Stone)",
+    desc: "Pick up all stones from one of your pits. Leave 1 stone behind, and distribute the rest counterclockwise one-by-one.",
+    instruction: "👉 Click glowing Pit 4 (4 stones): watch 1 stone remain behind while 3 stones advance!",
     pits: [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0],
-    targetPit: 3
+    targetPit: 3,
+    focusPit: 6,
+    explanation: "🌰 Rule 1 Mastered: 1 stone stayed in Pit 4, and 3 stones advanced counterclockwise one-by-one!"
   },
   {
-    title: "Step 2: Extra Turn (Hazine)",
-    desc: "If your last sown stone lands inside your own treasury (Hazine), you earn an immediate bonus turn!",
-    instruction: "👉 Click pit 6 (index 5) — its single stone lands directly in your Hazine!",
+    step: 2,
+    title: "2. Single-Stone Pickup",
+    desc: "If a pit contains exactly 1 stone, you pick it up and place it in the next adjacent pit. Nothing stays behind!",
+    instruction: "👉 Click Pit 2 (1 stone): it moves directly into Pit 3 without leaving any stone behind!",
+    pits: [4, 1, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0],
+    targetPit: 1,
+    focusPit: 2,
+    explanation: "💎 Rule 1B Mastered: A single stone hops directly to the next pit, leaving 0 behind!"
+  },
+  {
+    step: 3,
+    title: "3. Skipping Opponent's Hazine",
+    desc: "During sowing, you deposit stones in your own Hazine, but you ALWAYS skip the opponent's treasury!",
+    instruction: "👉 Click Pit 6 with 8 stones: watch them sow past Player 2's pits, skip P2 Hazine, and land on your side!",
+    pits: [0, 4, 4, 4, 4, 8, 0, 4, 4, 4, 4, 4, 4, 0],
+    targetPit: 5,
+    focusPit: 13,
+    explanation: "🚫 Rule 1C Mastered: Opponent's treasury was completely skipped, returning stones safely to your side!"
+  },
+  {
+    step: 4,
+    title: "4. The Extra Turn (Hazine)",
+    desc: "If your LAST sown stone lands in your own treasury (Hazine), you earn an immediate bonus turn!",
+    instruction: "👉 Click Pit 6 (1 stone): it drops directly into your Hazine to earn an immediate extra turn!",
     pits: [4, 4, 4, 4, 4, 1, 0, 4, 4, 4, 4, 4, 4, 0],
-    targetPit: 5
+    targetPit: 5,
+    focusPit: 6,
+    explanation: "⚡ Rule 2 Mastered: Last stone landed in your Hazine! You earned an immediate bonus move!"
   },
   {
-    title: "Step 3: Even Capture",
-    desc: "If your last stone lands in an opponent pit and makes its count EVEN (2, 4, 6...), you capture ALL stones from that pit into your Hazine!",
-    instruction: "👉 Click pit 6 (index 5) — its 2 stones deposit into Hazine and then pit 7, making it 4 (even capture)!",
+    step: 5,
+    title: "5. Even Capture (Çift Kuralı)",
+    desc: "If your last stone lands on the OPPONENT's side and makes that pit count EVEN (2, 4, 6, 8...), you capture all stones in that pit!",
+    instruction: "👉 Click Pit 6 (2 stones): it drops 1 into Hazine and lands in opponent Pit 7, making it 4 (even capture)!",
     pits: [4, 4, 4, 4, 4, 2, 0, 3, 4, 4, 4, 4, 4, 0],
-    targetPit: 5
+    targetPit: 5,
+    focusPit: 7,
+    explanation: "🎯 Rule 3 Mastered: Making an opponent's pit count EVEN captures all stones into your Hazine!"
   },
   {
-    title: "Step 4: Empty-Hole Capture",
-    desc: "If your last stone lands in your own previously empty pit (now 1 stone), you capture your stone PLUS all stones from the directly opposite opponent pit!",
-    instruction: "👉 Click pit 2 (index 1) with 2 stones to land in empty pit 3 and snatch pit 10's 5 stones!",
-    pits: [4, 2, 0, 4, 4, 4, 0, 4, 4, 4, 5, 4, 4, 0],
-    targetPit: 1
+    step: 6,
+    title: "6. Empty-Hole Capture (Boş Kuyu)",
+    desc: "If your last stone lands in your own EMPTY pit, you capture your 1 stone PLUS all stones in the opposite opponent pit!",
+    instruction: "👉 Click Pit 2 (2 stones): land in empty Pit 3 and snatch all 6 stones from opposite Pit 10!",
+    pits: [4, 2, 0, 4, 4, 4, 0, 4, 4, 4, 6, 4, 4, 0],
+    targetPit: 1,
+    focusPit: 10,
+    explanation: "🔄 Rule 4 Mastered: Landed in your empty pit! Snatched that stone PLUS all 6 opposite stones!"
   },
   {
-    title: "Step 5: Endgame Sweep",
-    desc: "When either player empties all 6 of their pits, the game ends immediately. That player sweeps ALL remaining opponent stones!",
-    instruction: "👉 Click pit 6 (index 5) to empty your row and sweep all remaining stones on the board!",
-    pits: [0, 0, 0, 0, 0, 1, 20, 4, 4, 4, 4, 4, 4, 3],
-    targetPit: 5
+    step: 7,
+    title: "7. The Endgame Sweep (Kuyu Kurutma)",
+    desc: "When either player completely clears their 6 pits, the game ends immediately. That player sweeps ALL remaining opponent stones!",
+    instruction: "👉 Click Pit 6 to empty your row: trigger the Endgame Sweep and claim all remaining opponent stones!",
+    pits: [0, 0, 0, 0, 0, 1, 20, 3, 3, 3, 3, 3, 3, 2],
+    targetPit: 5,
+    focusPit: 6,
+    explanation: "🏁 Rule 5 Mastered: You cleared your side first, sweeping all 18 remaining opponent stones for a decisive victory!"
   }
 ];
 
 let tutStepIdx = 0;
 
-function showTutorialStep(idx) {
-  tutStepIdx = Math.max(0, Math.min(TUTORIAL_STEPS.length - 1, idx));
-  const step = TUTORIAL_STEPS[tutStepIdx];
-  document.getElementById('tutStepTitle').textContent = step.title;
-  document.getElementById('tutStepDesc').textContent = step.desc;
-  document.getElementById('tutStepInstruction').textContent = step.instruction;
-}
-
-function loadTutorialOnBoard() {
+function startTutorial(stepIdx = 0) {
+  tutStepIdx = Math.max(0, Math.min(TUTORIAL_STEPS.length - 1, stepIdx));
   const step = TUTORIAL_STEPS[tutStepIdx];
   mode = 'tutorial';
   players = ['human', 'human'];
+
   S = {
     pits: step.pits.slice(),
     current_player: 0,
@@ -2259,13 +2771,95 @@ function loadTutorialOnBoard() {
     winner: null,
     legal: [step.targetPit]
   };
+
   flipped = false;
   applyFlip();
   updateToolbarMenuBtn();
   document.getElementById('rulesOverlay').classList.add('hidden');
+  document.getElementById('menuOverlay').classList.add('hidden');
+  document.getElementById('tutCompleteOverlay').classList.add('hidden');
   matchHistory = [JSON.parse(JSON.stringify(S))];
+
+  showTutorialHUD(step);
   render(S);
-  banner(`🎓 ${step.title}: Click glowing pit [${step.targetPit + 1}]!`, 'var(--gold)');
+  banner(`🎓 ${step.title}`, 'var(--gold)');
+}
+
+function showTutorialHUD(step) {
+  const hud = document.getElementById('interactiveHUD');
+  if (!hud) return;
+  hud.classList.remove('hidden');
+
+  const badge = document.getElementById('ihudBadge');
+  const title = document.getElementById('ihudTitle');
+  const prompt = document.getElementById('ihudPrompt');
+  const feedback = document.getElementById('ihudFeedback');
+  const nextBtn = document.getElementById('ihudNextBtn');
+
+  if (badge) {
+    badge.className = 'ihud-badge';
+    badge.textContent = `🎓 Rule ${step.step} of 7`;
+  }
+  if (title) title.textContent = step.title;
+  if (prompt) prompt.textContent = step.instruction;
+  if (feedback) feedback.classList.add('hidden');
+  if (nextBtn) {
+    nextBtn.textContent = (step.step === 7) ? 'Finish 🏆' : 'Next Rule ▶';
+    nextBtn.classList.remove('ihud-next-pulse');
+  }
+
+  // Render 7 step indicator dots
+  const progBox = document.getElementById('ihudProgress');
+  if (progBox) {
+    progBox.innerHTML = '';
+    TUTORIAL_STEPS.forEach((st, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'ihud-dot' + (i === tutStepIdx ? ' active' : '') + (i < tutStepIdx ? ' done' : '');
+      dot.title = st.title;
+      dot.addEventListener('click', () => startTutorial(i));
+      progBox.appendChild(dot);
+    });
+  }
+}
+
+function nextTutorialStep() {
+  if (tutStepIdx < TUTORIAL_STEPS.length - 1) {
+    startTutorial(tutStepIdx + 1);
+  } else {
+    showTutorialCompletionModal();
+  }
+}
+
+function prevTutorialStep() {
+  if (tutStepIdx > 0) {
+    startTutorial(tutStepIdx - 1);
+  }
+}
+
+function resetTutorialStep() {
+  startTutorial(tutStepIdx);
+}
+
+function onTutorialStepCompleted(step) {
+  sfx.capture();
+  const feedback = document.getElementById('ihudFeedback');
+  if (feedback) {
+    feedback.textContent = step.explanation;
+    feedback.classList.remove('hidden');
+  }
+  const nextBtn = document.getElementById('ihudNextBtn');
+  if (nextBtn) nextBtn.classList.add('ihud-next-pulse');
+  banner(step.explanation, '#48db8c');
+}
+
+function showTutorialCompletionModal() {
+  sfx.win();
+  document.getElementById('tutCompleteOverlay').classList.remove('hidden');
+}
+
+function exitInteractiveMode() {
+  document.getElementById('interactiveHUD').classList.add('hidden');
+  openMenu();
 }
 
 // ── Online P2P Multiplayer (WebRTC DataChannel via PeerJS + REST Fallback) ───
@@ -2888,6 +3482,18 @@ function render(state) {
       for (const m of (state.legal || [])) pitEls[m].classList.add('legal');
     }
   }
+
+  // Tutorial visual guidance cues
+  if (mode === 'tutorial') {
+    const step = TUTORIAL_STEPS[tutStepIdx];
+    if (step && pitEls[step.targetPit]) {
+      pitEls[step.targetPit].classList.add('tut-target');
+      if (step.focusPit !== undefined && pitEls[step.focusPit]) {
+        pitEls[step.focusPit].classList.add('tut-focus');
+      }
+    }
+  }
+
   updateTurnText(state);
   updateAnalysisButtons();
   updateEvalBar();
@@ -2895,9 +3501,9 @@ function render(state) {
 }
 
 function clearHL() {
-  document.querySelectorAll('.pit').forEach(p => p.classList.remove('legal', 'source', 'sowing', 'capture', 'hint', 'invalid'));
-  pitEls[P1_TREAS].classList.remove('glow');
-  pitEls[P2_TREAS].classList.remove('glow');
+  document.querySelectorAll('.pit, .treas').forEach(p => p.classList.remove('legal', 'source', 'sowing', 'capture', 'hint', 'invalid', 'tut-target', 'tut-focus'));
+  pitEls[P1_TREAS].classList.remove('glow', 'tut-focus');
+  pitEls[P2_TREAS].classList.remove('glow', 'tut-focus');
   clearHoverPreview();
 }
 
@@ -3284,25 +3890,32 @@ async function onPitClick(idx) {
 
   if (mode === 'puzzle') {
     const curP = PUZZLES[curPuzzleIdx];
-    if (idx !== curP.solution) {
-      await banner("❌ Not the winning move. Check the hint!", "#ff6e6e");
+    const expected = (puzzleFollowUpStep && curP.followUp) ? curP.followUp.solution : curP.solution;
+    if (idx !== expected) {
+      pitEls[idx].classList.add('invalid');
+      setTimeout(() => pitEls[idx].classList.remove('invalid'), 350);
+      await banner("❌ Not the winning move. Check the 💡 Hint!", "#ff6e6e");
       return;
     }
     await playMove(idx);
     pushHistory();
     render(S);
-    sfx.win();
-    await banner("🎉 Brilliant! Tactical Solution Discovered!", "#48db8c");
-    document.getElementById('puzzleStatus').textContent = "✅ Solved! Outstanding tactical calculation.";
-    document.getElementById('puzzleStatus').style.color = "#48db8c";
+    onPuzzleMoveCompleted(curP);
     return;
   }
 
   if (mode === 'tutorial') {
+    const step = TUTORIAL_STEPS[tutStepIdx];
+    if (idx !== step.targetPit) {
+      pitEls[idx].classList.add('invalid');
+      setTimeout(() => pitEls[idx].classList.remove('invalid'), 350);
+      await banner(`👉 Hint: Click glowing Pit ${step.targetPit + 1} to demonstrate this rule!`, "var(--gold)");
+      return;
+    }
     await playMove(idx);
     pushHistory();
     render(S);
-    await banner("👏 Rule demonstrated! Click Next Step in guide.", "#48db8c");
+    onTutorialStepCompleted(step);
     return;
   }
 
@@ -3550,14 +4163,23 @@ function syncMenuDOM() {
   const showDiff = (selectedMode === 'hva' || selectedMode === 'ava');
   const showSide = (selectedMode === 'hva' || selectedMode === 'analysis');
   const showOnline = (selectedMode === 'online');
-  const showTime = (selectedMode !== 'online' && selectedMode !== 'analysis');
+  const showTime = (selectedMode !== 'online' && selectedMode !== 'analysis' && selectedMode !== 'tutorial' && selectedMode !== 'puzzle');
   document.getElementById('diffSection').style.display = showDiff ? 'block' : 'none';
   document.getElementById('sideSection').style.display = showSide ? 'block' : 'none';
   document.getElementById('timeSection').style.display = showTime ? 'block' : 'none';
   document.getElementById('onlineSection').style.display = showOnline ? 'block' : 'none';
 
   const startBtn = document.getElementById('startConfigBtn');
-  if (startBtn) startBtn.style.display = (selectedMode === 'online') ? 'none' : 'block';
+  if (startBtn) {
+    if (selectedMode === 'online') {
+      startBtn.style.display = 'none';
+    } else {
+      startBtn.style.display = 'block';
+      if (selectedMode === 'tutorial') startBtn.textContent = '🚀 Start Interactive Tutorial';
+      else if (selectedMode === 'puzzle') startBtn.textContent = '🧩 Open Tactical Puzzles';
+      else startBtn.textContent = 'Start Match';
+    }
+  }
 
   // Update difficulty pills
   document.querySelectorAll('#diffSection .pill-btn').forEach(pill => {
@@ -3603,6 +4225,17 @@ function resumeGame() {
 }
 
 function launchConfiguredGame() {
+  if (selectedMode === 'tutorial') {
+    document.getElementById('menuOverlay').classList.add('hidden');
+    startTutorial(0);
+    return;
+  }
+  if (selectedMode === 'puzzle') {
+    document.getElementById('menuOverlay').classList.add('hidden');
+    openPuzzles();
+    return;
+  }
+
   if (selectedMode !== 'online') {
     hideP2PHUD();
     stopP2PHeartbeat();
@@ -3690,22 +4323,71 @@ document.getElementById('badge2').addEventListener('click', () => {
   openMenu();
 });
 
-// Toolbar buttons
+// Toolbar & Interactive Mode Buttons
 document.getElementById('soundBtn').addEventListener('click', () => sfx.toggle());
 document.getElementById('themeBtn').addEventListener('click', cycleTheme);
+document.getElementById('tutToolbarBtn').addEventListener('click', () => startTutorial(0));
 document.getElementById('puzzleBtn').addEventListener('click', openPuzzles);
 document.getElementById('closePuzzleBtn').addEventListener('click', () => {
   document.getElementById('puzzleOverlay').classList.add('hidden');
 });
-document.getElementById('puzzlePlayBtn').addEventListener('click', loadPuzzleOnBoard);
-document.getElementById('puzzleHintBtn').addEventListener('click', () => {
-  alert("💡 Hint: " + PUZZLES[curPuzzleIdx].hint);
+document.getElementById('puzzlePlayBtn').addEventListener('click', () => loadPuzzleOnBoard(curPuzzleIdx));
+document.getElementById('puzzleHintBtn').addEventListener('click', showPuzzleHint);
+document.getElementById('puzzleResetBtn').addEventListener('click', resetCurrentPuzzle);
+
+// Interactive HUD Actions
+document.getElementById('ihudNextBtn').addEventListener('click', () => {
+  if (mode === 'tutorial') nextTutorialStep();
+  else if (mode === 'puzzle') nextPuzzle();
 });
-document.getElementById('puzzleResetBtn').addEventListener('click', () => {
-  selectPuzzle(curPuzzleIdx);
+document.getElementById('ihudResetBtn').addEventListener('click', () => {
+  if (mode === 'tutorial') resetTutorialStep();
+  else if (mode === 'puzzle') resetCurrentPuzzle();
+});
+document.getElementById('ihudHintBtn').addEventListener('click', () => {
+  if (mode === 'puzzle') showPuzzleHint();
+  else {
+    const step = TUTORIAL_STEPS[tutStepIdx];
+    banner('👉 ' + step.instruction, 'var(--gold)');
+  }
+});
+document.getElementById('ihudExitBtn').addEventListener('click', exitInteractiveMode);
+
+// Puzzle Tier Tabs
+document.querySelectorAll('#puzzleTierTabs .pill-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#puzzleTierTabs .pill-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    puzzleTierFilter = btn.dataset.tier;
+    renderPuzzlePills();
+  });
 });
 
-// Rules & Tutorial Tabs
+// Rules & Tutorial Overlays
+document.getElementById('startFullTutorialHeroBtn').addEventListener('click', () => startTutorial(0));
+document.getElementById('closeTutCompleteBtn').addEventListener('click', () => {
+  document.getElementById('tutCompleteOverlay').classList.add('hidden');
+});
+document.getElementById('tutPlayAIBtn').addEventListener('click', () => {
+  document.getElementById('tutCompleteOverlay').classList.add('hidden');
+  document.getElementById('interactiveHUD').classList.add('hidden');
+  selectedMode = 'hva';
+  launchConfiguredGame();
+});
+document.getElementById('tutPlayPuzzlesBtn').addEventListener('click', () => {
+  document.getElementById('tutCompleteOverlay').classList.add('hidden');
+  document.getElementById('interactiveHUD').classList.add('hidden');
+  openPuzzles();
+});
+document.getElementById('tutPlayOnlineBtn').addEventListener('click', () => {
+  document.getElementById('tutCompleteOverlay').classList.add('hidden');
+  document.getElementById('interactiveHUD').classList.add('hidden');
+  openMenu();
+  selectedMode = 'online';
+  syncMenuDOM();
+});
+
+// Rules Modal Tabs
 document.getElementById('tabRulesBtn').addEventListener('click', () => {
   document.getElementById('tabRulesBtn').classList.add('active');
   document.getElementById('tabTutorialBtn').classList.remove('active');
@@ -3721,7 +4403,7 @@ document.getElementById('tabTutorialBtn').addEventListener('click', () => {
 });
 document.getElementById('tutPrevBtn').addEventListener('click', () => showTutorialStep(tutStepIdx - 1));
 document.getElementById('tutNextBtn').addEventListener('click', () => showTutorialStep(tutStepIdx + 1));
-document.getElementById('tutPlayStepBtn').addEventListener('click', loadTutorialOnBoard);
+document.getElementById('tutPlayStepBtn').addEventListener('click', () => startTutorial(tutStepIdx));
 
 // Online P2P Modern Hub & HUD Wiring
 document.getElementById('p2pTabHost').addEventListener('click', () => {

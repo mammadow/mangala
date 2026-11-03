@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.4] - 2026-11-03
+
+### Added
+- **7-Step Interactive Board Tutorial ("All Rules in One Go")**:
+  - Replaced modal text guide with an uninterrupted, guided on-board walkthrough (`#interactiveHUD`) explaining 100% of authentic Turkish rules sequentially.
+  - Covers: Sowing >1 stone, Single-stone pickup, Skipping opponent's treasury, Extra turn in Hazine, Even-parity capture, Empty-hole capture, and Endgame sweep.
+  - Dynamic pulsating guidance rings (`.tut-target`, `.tut-focus`) highlight the source pit and destination/opposite pit in real time.
+  - Interactive HUD with step indicators, explanatory banners, hint explanations, and celebratory completion card (`#tutCompleteOverlay`).
+  - One-click launch from the menu mode grid (`#modeGrid`) and the rules guide hero banner (`#startFullTutorialHeroBtn`).
+- **Tactical Puzzles Trainer Overhaul (16 Scenarios across 3 Tiers)**:
+  - Expanded puzzle database from 8 to 16 authentic endgame and middlegame tactical scenarios.
+  - Categorized into 3 skill tiers: `Apprentice` (Puzzles 1–5), `Master` (Puzzles 6–11), and `Grandmaster` (Puzzles 12–16) with dedicated filter tabs.
+  - Multi-move combination engine: puzzles with bonus turns (e.g. Extra-turn into Even capture) seamlessly request the correct follow-up move.
+  - Persistent progress tracking stored in `localStorage` (`mangala_puzzles_solved`) with checkmarks (`✓`) and progress bar (`X / 16 solved`).
+
 ## [0.2.3] - 2026-11-03
 
 ### Added
