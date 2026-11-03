@@ -22,6 +22,9 @@ import json
 import math
 import mimetypes
 import os
+import shutil
+import subprocess
+import sys
 import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -367,6 +370,24 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json({"pit": result.move, "score": result.score, "depth": result.depth})
 
 
+def launch_app_window(url: str) -> bool:
+    """Attempt to launch the URL in a dedicated, frameless desktop application window."""
+    candidates = ["msedge", "google-chrome", "chrome", "chromium", "brave"]
+    for cmd in candidates:
+        exe = shutil.which(cmd)
+        if exe:
+            try:
+                subprocess.Popen(
+                    [exe, f"--app={url}"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return True
+            except Exception:
+                pass
+    return False
+
+
 def make_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> ThreadingHTTPServer:
     """Create (but do not start) the HTTP server. ``port=0`` picks a free port."""
     server = ThreadingHTTPServer((host, port), Handler)
@@ -375,11 +396,14 @@ def make_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> Threading
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="mangala", description="Play Turkish Mangala in your browser.")
+    parser = argparse.ArgumentParser(
+        prog="mangala", description="Play Turkish Mangala in your browser or desktop.",
+    )
     parser.add_argument("--host", default=DEFAULT_HOST,
                         help=f"interface to bind (default {DEFAULT_HOST}; use 0.0.0.0 to share on your LAN)")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"port (default {DEFAULT_PORT})")
     parser.add_argument("--no-browser", action="store_true", help="don't open a browser window")
+    parser.add_argument("--app", action="store_true", help="launch in dedicated desktop application window")
     parser.add_argument("--verbose", action="store_true", help="log every request")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     args = parser.parse_args(argv)
@@ -392,14 +416,27 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Turkish Mangala  ->  {url}")
     print("Press Ctrl+C to stop.")
     if not args.no_browser:
-        with contextlib.suppress(Exception):
-            webbrowser.open(url)
+        opened = False
+        if args.app:
+            with contextlib.suppress(Exception):
+                opened = launch_app_window(url)
+        if not opened:
+            with contextlib.suppress(Exception):
+                webbrowser.open(url)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nStopping...")
     finally:
         server.server_close()
+
+
+def main_app(argv: list[str] | None = None) -> None:
+    """Launch Turkish Mangala in desktop application mode (entry point for `mangala-gui`)."""
+    args = list(argv) if argv is not None else sys.argv[1:]
+    if "--app" not in args:
+        args.append("--app")
+    main(args)
 
 
 if __name__ == "__main__":

@@ -445,3 +445,14 @@ def test_room_error_handling(server_url: str) -> None:
         assert code == 405
         assert "use POST" in err["error"]
 
+
+def test_launch_app_window_returns_bool() -> None:
+    from mangala.server import launch_app_window
+    res = launch_app_window("http://127.0.0.1:8000/")
+    assert isinstance(res, bool)
+
+
+def test_main_app_entrypoint_exists() -> None:
+    from mangala.server import main_app
+    assert callable(main_app)
+

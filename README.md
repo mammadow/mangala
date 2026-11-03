@@ -59,11 +59,8 @@
 Install directly from [PyPI](https://pypi.org/project/mangala-game/):
 
 ```bash
-# Standard installation (Modern Web GUI + CLI + AI Engine, zero external dependencies)
+# 100% Pure Standard Library (Modern Web/PWA GUI + CLI + AI Engine + SPSA Tuner, zero dependencies)
 pip install mangala-game
-
-# With optional Pygame desktop arcade GUI (works on Python 3.10–3.14)
-pip install "mangala-game[gui]"
 ```
 
 #### Option 2: Direct from GitHub
@@ -79,25 +76,35 @@ git clone https://github.com/mammadow/mangala.git
 cd mangala
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -e ".[dev,gui]"
+pip install -e ".[dev]"
 ```
 
 ---
 
 ## 🕹️ Three Ways to Play
 
-### 1. 🌐 Modern Web GUI
-Launch the local web server (automatically opens in your browser at `http://localhost:8000`):
+### 1. 🌐 Modern Web & PWA Interface
+Launch the local game server (opens in your default browser at `http://localhost:8000`):
 
 ```bash
 mangala
 # or: python -m mangala.server
 ```
 
-- **Features**: Animated stone sowing, difficulty pills (`Easy`, `Medium`, `Hard`, `Expert`), speed toggle (`⚡ 1x`, `2x`, `Instant`), 180° board rotation (`F` key), keyboard pit sowing (keys `1`–`6`), live move history, undo/redo, and interactive AI coach hints.
+- **Features**: WebRTC P2P multiplayer, 4 luxury board themes, 16 tactical puzzles across 3 tiers, 7-step interactive tutorial, real-time evaluation bar, animated stone sowing, tournament clocks, and blunder analysis.
 - **Offline / Static**: You can also open [`src/mangala/web/index.html`](src/mangala/web/index.html) directly in any modern browser without Python running!
 
-### 2. 💻 Terminal CLI
+### 2. 🖥️ Standalone Desktop Application Window
+Launch the modern interface directly in a dedicated, frameless desktop application window:
+
+```bash
+mangala-gui
+# or: mangala --app
+```
+
+- **Features**: Arcade desktop experience with native window controls, full WebRTC P2P multiplayer, Web Audio sound effects, and zero external GUI dependencies.
+
+### 3. 💻 Terminal CLI
 Play an authentic text-based game directly inside your terminal with active player indicators and ANSI color highlights:
 
 ```bash
@@ -109,14 +116,6 @@ mangala-cli
   - `1` : Human vs Human (hotseat)
   - `2` : Human vs AI (choose your side and difficulty)
   - `3` : AI vs AI (spectate the minimax engine analyzing in real time)
-
-### 3. 🎮 Pygame Desktop GUI
-For an arcade-style experience with desktop window physics, stone drop sounds, and capture banners:
-
-```bash
-mangala-gui
-# or: python -m mangala.gui_pygame
-```
 
 ---
 

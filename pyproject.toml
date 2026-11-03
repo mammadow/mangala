@@ -32,10 +32,6 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-gui = [
-    "pygame-ce>=2.5; python_version >= '3.13'",
-    "pygame>=2.5; python_version < '3.13'",
-]
 dev = [
     "pytest>=8",
     "pytest-cov>=5",
@@ -48,7 +44,7 @@ dev = [
 [project.scripts]
 mangala = "mangala.server:main"
 mangala-cli = "mangala.cli:main"
-mangala-gui = "mangala.gui_pygame:main"
+mangala-gui = "mangala.server:main_app"
 mangala-tune = "mangala.tune:main"
 
 [project.urls]

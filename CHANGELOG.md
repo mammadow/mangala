@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.4] - 2026-11-03
 
 ### Added
+- **Automated Self-Play Dataset Generator & SPSA/Texel Tuning Optimizer (`src/mangala/tune.py`)**:
+  - Pure standard-library multi-core self-play generator with opening entropy and quiet-position filtering.
+  - Parameterized `EvalWeights` vector with typed extraction and injection across the entire AI engine.
+  - SPSA (Simultaneous Perturbation Stochastic Approximation) optimizer minimizing Texel MSE loss.
+  - Head-to-head match arena with Wald's Sequential Probability Ratio Testing (SPRT) and Elo calculation.
+  - New console script: `mangala-tune` (`selfplay`, `tune`, `arena`).
+- **Advanced Search Pruning (Late Move Reductions & Reverse Futility Pruning)**:
+  - Added Late Move Reductions (LMR) on quiet moves ordered late in the alpha-beta tree across both Python and client JavaScript.
+  - Added Reverse Futility Pruning (RFP / Static Null-Move Pruning) at shallow non-PV plies ($d \le 2$).
+  - Increases effective search depth by 3–6 plies within the same time budget.
+- **Dedicated Standalone Desktop App Window Mode (`mangala-gui` / `mangala --app`)**:
+  - Re-routed `mangala-gui` to launch the modern Web/PWA interface inside a dedicated, frameless desktop application window (`--app` mode).
+  - Eliminates all C/SDL external dependencies while delivering full WebRTC P2P multiplayer, 4 luxury board themes, procedural Web Audio effects, and offline PWA support.
 - **7-Step Interactive Board Tutorial ("All Rules in One Go")**:
   - Replaced modal text guide with an uninterrupted, guided on-board walkthrough (`#interactiveHUD`) explaining 100% of authentic Turkish rules sequentially.
   - Covers: Sowing >1 stone, Single-stone pickup, Skipping opponent's treasury, Extra turn in Hazine, Even-parity capture, Empty-hole capture, and Endgame sweep.
@@ -21,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Categorized into 3 skill tiers: `Apprentice` (Puzzles 1–5), `Master` (Puzzles 6–11), and `Grandmaster` (Puzzles 12–16) with dedicated filter tabs.
   - Multi-move combination engine: puzzles with bonus turns (e.g. Extra-turn into Even capture) seamlessly request the correct follow-up move.
   - Persistent progress tracking stored in `localStorage` (`mangala_puzzles_solved`) with checkmarks (`✓`) and progress bar (`X / 16 solved`).
+
+### Removed
+- **Legacy Pygame Interface (`gui_pygame.py`) & Dependency Extra (`[gui]`)**:
+  - Dropped legacy Pygame script and `pygame` / `pygame-ce` dependencies.
+  - Repository and PyPI package are now **100% Pure Python Standard Library** (`dependencies = []`).
 
 ## [0.2.3] - 2026-11-03
 
