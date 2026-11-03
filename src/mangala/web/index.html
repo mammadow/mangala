@@ -1047,6 +1047,182 @@ header {
   .pcard { padding: 8px 10px; }
   .pcard .sc { font-size: 22px; }
 }
+/* ── Modern P2P Multiplayer Hub & HUD ───────────────────────────── */
+.p2p-hub {
+  margin-top: 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 207, 51, 0.25);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+.p2p-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  border-radius: 10px;
+}
+.p2p-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.p2p-tab.active {
+  background: rgba(255, 207, 51, 0.2);
+  color: var(--gold);
+  border: 1px solid rgba(255, 207, 51, 0.35);
+  box-shadow: 0 0 10px rgba(255, 207, 51, 0.2);
+}
+.p2p-code-display {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.p2p-code-digit {
+  width: 44px;
+  height: 52px;
+  background: rgba(255, 207, 51, 0.1);
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 12px rgba(255, 207, 51, 0.3);
+  user-select: all;
+}
+.p2p-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 12px;
+}
+.p2p-status-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.p2p-status-pill.waiting .dot {
+  background: #ffcf33;
+  box-shadow: 0 0 8px #ffcf33;
+  animation: pulse-dot 1.4s infinite ease-in-out;
+}
+.p2p-status-pill.connected .dot {
+  background: #48db8c;
+  box-shadow: 0 0 8px #48db8c;
+}
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.5; }
+}
+.p2p-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(100%, 880px);
+  background: rgba(13, 10, 20, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 207, 51, 0.3);
+  border-radius: 12px;
+  padding: 6px 14px;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  animation: fadeIn 0.3s ease;
+}
+.p2p-hud.hidden { display: none !important; }
+.p2p-hud-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.p2p-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #48db8c;
+  box-shadow: 0 0 8px #48db8c;
+}
+.p2p-live-dot.warn {
+  background: #ffce3a;
+  box-shadow: 0 0 8px #ffce3a;
+}
+.p2p-hud-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.p2p-hud-room {
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: #fff;
+  letter-spacing: 1px;
+}
+.p2p-hud-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.p2p-ping-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.p2p-reconnect-overlay {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: rgba(20, 15, 30, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid #ff6e6e;
+  border-radius: 12px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(255, 110, 110, 0.3);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  animation: slideDown 0.3s ease;
+}
+.p2p-reconnect-overlay.hidden { display: none !important; }
+@keyframes slideDown {
+  from { transform: translate(-50%, -100%); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
 </style>
 </head>
 <body>
@@ -1069,6 +1245,27 @@ header {
       <button class="btn" id="newBtn">New Game</button>
     </div>
   </header>
+
+  <!-- In-Game Online P2P HUD -->
+  <div class="p2p-hud hidden" id="p2pHUD">
+    <div class="p2p-hud-left">
+      <div class="p2p-live-dot" id="p2pHUDDot"></div>
+      <span class="p2p-hud-title">Online Match</span>
+      <span class="p2p-hud-room" id="p2pHUDRoom">ROOM: ----</span>
+    </div>
+    <div class="p2p-hud-right">
+      <div class="p2p-ping-badge" id="p2pHUDPing" title="Round-trip latency">📶 -- ms</div>
+      <button class="btn ghost" id="p2pHUDShareBtn" style="font-size:11px;padding:3px 8px;" title="Copy match invite link">🔗 Share</button>
+      <button class="btn ghost" id="p2pHUDLeaveBtn" style="font-size:11px;padding:3px 8px;color:#ff6e6e;" title="Leave online match">✕ Leave</button>
+    </div>
+  </div>
+
+  <!-- Reconnection Floating Alert -->
+  <div class="p2p-reconnect-overlay hidden" id="p2pReconnectOverlay">
+    <div class="p2p-live-dot warn" style="animation: pulse-dot 1s infinite;"></div>
+    <span id="p2pReconnectText">Connection interrupted. Reconnecting (attempt 1/5)…</span>
+    <button class="btn ghost" id="p2pCancelReconnectBtn" style="font-size:11px;padding:2px 8px;color:#ff6e6e;">Cancel</button>
+  </div>
 
   <div class="scorebar">
     <div class="pcard p1" id="card1">
@@ -1187,23 +1384,68 @@ header {
       </button>
     </div>
 
-    <!-- Online Match Section -->
+    <!-- Modern Online Match Hub -->
     <div id="onlineSection" style="margin-top: 14px; display: none;">
-      <div class="section-label">Online Peer-to-Peer Match</div>
-      <div style="display:flex;gap:10px;margin-bottom:10px;">
-        <button class="btn" id="createRoomBtn" style="flex:1;">Create Room</button>
-        <button class="btn ghost" id="joinRoomToggleBtn" style="flex:1;">Join Room</button>
-      </div>
-      <div id="roomCreatedBox" style="display:none;background:rgba(0,0,0,0.3);padding:10px;border-radius:10px;margin-bottom:10px;border:1px solid var(--gold);">
-        <div style="font-size:12px;color:var(--text-dim);">Share this 4-character Room Code with a friend:</div>
-        <div id="displayRoomCode" style="font-size:24px;font-weight:800;color:var(--gold);letter-spacing:4px;margin:4px 0;">----</div>
-        <button class="btn ghost" id="copyRoomLinkBtn" style="font-size:11px;padding:4px 8px;">📋 Copy Invite Link</button>
-      </div>
-      <div id="roomJoinBox" style="display:none;background:rgba(0,0,0,0.3);padding:10px;border-radius:10px;margin-bottom:10px;">
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">Enter 4-character Room Code:</div>
-        <div style="display:flex;gap:6px;">
-          <input type="text" id="inputRoomCode" maxlength="4" placeholder="e.g. A1B2" style="flex:1;text-transform:uppercase;font-size:18px;font-weight:700;text-align:center;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);color:var(--text-main);border-radius:8px;">
-          <button class="btn" id="submitJoinRoomBtn">Connect</button>
+      <div class="section-label">Online Peer-to-Peer Hub</div>
+      <div class="p2p-hub">
+        <div class="p2p-tabs">
+          <button class="p2p-tab active" id="p2pTabHost">👑 Host Room</button>
+          <button class="p2p-tab" id="p2pTabJoin">🔗 Join Friend</button>
+        </div>
+
+        <!-- Host Room Pane -->
+        <div id="p2pHostPane">
+          <div class="p2p-status-pill waiting" id="p2pHostStatus">
+            <span class="dot"></span>
+            <span id="p2pHostStatusText">Ready to create room</span>
+          </div>
+          <div id="p2pHostInitial">
+            <button class="btn" id="createRoomBtn" style="width: 100%; padding: 12px; font-weight: 700; margin-bottom: 8px;">
+              ⚡ Generate 4-Letter Room Code
+            </button>
+            <p style="font-size: 11px; color: var(--text-dim); text-align: center; margin: 0;">
+              Creates an encrypted WebRTC room. Share the code or direct invite link with your friend.
+            </p>
+          </div>
+          <div id="roomCreatedBox" style="display: none; text-align: center;">
+            <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
+              Your Private Room Code
+            </div>
+            <div class="p2p-code-display" id="p2pCodeDisplay">
+              <div class="p2p-code-digit" id="digit0">-</div>
+              <div class="p2p-code-digit" id="digit1">-</div>
+              <div class="p2p-code-digit" id="digit2">-</div>
+              <div class="p2p-code-digit" id="digit3">-</div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+              <button class="btn ghost" id="copyRoomCodeBtn" style="flex: 1; font-size: 12px; padding: 7px 10px;">
+                📋 Copy Code
+              </button>
+              <button class="btn ghost" id="copyRoomLinkBtn" style="flex: 1; font-size: 12px; padding: 7px 10px;">
+                🔗 Copy Link
+              </button>
+              <button class="btn" id="shareRoomBtn" style="flex: 1; font-size: 12px; padding: 7px 10px;">
+                🚀 Share
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Join Room Pane -->
+        <div id="p2pJoinPane" style="display: none;">
+          <div class="p2p-status-pill" id="p2pJoinStatus">
+            <span class="dot"></span>
+            <span id="p2pJoinStatusText">Enter friend's 4-character code</span>
+          </div>
+          <div style="display: flex; gap: 8px; margin: 10px 0;">
+            <input type="text" id="inputRoomCode" maxlength="4" placeholder="ABCD" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" style="flex: 1; text-transform: uppercase; font-size: 22px; font-weight: 800; text-align: center; letter-spacing: 6px; background: rgba(0, 0, 0, 0.5); border: 2px solid rgba(255, 207, 51, 0.4); border-radius: 10px; color: var(--gold); padding: 8px;">
+            <button class="btn ghost" id="pasteRoomCodeBtn" title="Paste from clipboard" style="padding: 8px 14px; font-size: 16px;">
+              📋
+            </button>
+          </div>
+          <button class="btn" id="submitJoinRoomBtn" style="width: 100%; padding: 12px; font-weight: 700;">
+            ⚡ Connect to Match
+          </button>
         </div>
       </div>
     </div>
@@ -2034,7 +2276,12 @@ let lastMoveSeq = 0;
 let p2pPeer = null;
 let p2pConn = null;
 let p2pHeartbeat = null;
+let p2pLastPong = Date.now();
+let p2pReconnecting = false;
+let p2pReconnectAttempts = 0;
+let p2pReconnectTimer = null;
 let pendingSyncState = null;
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 const PEER_CONFIG = {
   debug: 1,
@@ -2049,13 +2296,66 @@ const PEER_CONFIG = {
   }
 };
 
+function saveP2PSession() {
+  if (mode !== 'online' || !currentRoom) return;
+  try {
+    sessionStorage.setItem('mangala_p2p_active', JSON.stringify({
+      room: currentRoom,
+      side: onlinePlayerSide,
+      state: S,
+      matchHistory,
+      logEntries,
+      ts: Date.now()
+    }));
+  } catch (_) {}
+}
+
+function clearP2PSession() {
+  try { sessionStorage.removeItem('mangala_p2p_active'); } catch (_) {}
+}
+
+function showP2PHUD(room) {
+  const hud = document.getElementById('p2pHUD');
+  if (!hud) return;
+  const roomEl = document.getElementById('p2pHUDRoom');
+  if (roomEl) roomEl.textContent = `ROOM: ${room}`;
+  hud.classList.remove('hidden');
+}
+
+function hideP2PHUD() {
+  const hud = document.getElementById('p2pHUD');
+  if (hud) hud.classList.add('hidden');
+  const overlay = document.getElementById('p2pReconnectOverlay');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+function updateP2PPing(ms) {
+  const badge = document.getElementById('p2pHUDPing');
+  const dot = document.getElementById('p2pHUDDot');
+  if (badge) badge.textContent = `📶 ${ms} ms`;
+  if (dot) {
+    dot.classList.toggle('warn', ms > 150);
+  }
+}
+
+function displayRoomCodeDigits(code) {
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById(`digit${i}`);
+    if (el) el.textContent = (code && code[i]) ? code[i] : '-';
+  }
+}
+
 function startP2PHeartbeat(conn) {
   if (p2pHeartbeat) clearInterval(p2pHeartbeat);
+  p2pLastPong = Date.now();
   p2pHeartbeat = setInterval(() => {
     if (conn && conn.open) {
-      try { conn.send({ type: 'ping' }); } catch (_) {}
+      try { conn.send({ type: 'ping', t: Date.now() }); } catch (_) {}
+      if (Date.now() - p2pLastPong > 14000 && mode === 'online' && !p2pReconnecting) {
+        triggerP2PReconnect("Heartbeat timeout");
+      }
     }
-  }, 10000);
+  }, 3500);
 }
 
 function stopP2PHeartbeat() {
@@ -2077,15 +2377,139 @@ function updateOnlineBadges() {
   if (av2) av2.textContent = '👤';
 }
 
+function triggerP2PReconnect(reason) {
+  if (p2pReconnecting || mode !== 'online' || !currentRoom) return;
+  p2pReconnecting = true;
+  p2pReconnectAttempts = 0;
+  console.warn("P2P reconnection initiated:", reason);
+  const overlay = document.getElementById('p2pReconnectOverlay');
+  if (overlay) overlay.classList.remove('hidden');
+  attemptP2PReconnect();
+}
+
+function cancelP2PReconnect() {
+  p2pReconnecting = false;
+  if (p2pReconnectTimer) clearTimeout(p2pReconnectTimer);
+  const overlay = document.getElementById('p2pReconnectOverlay');
+  if (overlay) overlay.classList.add('hidden');
+  banner("Reconnection canceled.", "#ff6e6e");
+}
+
+function attemptP2PReconnect() {
+  if (!p2pReconnecting || !currentRoom) return;
+  p2pReconnectAttempts++;
+  const txt = document.getElementById('p2pReconnectText');
+  if (txt) txt.textContent = `Connection lost. Reconnecting (attempt ${p2pReconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})…`;
+
+  if (p2pReconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+    if (txt) txt.textContent = `Reconnection failed. Check connection or rejoin room.`;
+    setTimeout(() => {
+      cancelP2PReconnect();
+      banner(`⚠️ Disconnected. You can reconnect with room code [${currentRoom}].`, "#ff6e6e");
+    }, 2500);
+    return;
+  }
+
+  // Cleanup old peer and connection
+  if (p2pConn) { try { p2pConn.close(); } catch (_) {} p2pConn = null; }
+  if (p2pPeer) { try { p2pPeer.destroy(); } catch (_) {} p2pPeer = null; }
+
+  try {
+    if (onlinePlayerSide === 0) {
+      // Host reclaims mangala-room-XXXX
+      const peerId = 'mangala-room-' + currentRoom;
+      p2pPeer = new Peer(peerId, PEER_CONFIG);
+      p2pPeer.on('open', () => {
+        console.log("Host successfully re-opened signaling room:", peerId);
+      });
+      p2pPeer.on('connection', (conn) => {
+        setupP2PConnection(conn);
+        p2pReconnecting = false;
+        const overlay = document.getElementById('p2pReconnectOverlay');
+        if (overlay) overlay.classList.add('hidden');
+        banner(`🟢 Opponent reconnected! Game resumed.`, '#48db8c');
+        conn.send({ type: 'sync', state: S, history: matchHistory, log: logEntries });
+      });
+      p2pPeer.on('error', (err) => {
+        console.warn("Host reconnect peer error:", err);
+        p2pReconnectTimer = setTimeout(attemptP2PReconnect, Math.min(1000 * Math.pow(1.4, p2pReconnectAttempts), 5000));
+      });
+    } else {
+      // Guest reconnects to mangala-room-XXXX
+      p2pPeer = new Peer(PEER_CONFIG);
+      p2pPeer.on('open', () => {
+        const targetPeerId = 'mangala-room-' + currentRoom;
+        const conn = p2pPeer.connect(targetPeerId, { reliable: true, serialization: 'json' });
+        setupP2PConnection(conn);
+      });
+      p2pPeer.on('error', (err) => {
+        console.warn("Guest reconnect error:", err);
+        p2pReconnectTimer = setTimeout(attemptP2PReconnect, Math.min(1000 * Math.pow(1.4, p2pReconnectAttempts), 5000));
+      });
+    }
+  } catch (err) {
+    console.warn("Reconnect error:", err);
+    p2pReconnectTimer = setTimeout(attemptP2PReconnect, 2000);
+  }
+}
+
+function leaveP2PMatch() {
+  if (mode !== 'online') return;
+  if (!confirm("Are you sure you want to leave this online match?")) return;
+  if (p2pConn && p2pConn.open) {
+    try { p2pConn.send({ type: 'leave' }); } catch (_) {}
+    try { p2pConn.close(); } catch (_) {}
+  }
+  if (p2pPeer) {
+    try { p2pPeer.destroy(); } catch (_) {}
+  }
+  stopP2PHeartbeat();
+  clearP2PSession();
+  hideP2PHUD();
+  p2pReconnecting = false;
+  mode = null;
+  openMenu();
+}
+
+async function shareRoomInvite() {
+  if (!currentRoom) return;
+  const link = `${window.location.origin}${window.location.pathname}?room=${currentRoom}`;
+  const shareData = {
+    title: 'Play Turkish Mangala Online',
+    text: `Join my Turkish Mangala game! Room Code: ${currentRoom}`,
+    url: link
+  };
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+      banner("🚀 Match invite shared!", "var(--gold)");
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(link);
+    banner(`📋 Invite link for Room ${currentRoom} copied!`, "var(--gold)");
+  } catch (_) {
+    prompt("Copy room link:", link);
+  }
+}
+
 function setupP2PConnection(conn) {
   p2pConn = conn;
   startP2PHeartbeat(conn);
 
   conn.on('open', () => {
+    p2pReconnecting = false;
+    const overlay = document.getElementById('p2pReconnectOverlay');
+    if (overlay) overlay.classList.add('hidden');
+
     mode = 'online';
     players = ['human', 'human'];
     updateToolbarMenuBtn();
     updateOnlineBadges();
+    showP2PHUD(currentRoom);
     document.getElementById('menuOverlay').classList.add('hidden');
 
     if (onlinePlayerSide === 0) {
@@ -2094,19 +2518,44 @@ function setupP2PConnection(conn) {
         S = window.MangalaEngine.initialState();
         matchHistory = [JSON.parse(JSON.stringify(S))];
       }
-      conn.send({ type: 'sync', state: S, room: currentRoom });
+      conn.send({ type: 'sync', state: S, room: currentRoom, history: matchHistory, log: logEntries });
       render(S);
       banner(`🎉 Friend connected to Room ${currentRoom}! Game begins!`, '#48db8c');
     } else {
       banner(`🟢 Connected to Room ${currentRoom}! You are Player 2.`, '#48db8c');
     }
+    saveP2PSession();
   });
 
   conn.on('data', async (data) => {
     if (!data) return;
-    if (data.type === 'ping') return;
+
+    if (data.type === 'ping') {
+      try { conn.send({ type: 'pong', t: data.t }); } catch (_) {}
+      return;
+    }
+    if (data.type === 'pong') {
+      p2pLastPong = Date.now();
+      if (typeof data.t === 'number') {
+        const rtt = Math.max(1, Date.now() - data.t);
+        updateP2PPing(Math.round(rtt / 2));
+      }
+      return;
+    }
+    if (data.type === 'leave') {
+      banner("Opponent has left the match.", "#ff6e6e");
+      clearP2PSession();
+      return;
+    }
 
     if (data.type === 'sync' && data.state) {
+      if (data.log && Array.isArray(data.log)) {
+        logEntries = data.log.slice();
+        renderLog();
+      }
+      if (data.history && Array.isArray(data.history)) {
+        matchHistory = data.history.slice();
+      }
       if (busy) {
         pendingSyncState = data.state;
         return;
@@ -2117,23 +2566,32 @@ function setupP2PConnection(conn) {
       updateOnlineBadges();
       render(S);
       for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], false);
+      saveP2PSession();
       if (isInitial && onlinePlayerSide === 1) banner(`🎮 Game started! Host moves first.`, 'var(--gold)');
     } else if (data.type === 'move' && typeof data.pit === 'number') {
       if (S && !S.game_over) {
         await playMove(data.pit);
         pushHistory();
         render(S);
+        saveP2PSession();
       }
     }
   });
 
   conn.on('close', () => {
     stopP2PHeartbeat();
-    banner('⚠️ Opponent disconnected from room', '#ff6e6e');
+    if (mode === 'online' && S && !S.game_over) {
+      triggerP2PReconnect("Connection closed by peer");
+    } else {
+      banner('⚠️ Opponent left the room', '#ff6e6e');
+    }
   });
 
   conn.on('error', (err) => {
     console.warn('P2P connection error:', err);
+    if (mode === 'online' && S && !S.game_over) {
+      triggerP2PReconnect("Connection error: " + err.message);
+    }
   });
 }
 
@@ -2146,6 +2604,11 @@ async function createRoom() {
   flipped = false;
   applyFlip();
   render(S);
+
+  const statusText = document.getElementById('p2pHostStatusText');
+  const hostPill = document.getElementById('p2pHostStatus');
+  if (statusText) statusText.textContent = "Connecting to signaling network…";
+  if (hostPill) hostPill.className = "p2p-status-pill waiting";
 
   if (typeof Peer !== 'undefined') {
     try {
@@ -2160,13 +2623,16 @@ async function createRoom() {
       onlinePlayerSide = 0;
 
       p2pPeer.on('open', () => {
+        document.getElementById('p2pHostInitial').style.display = 'none';
         document.getElementById('roomCreatedBox').style.display = 'block';
-        document.getElementById('displayRoomCode').textContent = currentRoom;
-        document.getElementById('roomJoinBox').style.display = 'none';
+        displayRoomCodeDigits(currentRoom);
+        if (statusText) statusText.textContent = "Waiting for friend to join…";
         banner(`Room ${currentRoom} created! Share code or link with your friend.`, 'var(--gold)');
       });
 
       p2pPeer.on('connection', (conn) => {
+        if (statusText) statusText.textContent = "Friend connected! Match started.";
+        if (hostPill) hostPill.className = "p2p-status-pill connected";
         setupP2PConnection(conn);
       });
 
@@ -2176,6 +2642,7 @@ async function createRoom() {
           createRoom();
         } else {
           alert('WebRTC Room Notice: ' + err.message);
+          if (statusText) statusText.textContent = "Error: " + err.message;
         }
       });
       return;
@@ -2194,9 +2661,9 @@ async function createRoom() {
     onlinePlayerSide = 0;
     lastMoveSeq = 0;
 
+    document.getElementById('p2pHostInitial').style.display = 'none';
     document.getElementById('roomCreatedBox').style.display = 'block';
-    document.getElementById('displayRoomCode').textContent = currentRoom;
-    document.getElementById('roomJoinBox').style.display = 'none';
+    displayRoomCodeDigits(currentRoom);
 
     startRoomPolling();
   } catch (err) {
@@ -2209,7 +2676,16 @@ async function joinRoom(code) {
     alert("Please enter a 4-character Room Code.");
     return;
   }
-  const cleanCode = code.trim().toUpperCase();
+  const cleanCode = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+  if (cleanCode.length !== 4) {
+    alert("Room codes must be exactly 4 letters or digits (e.g. 7K2X).");
+    return;
+  }
+
+  const joinStatusText = document.getElementById('p2pJoinStatusText');
+  const joinPill = document.getElementById('p2pJoinStatus');
+  if (joinStatusText) joinStatusText.textContent = `Connecting to room ${cleanCode}…`;
+  if (joinPill) joinPill.className = "p2p-status-pill waiting";
 
   // Initialize fresh local state for guest
   S = window.MangalaEngine.initialState();
@@ -2244,6 +2720,7 @@ async function joinRoom(code) {
 
       p2pPeer.on('error', (err) => {
         console.warn('Peer connection error:', err);
+        if (joinStatusText) joinStatusText.textContent = `Failed to connect to room ${cleanCode}.`;
         alert(`Could not connect to room "${cleanCode}". Make sure the host has the room open.`);
       });
       return;
@@ -2271,6 +2748,7 @@ async function joinRoom(code) {
     document.getElementById('menuOverlay').classList.add('hidden');
     S = res.state;
     render(S);
+    showP2PHUD(currentRoom);
     startRoomPolling();
     banner(`Connected to Room ${currentRoom}! You are Player 2.`, '#48db8c');
   } catch (err) {
@@ -2873,6 +3351,9 @@ function showWin(customMsg) {
   stopClock();
   sfx.win();
   animateCelebration(S ? S.winner : 0);
+  if (mode === 'online') {
+    clearP2PSession();
+  }
   const o = document.getElementById('winOverlay');
   o.classList.remove('hidden');
   const p1 = S.pits[P1_TREAS], p2 = S.pits[P2_TREAS];
@@ -3033,6 +3514,14 @@ function resumeGame() {
 }
 
 function launchConfiguredGame() {
+  if (selectedMode !== 'online') {
+    hideP2PHUD();
+    stopP2PHeartbeat();
+    clearP2PSession();
+    if (p2pConn) { try { p2pConn.close(); } catch (_) {} p2pConn = null; }
+    if (p2pPeer) { try { p2pPeer.destroy(); } catch (_) {} p2pPeer = null; }
+  }
+
   mode = selectedMode;
   aiLevel = selectedLevel;
 
@@ -3145,16 +3634,29 @@ document.getElementById('tutPrevBtn').addEventListener('click', () => showTutori
 document.getElementById('tutNextBtn').addEventListener('click', () => showTutorialStep(tutStepIdx + 1));
 document.getElementById('tutPlayStepBtn').addEventListener('click', loadTutorialOnBoard);
 
-// Online P2P Rooms
-document.getElementById('createRoomBtn').addEventListener('click', createRoom);
-document.getElementById('joinRoomToggleBtn').addEventListener('click', () => {
-  const box = document.getElementById('roomJoinBox');
-  box.style.display = box.style.display === 'none' ? 'block' : 'none';
-  document.getElementById('roomCreatedBox').style.display = 'none';
+// Online P2P Modern Hub & HUD Wiring
+document.getElementById('p2pTabHost').addEventListener('click', () => {
+  document.getElementById('p2pTabHost').classList.add('active');
+  document.getElementById('p2pTabJoin').classList.remove('active');
+  document.getElementById('p2pHostPane').style.display = 'block';
+  document.getElementById('p2pJoinPane').style.display = 'none';
 });
-document.getElementById('submitJoinRoomBtn').addEventListener('click', () => {
-  const code = document.getElementById('inputRoomCode').value.trim();
-  joinRoom(code);
+document.getElementById('p2pTabJoin').addEventListener('click', () => {
+  document.getElementById('p2pTabJoin').classList.add('active');
+  document.getElementById('p2pTabHost').classList.remove('active');
+  document.getElementById('p2pHostPane').style.display = 'none';
+  document.getElementById('p2pJoinPane').style.display = 'block';
+  document.getElementById('inputRoomCode').focus();
+});
+
+document.getElementById('createRoomBtn').addEventListener('click', createRoom);
+document.getElementById('copyRoomCodeBtn').addEventListener('click', () => {
+  if (!currentRoom) return;
+  navigator.clipboard.writeText(currentRoom).then(() => {
+    banner(`📋 Room code [${currentRoom}] copied!`, 'var(--gold)');
+  }).catch(() => {
+    prompt("Copy room code:", currentRoom);
+  });
 });
 document.getElementById('copyRoomLinkBtn').addEventListener('click', () => {
   if (!currentRoom) return;
@@ -3164,6 +3666,46 @@ document.getElementById('copyRoomLinkBtn').addEventListener('click', () => {
   }).catch(() => {
     prompt("Copy room link:", link);
   });
+});
+document.getElementById('shareRoomBtn').addEventListener('click', shareRoomInvite);
+
+document.getElementById('submitJoinRoomBtn').addEventListener('click', () => {
+  const code = document.getElementById('inputRoomCode').value.trim();
+  joinRoom(code);
+});
+document.getElementById('inputRoomCode').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    joinRoom(document.getElementById('inputRoomCode').value.trim());
+  }
+});
+document.getElementById('pasteRoomCodeBtn').addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      let code = text.trim().toUpperCase();
+      const match = code.match(/room=([A-Z0-9]{4})/i) || code.match(/\b([A-Z0-9]{4})\b/i);
+      if (match) code = match[1].toUpperCase();
+      document.getElementById('inputRoomCode').value = code.slice(0, 4);
+      banner(`📋 Pasted code: ${document.getElementById('inputRoomCode').value}`, 'var(--gold)');
+    }
+  } catch (_) {
+    document.getElementById('inputRoomCode').focus();
+  }
+});
+
+document.getElementById('p2pHUDShareBtn').addEventListener('click', shareRoomInvite);
+document.getElementById('p2pHUDLeaveBtn').addEventListener('click', leaveP2PMatch);
+document.getElementById('p2pCancelReconnectBtn').addEventListener('click', cancelP2PReconnect);
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && mode === 'online') {
+    if (!p2pConn || !p2pConn.open) {
+      triggerP2PReconnect("Device awake or tab unthrottled");
+    } else {
+      try { p2pConn.send({ type: 'ping', t: Date.now() }); } catch (_) {}
+    }
+  }
 });
 
 // MPGN Export
@@ -3287,11 +3829,35 @@ buildBoard();
 updateTurnText(null);
 syncMenuDOM();
 
-// Auto-join room from URL query parameter (?room=ABCD)
+// Auto-join room from URL query parameter (?room=ABCD) or restore active session
 const urlParams = new URLSearchParams(window.location.search);
 const roomParam = urlParams.get('room');
+const savedP2PSession = sessionStorage.getItem('mangala_p2p_active');
+
 if (roomParam) {
   setTimeout(() => joinRoom(roomParam), 350);
+} else if (savedP2PSession) {
+  try {
+    const sData = JSON.parse(savedP2PSession);
+    if (sData.room && (Date.now() - sData.ts < 15 * 60 * 1000) && sData.state && !sData.state.game_over) {
+      currentRoom = sData.room;
+      onlinePlayerSide = sData.side;
+      S = sData.state;
+      matchHistory = sData.matchHistory || [JSON.parse(JSON.stringify(S))];
+      logEntries = sData.logEntries || [];
+      renderLog();
+      render(S);
+      mode = 'online';
+      players = ['human', 'human'];
+      flipped = (onlinePlayerSide === 1);
+      applyFlip();
+      updateToolbarMenuBtn();
+      updateOnlineBadges();
+      showP2PHUD(currentRoom);
+      document.getElementById('menuOverlay').classList.add('hidden');
+      setTimeout(() => triggerP2PReconnect("Resuming active session from sessionStorage"), 400);
+    }
+  } catch (_) {}
 }
 
 // ── Progressive Web App (Offline Service Worker) ───────────────────────────
