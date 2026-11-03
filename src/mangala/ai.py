@@ -103,6 +103,58 @@ class SearchResult:
 
 
 # ---------------------------------------------------------------------------
+# Evaluation Weights Dataclass
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True, slots=True)
+class EvalWeights:
+    """Configurable weights for the Turkish Mangala heuristic evaluation."""
+    w_mobility: float = 0.10
+    w_extra_single: float = 0.60
+    w_extra_multi: float = 0.40
+    w_ladder_cascade: float = 0.35
+    w_capture_offense: float = 0.35
+    w_empty_hole_offense: float = 0.25
+    w_capture_exposure: float = 0.35
+    w_empty_hole_exposure: float = 0.25
+    w_parity_own_even: float = 0.08
+    w_parity_own_odd: float = -0.06
+    w_parity_opp_odd: float = 0.06
+    w_parity_opp_even: float = -0.08
+    w_fortress: float = 0.20
+    w_sweep: float = 0.20
+    w_threshold_own: float = 0.50
+    w_threshold_opp: float = 0.60
+
+    def to_dict(self) -> dict[str, float]:
+        return {
+            "w_mobility": self.w_mobility,
+            "w_extra_single": self.w_extra_single,
+            "w_extra_multi": self.w_extra_multi,
+            "w_ladder_cascade": self.w_ladder_cascade,
+            "w_capture_offense": self.w_capture_offense,
+            "w_empty_hole_offense": self.w_empty_hole_offense,
+            "w_capture_exposure": self.w_capture_exposure,
+            "w_empty_hole_exposure": self.w_empty_hole_exposure,
+            "w_parity_own_even": self.w_parity_own_even,
+            "w_parity_own_odd": self.w_parity_own_odd,
+            "w_parity_opp_odd": self.w_parity_opp_odd,
+            "w_parity_opp_even": self.w_parity_opp_even,
+            "w_fortress": self.w_fortress,
+            "w_sweep": self.w_sweep,
+            "w_threshold_own": self.w_threshold_own,
+            "w_threshold_opp": self.w_threshold_opp,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, float]) -> EvalWeights:
+        return cls(**{k: float(v) for k, v in d.items() if k in cls.__dataclass_fields__})
+
+
+DEFAULT_WEIGHTS = EvalWeights()
+
+
+# ---------------------------------------------------------------------------
 # Terminal value / evaluation (pure functions)
 # ---------------------------------------------------------------------------
 
@@ -117,7 +169,7 @@ def _terminal_value(state: GameState, root: int) -> float:
     return 0.0
 
 
-def _evaluate(state: GameState, root: int) -> float:
+def _evaluate(state: GameState, root: int, weights: EvalWeights = DEFAULT_WEIGHTS) -> float:
     """Tournament-grade heuristic score from root player's perspective."""
     p1, p2 = score(state)
     treasury_diff = (p1 - p2) if root == 0 else (p2 - p1)
@@ -147,9 +199,9 @@ def _evaluate(state: GameState, root: int) -> float:
     # Threshold urgency: escalating value when closing in on 25 stones, and high alert if opponent is
     threshold_bonus = 0.0
     if own_t >= 20:
-        threshold_bonus += (own_t - 19) * 0.5
+        threshold_bonus += (own_t - 19) * weights.w_threshold_own
     if opp_t >= 20:
-        threshold_bonus -= (opp_t - 19) * 0.6
+        threshold_bonus -= (opp_t - 19) * weights.w_threshold_opp
 
     # Extra-turn potential, ladder cascades, regular capture offense & empty-hole offense
     extra_bonus = 0.0
@@ -166,16 +218,16 @@ def _evaluate(state: GameState, root: int) -> float:
         pos = landing_table[i][sow_count % 13]
         if pos == own_treas:
             # Extra turn into treasury; bonus higher for direct single-step ladder
-            extra_bonus += 0.6 if n == 1 and i == own_max else 0.4
+            extra_bonus += weights.w_extra_single if n == 1 and i == own_max else weights.w_extra_multi
             own_ladders += 1
         elif own_min <= pos <= own_max and pits[pos] == 0:
             # Rule 4: Empty pit capture on own side
             opposite = 12 - pos
             if pits[opposite] > 0:
-                empty_hole_offense += 0.25 * (pits[opposite] + 1)
+                empty_hole_offense += weights.w_empty_hole_offense * (pits[opposite] + 1)
         elif opp_min <= pos <= opp_max and (pits[pos] + 1) % 2 == 0:
             # Rule 3: Regular capture on opponent's side (lands on odd pit, making it even)
-            capture_offense += 0.35 * (pits[pos] + 1)
+            capture_offense += weights.w_capture_offense * (pits[pos] + 1)
 
     # Threat exposure: check if opponent's moves threaten capture or extra turns
     capture_exposure = 0.0
@@ -189,14 +241,14 @@ def _evaluate(state: GameState, root: int) -> float:
             opp_ladders += 1
         elif own_min <= pos <= own_max and pits[pos] > 0 and (pits[pos] + 1) % 2 == 0:
             # Opponent landing in our pit makes count even if it was odd
-            capture_exposure += 0.35 * (pits[pos] + 1)
+            capture_exposure += weights.w_capture_exposure * (pits[pos] + 1)
 
     # Multi-step ladder cascade (Merdiven Serisi): chaining consecutive bonus turns
     ladder_cascade_bonus = 0.0
     if own_ladders >= 2:
-        ladder_cascade_bonus += 0.35 * (own_ladders - 1)
+        ladder_cascade_bonus += weights.w_ladder_cascade * (own_ladders - 1)
     if opp_ladders >= 2:
-        ladder_cascade_bonus -= 0.35 * (opp_ladders - 1)
+        ladder_cascade_bonus -= weights.w_ladder_cascade * (opp_ladders - 1)
 
     # Empty-hole exposure: check if opponent lands in their own empty pit opposite our stones
     empty_hole_exposure = 0.0
@@ -213,7 +265,7 @@ def _evaluate(state: GameState, root: int) -> float:
             sow_count = m - 1 if m > 1 else 1
             pos = opp_landing_table[j][sow_count % 13]
             if pos == e:
-                empty_hole_exposure += 0.25 * (pits[opposite] + 1)
+                empty_hole_exposure += weights.w_empty_hole_exposure * (pits[opposite] + 1)
                 break
 
     # Even-parity defensive shield (Çift Sayı Kalkanı):
@@ -222,32 +274,32 @@ def _evaluate(state: GameState, root: int) -> float:
     for i in own_pits:
         n = pits[i]
         if n > 0:
-            parity_shield += 0.08 if n % 2 == 0 else -0.06
+            parity_shield += weights.w_parity_own_even if n % 2 == 0 else weights.w_parity_own_odd
     for j in opp_pits:
         m = pits[j]
         if m > 0:
-            parity_shield += 0.06 if m % 2 != 0 else -0.08
+            parity_shield += weights.w_parity_opp_odd if m % 2 != 0 else weights.w_parity_opp_even
 
     # Deep fortress reserves (Kuyu Saklama):
     # Back pits (0/1 for P1, 7/8 for P2) with >= 8 stones threaten full-board sowing sweeps
     fortress_bonus = 0.0
     for i in (own_min, own_min + 1):
         if pits[i] >= 8:
-            fortress_bonus += 0.20
+            fortress_bonus += weights.w_fortress
     for j in (opp_min, opp_min + 1):
         if pits[j] >= 8:
-            fortress_bonus -= 0.20
+            fortress_bonus -= weights.w_fortress
 
     # Endgame sweep ("kuyu kurutma") proximity:
     # Under Turkish rules, player whose side empties first takes all opponent stones
     sweep_bonus = 0.0
     if own_stones <= 4:
-        sweep_bonus += 0.2 * (4 - own_stones)
+        sweep_bonus += weights.w_sweep * (4 - own_stones)
     if opp_stones <= 4:
-        sweep_bonus -= 0.2 * (4 - opp_stones)
+        sweep_bonus -= weights.w_sweep * (4 - opp_stones)
 
     return (treasury_diff
-            + 0.1 * (own_stones - opp_stones)
+            + weights.w_mobility * (own_stones - opp_stones)
             + extra_bonus
             + ladder_cascade_bonus
             + capture_offense
@@ -275,8 +327,9 @@ def _key(state: GameState) -> tuple:
 class Searcher:
     """One search context (TT, clock, counters, heuristics). Not shared between threads."""
 
-    def __init__(self, rules: Rules = DEFAULT_RULES) -> None:
+    def __init__(self, rules: Rules = DEFAULT_RULES, weights: EvalWeights = DEFAULT_WEIGHTS) -> None:
         self.rules = rules
+        self.weights = weights
         self.tt: dict = {}
         self.nodes = 0
         self._deadline = _INF
@@ -341,7 +394,7 @@ class Searcher:
         if state.game_over:
             return _terminal_value(state, root)
 
-        stand_pat = _evaluate(state, root)
+        stand_pat = _evaluate(state, root, self.weights)
 
         if q_depth == 0:
             return stand_pat
@@ -387,7 +440,7 @@ class Searcher:
 
     def _search(self, state: GameState, depth: int, alpha: float, beta: float,
                 root: int, ply: int = 0) -> float:
-        """Principal Variation Search (PVS) with TT and killer/history heuristics."""
+        """Principal Variation Search (PVS) with TT, LMR, and RFP heuristics."""
         self.nodes += 1
         # Time guard — checked every 128 nodes to keep overhead negligible.
         if (self.nodes & _TIME_CHECK_MASK) == 0 and _time.monotonic() >= self._deadline:
@@ -414,6 +467,15 @@ class Searcher:
         if depth == 0:
             return self._quiescence(state, alpha, beta, root, _Q_DEPTH)
 
+        # --- Reverse Futility Pruning (Static Null-Move Pruning) at shallow depths ---
+        if depth <= 2 and stones_on_board > _ENDGAME_STONES:
+            eval_margin = 1.5 * depth
+            static_eval = _evaluate(state, root, self.weights)
+            if state.current_player == root and static_eval - eval_margin >= beta:
+                return static_eval - eval_margin
+            elif state.current_player != root and static_eval + eval_margin <= alpha:
+                return static_eval + eval_margin
+
         # --- Transposition table lookup ---
         key        = _key(state)
         tt_entry   = self.tt.get(key)
@@ -437,7 +499,7 @@ class Searcher:
 
         children = self._ordered_children(state, pv_move, ply)
         if not children:
-            return _evaluate(state, root)
+            return _evaluate(state, root, self.weights)
 
         maximising = state.current_player == root
         best_val   = -_INF if maximising else _INF
@@ -448,8 +510,18 @@ class Searcher:
                 if i == 0:
                     val = self._search(child, depth - 1, alpha, beta, root, ply + 1)
                 else:
-                    # PVS zero-window scout search
-                    val = self._search(child, depth - 1, alpha, alpha + _PVS_EPSILON, root, ply + 1)
+                    # Late Move Reduction (LMR) on quiet, non-capture moves ordered late
+                    do_lmr = (i >= 3 and depth >= 3 and
+                              child.pits[_OWN_TREAS_TUPLE[root]] == pits[_OWN_TREAS_TUPLE[root]] and
+                              child.current_player != state.current_player)
+                    reduction = 1 if do_lmr else 0
+
+                    val = self._search(
+                        child, depth - 1 - reduction, alpha, alpha + _PVS_EPSILON, root, ply + 1,
+                    )
+                    if reduction > 0 and val > alpha:
+                        val = self._search(child, depth - 1, alpha, alpha + _PVS_EPSILON, root, ply + 1)
+
                     if alpha < val < beta:
                         val = self._search(child, depth - 1, val, beta, root, ply + 1)
 
@@ -466,8 +538,16 @@ class Searcher:
                 if i == 0:
                     val = self._search(child, depth - 1, alpha, beta, root, ply + 1)
                 else:
-                    # PVS zero-window scout search
-                    val = self._search(child, depth - 1, beta - _PVS_EPSILON, beta, root, ply + 1)
+                    # Late Move Reduction (LMR) on quiet, non-capture moves ordered late
+                    do_lmr = (i >= 3 and depth >= 3 and
+                              child.pits[_OPP_TREAS_TUPLE[root]] == pits[_OPP_TREAS_TUPLE[root]] and
+                              child.current_player != state.current_player)
+                    reduction = 1 if do_lmr else 0
+
+                    val = self._search(child, depth - 1 - reduction, beta - _PVS_EPSILON, beta, root, ply + 1)
+                    if reduction > 0 and val < beta:
+                        val = self._search(child, depth - 1, beta - _PVS_EPSILON, beta, root, ply + 1)
+
                     if alpha < val < beta:
                         val = self._search(child, depth - 1, alpha, val, root, ply + 1)
 
@@ -558,7 +638,7 @@ class Searcher:
 
         # Fast-path 1: Single legal move
         if len(moves) == 1:
-            return SearchResult(moves[0], _evaluate(state, state.current_player),
+            return SearchResult(moves[0], _evaluate(state, state.current_player, self.weights),
                                 0, 0, 0.0, [moves[0]])
 
         # Fast-path 2: Opening book (when enabled and running time-budget search)
@@ -567,7 +647,7 @@ class Searcher:
             if book_mv is not None and book_mv in moves:
                 return SearchResult(
                     move=book_mv,
-                    score=_evaluate(state, state.current_player),
+                    score=_evaluate(state, state.current_player, self.weights),
                     depth=16,
                     nodes=1,
                     elapsed=0.0,
@@ -620,7 +700,7 @@ class Searcher:
                 d += 1
 
         if best_val == -_INF:            # no iteration completed (tiny budget)
-            best_val = _evaluate(state, state.current_player)
+            best_val = _evaluate(state, state.current_player, self.weights)
         return SearchResult(
             move=best_m,
             score=best_val,
@@ -638,15 +718,19 @@ class Searcher:
 def analyse(state: GameState, depth: int | None = None,
             time_limit: float = DEFAULT_TIME_LIMIT,
             rules: Rules = DEFAULT_RULES,
-            use_book: bool = False) -> SearchResult:
+            use_book: bool = False,
+            weights: EvalWeights = DEFAULT_WEIGHTS) -> SearchResult:
     """Search *state* and return a :class:`SearchResult`."""
-    return Searcher(rules).analyse(state, depth=depth, time_limit=time_limit, use_book=use_book)
+    return Searcher(rules, weights=weights).analyse(
+        state, depth=depth, time_limit=time_limit, use_book=use_book,
+    )
 
 
 def best_move(state: GameState, depth: int | None = None,
               time_limit: float = DEFAULT_TIME_LIMIT,
               rules: Rules = DEFAULT_RULES,
-              use_book: bool = True) -> int:
+              use_book: bool = True,
+              weights: EvalWeights = DEFAULT_WEIGHTS) -> int:
     """Return the pit index of the best move for the current player.
 
     Parameters
@@ -657,8 +741,10 @@ def best_move(state: GameState, depth: int | None = None,
                  when depth is None. Default 2.5 s.
     rules      : Rule variants (see :class:`mangala.engine.Rules`).
     use_book   : If True, uses the precomputed opening book when available.
+    weights    : Custom or tuned heuristic evaluation weights.
     """
-    return analyse(state, depth=depth, time_limit=time_limit, rules=rules, use_book=use_book).move
+    res = analyse(state, depth=depth, time_limit=time_limit, rules=rules, use_book=use_book, weights=weights)
+    return res.move
 
 
 # Difficulty presets: keyword arguments for best_move / analyse.

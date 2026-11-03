@@ -49,6 +49,7 @@ dev = [
 mangala = "mangala.server:main"
 mangala-cli = "mangala.cli:main"
 mangala-gui = "mangala.gui_pygame:main"
+mangala-tune = "mangala.tune:main"
 
 [project.urls]
 Homepage = "https://github.com/mammadow/mangala"

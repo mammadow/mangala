@@ -240,10 +240,19 @@
       if (entry.flag === UPPER_BOUND && entry.val <= alpha) return entry.val;
     }
 
+    const isMax = (state.current_player === rootPlayer);
+
+    // Reverse Futility Pruning (Static Null-Move Pruning) at shallow depths
+    if (depth <= 2 && stonesOnBoard > 16) {
+      const evalMargin = 1.5 * depth;
+      const staticEval = evaluate(state, rootPlayer);
+      if (isMax && staticEval - evalMargin >= beta) return staticEval - evalMargin;
+      if (!isMax && staticEval + evalMargin <= alpha) return staticEval + evalMargin;
+    }
+
     const moves = Engine.legalMoves(state);
     if (moves.length === 0) return evaluate(state, rootPlayer);
 
-    const isMax = (state.current_player === rootPlayer);
     const alphaOrig = alpha;
     const betaOrig = beta;
     let bestVal = isMax ? -INF : INF;
@@ -275,15 +284,25 @@
       if (i === 0) {
         val = search(child, depth - 1, alpha, beta, rootPlayer, ply + 1);
       } else {
-        // PVS zero-window scout search
+        // Late Move Reduction (LMR) on quiet moves ordered late
+        const doLmr = (i >= 3 && depth >= 3 && child.pits[currTreas] === state.pits[currTreas] && child.current_player !== currPlayer);
+        const reduction = doLmr ? 1 : 0;
+
+        // PVS zero-window scout search (reduced first if LMR)
         if (isMax) {
           const scoutAlpha = Math.max(alpha, bestVal);
-          val = search(child, depth - 1, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, ply + 1);
+          val = search(child, depth - 1 - reduction, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, ply + 1);
+          if (reduction > 0 && val > scoutAlpha) {
+            val = search(child, depth - 1, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, ply + 1);
+          }
           if (val > bestVal && val < beta) {
             val = search(child, depth - 1, val, beta, rootPlayer, ply + 1);
           }
         } else {
-          val = search(child, depth - 1, beta - PVS_EPSILON, beta, rootPlayer, ply + 1);
+          val = search(child, depth - 1 - reduction, beta - PVS_EPSILON, beta, rootPlayer, ply + 1);
+          if (reduction > 0 && val < beta) {
+            val = search(child, depth - 1, beta - PVS_EPSILON, beta, rootPlayer, ply + 1);
+          }
           if (val < beta && val > alpha) {
             val = search(child, depth - 1, alpha, val, rootPlayer, ply + 1);
           }
