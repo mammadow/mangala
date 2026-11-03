@@ -2106,12 +2106,13 @@ function setupP2PConnection(conn) {
     if (data.type === 'ping') return;
 
     if (data.type === 'sync' && data.state) {
+      const isInitial = (matchHistory.length <= 1);
       S = data.state;
-      matchHistory = [JSON.parse(JSON.stringify(S))];
+      if (matchHistory.length === 0) matchHistory = [JSON.parse(JSON.stringify(S))];
       updateOnlineBadges();
       render(S);
       for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], false);
-      banner(`🎮 Game started! Host moves first.`, 'var(--gold)');
+      if (isInitial && onlinePlayerSide === 1) banner(`🎮 Game started! Host moves first.`, 'var(--gold)');
     } else if (data.type === 'move' && typeof data.pit === 'number') {
       if (S && !S.game_over) {
         await playMove(data.pit);
@@ -2736,19 +2737,22 @@ async function onPitClick(idx) {
       await banner("⏳ Wait for opponent's move!", "#ff6e6e");
       return;
     }
+
+    // 1. Immediately broadcast move over WebRTC so opponent begins animating simultaneously!
+    if (p2pConn && p2pConn.open) {
+      p2pConn.send({ type: 'move', pit: idx });
+    } else {
+      api('/api/room/move', { room: currentRoom, player: onlinePlayerSide, pit: idx }).catch(e => console.warn("Room move failed:", e));
+    }
+
+    // 2. Concurrently animate move on player's own screen
     await playMove(idx);
     pushHistory();
     render(S);
 
+    // 3. Send final authoritative state sync confirmation
     if (p2pConn && p2pConn.open) {
-      p2pConn.send({ type: 'move', pit: idx, state: S });
-      return;
-    }
-
-    try {
-      await api('/api/room/move', { room: currentRoom, player: onlinePlayerSide, pit: idx });
-    } catch (e) {
-      console.warn("Room move failed:", e);
+      p2pConn.send({ type: 'sync', state: S });
     }
     return;
   }
