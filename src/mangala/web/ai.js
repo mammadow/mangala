@@ -24,8 +24,9 @@
   const tt = new Map();
   let killerMoves = Array.from({ length: 64 }, () => []);
   let historyTable = [new Array(14).fill(0), new Array(14).fill(0)];
+  let counterMoves = [new Array(14).fill(-1), new Array(14).fill(-1)];
 
-  function recordCutoff(player, move, ply, depth) {
+  function recordCutoff(player, move, ply, depth, prevMove = -1) {
     if (ply < killerMoves.length) {
       const killers = killerMoves[ply];
       if (!killers.includes(move)) {
@@ -34,6 +35,9 @@
       }
     }
     historyTable[player][move] += depth * depth;
+    if (prevMove >= 0 && prevMove < 14) {
+      counterMoves[player][prevMove] = move;
+    }
   }
 
   function evaluate(state, rootPlayer) {
@@ -79,9 +83,10 @@
       if (pos === ownTreas) {
         extraBonus += (n === 1 && i === ownMax) ? 0.6 : 0.4;
         ownLadders++;
-      } else if (pos >= ownMin && pos <= ownMax && state.pits[pos] === 0) {
+      } else if (pos >= ownMin && pos <= ownMax && state.pits[pos] === 0 && sowCount < 13) {
         const opp = 12 - pos;
-        if (state.pits[opp] > 0) emptyOffense += 0.25 * (state.pits[opp] + 1);
+        const oppAfter = state.pits[opp] + (sowCount >= 8 ? 1 : 0);
+        if (oppAfter > 0) emptyOffense += 0.25 * (oppAfter + 1);
       } else if (pos >= oppMin && pos <= oppMax) {
         if ((state.pits[pos] + 1) % 2 === 0) {
           captureOffense += 0.35 * (state.pits[pos] + 1);
@@ -104,10 +109,24 @@
       }
     }
 
-    // Multi-step ladder cascade bonus (chaining bonus turns)
+    // Exact Exponential Binary Merdiven Cascade (Theorem 3: 2^k - 1 consecutive bonus turns)
+    let ownStair = 0;
+    for (let d = 1; d <= 6; d++) {
+      if (state.pits[ownMax + 1 - d] === d) ownStair++;
+      else break;
+    }
+    let oppStair = 0;
+    for (let d = 1; d <= 6; d++) {
+      if (state.pits[oppMax + 1 - d] === d) oppStair++;
+      else break;
+    }
+
     let ladderCascadeBonus = 0;
-    if (ownLadders >= 2) ladderCascadeBonus += 0.35 * (ownLadders - 1);
-    if (oppLadders >= 2) ladderCascadeBonus -= 0.35 * (oppLadders - 1);
+    if (ownStair >= 2) ladderCascadeBonus += 0.35 * ((1 << ownStair) - 1 - ownStair);
+    else if (ownLadders >= 2) ladderCascadeBonus += 0.35 * (ownLadders - 1);
+
+    if (oppStair >= 2) ladderCascadeBonus -= 0.35 * ((1 << oppStair) - 1 - oppStair);
+    else if (oppLadders >= 2) ladderCascadeBonus -= 0.35 * (oppLadders - 1);
 
     let emptyHoleExposure = 0;
     for (const e of oppPits) {
@@ -181,13 +200,21 @@
     if (qDepth <= 0) return standPat;
 
     const moves = Engine.legalMoves(state);
+    const noisyChildren = [];
+    for (const m of moves) {
+      const {state: child, events} = Engine.applyMove(state, m);
+      if (events.capture > 0 || events.extra_turn) {
+        const noisyScore = (events.extra_turn ? 1000 : 0) + events.capture;
+        noisyChildren.push({ child, noisyScore });
+      }
+    }
+    noisyChildren.sort((a, b) => b.noisyScore - a.noisyScore);
+
     if (state.current_player === rootPlayer) {
       if (standPat >= beta) return standPat;
       alpha = Math.max(alpha, standPat);
       let best = standPat;
-      for (const m of moves) {
-        const {state: child, events} = Engine.applyMove(state, m);
-        if (!(events.capture > 0 || events.extra_turn)) continue;
+      for (const { child } of noisyChildren) {
         const val = quiescence(child, alpha, beta, rootPlayer, qDepth - 1);
         if (val > best) best = val;
         if (best > alpha) alpha = best;
@@ -198,9 +225,7 @@
       if (standPat <= alpha) return standPat;
       beta = Math.min(beta, standPat);
       let best = standPat;
-      for (const m of moves) {
-        const {state: child, events} = Engine.applyMove(state, m);
-        if (!(events.capture > 0 || events.extra_turn)) continue;
+      for (const { child } of noisyChildren) {
         const val = quiescence(child, alpha, beta, rootPlayer, qDepth - 1);
         if (val < best) best = val;
         if (best < beta) beta = best;
@@ -210,7 +235,7 @@
     }
   }
 
-  function search(state, depth, alpha, beta, rootPlayer, ply = 0) {
+  function search(state, depth, alpha, beta, rootPlayer, ply = 0, prevMove = -1, extraStreak = 0) {
     if (state.game_over) {
       const p1 = state.pits[Engine.P1_TREAS], p2 = state.pits[Engine.P2_TREAS];
       const diff = (rootPlayer === 0) ? (p1 - p2) : (p2 - p1);
@@ -243,7 +268,7 @@
     const isMax = (state.current_player === rootPlayer);
 
     // Reverse Futility Pruning (Static Null-Move Pruning) at shallow depths
-    if (depth <= 2 && stonesOnBoard > 16) {
+    if (depth <= 2 && stonesOnBoard > 16 && extraStreak === 0) {
       const evalMargin = 1.5 * depth;
       const staticEval = evaluate(state, rootPlayer);
       if (isMax && staticEval - evalMargin >= beta) return staticEval - evalMargin;
@@ -262,17 +287,19 @@
 
     const pvMove = entry ? entry.bestMove : -1;
     const killers = (ply < killerMoves.length) ? killerMoves[ply] : [];
+    const counterM = (prevMove >= 0 && prevMove < 14) ? counterMoves[currPlayer][prevMove] : -1;
 
-    // Order moves: PV move > winning move >= 25 > extra turn > capture > killer > history
+    // Order moves: PV move > winning move >= 25 > extra turn > capture > killer > counter > history
     const scored = [];
     for (const m of moves) {
       const {state: child, events} = Engine.applyMove(state, m);
       let score = 0;
       if (m === pvMove) score += 10000000;
-      if (child.pits[currTreas] >= 25) score += 2000000;
-      else if (events.extra_turn) score += 50000 + events.capture * 100;
-      else if (events.capture > 0) score += 30000 + events.capture * 100;
-      else if (killers.includes(m)) score += 10000;
+      if (child.pits[currTreas] >= 25) score += 20000000;
+      else if (events.extra_turn) score += 5000000 + events.capture * 10000;
+      else if (events.capture > 0) score += 3000000 + events.capture * 10000;
+      else if (killers.includes(m)) score += 1000000 - killers.indexOf(m) * 100000;
+      else if (m === counterM) score += 800000;
       score += historyTable[currPlayer][m];
       scored.push({m, child, score});
     }
@@ -280,31 +307,36 @@
 
     for (let i = 0; i < scored.length; i++) {
       const {m, child} = scored[i];
+      const isExtra = (child.current_player === currPlayer);
+      const nextStreak = isExtra ? (extraStreak + 1) : 0;
+      const ext = (isExtra && extraStreak === 0 && depth >= 3 && depth < 64) ? 1 : 0;
+      const nextD = depth - 1 + ext;
+
       let val;
       if (i === 0) {
-        val = search(child, depth - 1, alpha, beta, rootPlayer, ply + 1);
+        val = search(child, nextD, alpha, beta, rootPlayer, ply + 1, m, nextStreak);
       } else {
         // Late Move Reduction (LMR) on quiet moves ordered late
-        const doLmr = (i >= 3 && depth >= 3 && child.pits[currTreas] === state.pits[currTreas] && child.current_player !== currPlayer);
+        const doLmr = (i >= 3 && depth >= 3 && child.pits[currTreas] === state.pits[currTreas] && !isExtra);
         const reduction = doLmr ? 1 : 0;
 
         // PVS zero-window scout search (reduced first if LMR)
         if (isMax) {
           const scoutAlpha = Math.max(alpha, bestVal);
-          val = search(child, depth - 1 - reduction, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, ply + 1);
+          val = search(child, nextD - reduction, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, ply + 1, m, nextStreak);
           if (reduction > 0 && val > scoutAlpha) {
-            val = search(child, depth - 1, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, ply + 1);
+            val = search(child, nextD, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, ply + 1, m, nextStreak);
           }
           if (val > bestVal && val < beta) {
-            val = search(child, depth - 1, val, beta, rootPlayer, ply + 1);
+            val = search(child, nextD, val, beta, rootPlayer, ply + 1, m, nextStreak);
           }
         } else {
-          val = search(child, depth - 1 - reduction, beta - PVS_EPSILON, beta, rootPlayer, ply + 1);
+          val = search(child, nextD - reduction, beta - PVS_EPSILON, beta, rootPlayer, ply + 1, m, nextStreak);
           if (reduction > 0 && val < beta) {
-            val = search(child, depth - 1, beta - PVS_EPSILON, beta, rootPlayer, ply + 1);
+            val = search(child, nextD, beta - PVS_EPSILON, beta, rootPlayer, ply + 1, m, nextStreak);
           }
           if (val < beta && val > alpha) {
-            val = search(child, depth - 1, alpha, val, rootPlayer, ply + 1);
+            val = search(child, nextD, alpha, val, rootPlayer, ply + 1, m, nextStreak);
           }
         }
       }
@@ -316,7 +348,7 @@
         }
         if (bestVal > alpha) alpha = bestVal;
         if (alpha >= beta) {
-          recordCutoff(currPlayer, m, ply, depth);
+          recordCutoff(currPlayer, m, ply, depth, prevMove);
           break;
         }
       } else {
@@ -326,7 +358,7 @@
         }
         if (bestVal < beta) beta = bestVal;
         if (alpha >= beta) {
-          recordCutoff(currPlayer, m, ply, depth);
+          recordCutoff(currPlayer, m, ply, depth, prevMove);
           break;
         }
       }
@@ -413,6 +445,7 @@
     tt.clear();
     killerMoves = Array.from({ length: 64 }, () => []);
     historyTable = [new Array(14).fill(0), new Array(14).fill(0)];
+    counterMoves = [new Array(14).fill(-1), new Array(14).fill(-1)];
 
     let bestMv = moves[0];
     let bestScore = -INF;

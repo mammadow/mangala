@@ -1,294 +1,408 @@
-# 🏺 Superhuman Turkish Mangala AI: Master Architectural Blueprint
+# 🏺 Superhuman Turkish Mangala AI: Master Architectural & Mathematical Blueprint (v2.0)
 
-## Executive Summary
-
-This document establishes the comprehensive engineering master plan to advance the Turkish Mangala engine from tournament-grade play to **provably optimal, mathematically solved, and superhuman gameplay**. 
-
-Turkish Mangala is a two-player, zero-sum game of perfect information with discrete states. Because stones sown into treasuries are permanently retired from the active pits, the game possesses a **strictly monotonic stone depletion property** across the 12 pits. By exploiting this topological structure, the game can be **weakly solved** (optimal play from the initial configuration) and **strongly solved in the endgame** (optimal play from any configuration with $K \le 14$ stones).
-
-### Core Architectural Axioms
-1. **Zero External Runtime Dependencies** (`dependencies = []` in `pyproject.toml`): All components run on pure Python 3.10+ standard library.
-2. **100% Dual-Language Parity**: Every architectural component is directly mirrored in pure client-side JavaScript (`src/mangala/web/ai.js`) for zero-latency in-browser grandmaster play.
-3. **Provable Mathematical Correctness**: Strict compliance with Turkish Mangala Rules 1–5 (leaving one stone behind, Hazine extra turn, even capture across rows, empty pit capture on own side, and endgame sweep).
+> [!IMPORTANT]
+> **Architectural Mandate:** Advance the Turkish Mangala engine from a strong heuristic minimax player to a **mathematically solved in the endgame, grandmaster-solved in the opening, and superhuman NNUE/PVS engine in the midgame**—while maintaining **zero external runtime dependencies (`dependencies = []`)** and **100% Python $\leftrightarrow$ JavaScript parity**.
 
 ---
 
-## 🏛️ The Six-Pillar Superhuman Architecture
+## 1. Foundational Game-Theoretic Theorems of Turkish Mangala
+
+Before designing data structures or search algorithms, we establish four exact mathematical properties of **Turkish Mangala** (as implemented in [`src/mangala/engine.py`](../src/mangala/engine.py)) that dramatically compress the state space and prevent subtle search bugs.
+
+### Theorem 1: Treasury-Invariant Net Yield & 180° Side-to-Move Symmetry
+In Turkish Mangala, stones placed into Player 0's treasury ($T_0 = \text{pits}[6]$) or Player 1's treasury ($T_1 = \text{pits}[13]$) never re-enter the 12 active pits $P = (p_0, p_1, \dots, p_5, p_7, \dots, p_{12})$. Furthermore, legal moves, sowing trajectories, captures, and endgame sweeps depend **exclusively** on $P$ and the side to move $s \in \{0, 1\}$.
+
+1. **Treasury Invariance:** For any active 12-pit configuration $P$ and side to move $s$, the minimax-optimal future net stone differential gained from the remaining $K = \sum_{i \in \text{pits}} p_i$ stones:
+   $$\Delta(P, s) = \text{FutureStones}_0(P, s) - \text{FutureStones}_1(P, s) \in [-K, +K]$$
+   is **strictly independent** of $(T_0, T_1)$ (barring early 25-stone termination during live search). The exact final game score differential from state $(P, T_0, T_1, s)$ is:
+   $$\text{FinalDiff}(P, T_0, T_1, s) = (T_0 - T_1) + \Delta(P, s)$$
+2. **180° Rotational Involution (`STM = 0` Canonicalization):** Define the row-swap operator $\mathcal{R}(p_0..p_5, p_7..p_{12}) = (p_7..p_{12}, p_0..p_5)$. Because the rules are completely symmetric between both players:
+   $$\Delta(P, 1) = -\Delta(\mathcal{R}(P), 0)$$
+   **Engineering Impact:** The Endgame Tablebase (EGTB) only ever needs to store `side_to_move = 0`, cutting tablebase RAM, disk size, and retrograde compute time by **exactly 50%** for free.
+
+---
+
+### Theorem 2: The Lexicographic DAG Theorem $(K(P), \Phi(P))$
+A naive retrograde design assumes the number of active board stones $K(P) = \sum_{i \in \text{pits}} p_i$ strictly decreases on every move. **This is false:** if Player 0 sows from pit $i \in \{0..4\}$ and the last stone lands in pit $j \in \{i+1..5\}$ without triggering an empty-hole capture, zero stones enter the treasury and $K(P') = K(P)$.
+
+However, in Turkish Mangala, Player 0's treasury (`6`) sits at the exact topological boundary between Player 0's row (`0..5`) and Player 1's row (`7..12`). Therefore, **it is topologically impossible for any stone to cross into the opponent's row without first dropping a stone into the mover's own treasury** (which strictly decreases $K$ by at least $1$).
+
+Define the **Intra-Row Treasury Distance Potential**:
+$$\Phi(P) = \sum_{i=0}^{5} (6 - i) \cdot p_i + \sum_{j=7}^{12} (13 - j) \cdot p_j$$
+
+- On any legal move where $K(P') = K(P)$, no stone reached the mover's treasury, so every sown stone moved strictly closer to the mover's treasury within the mover's own 6 pits.
+- Specifically, if a pit holds $n = 1$ stone, it moves 1 step forward ($\Delta\Phi = -1$). If a pit holds $n > 1$ stones, $1$ stone stays behind and $n - 1 \ge 1$ stones move forward by $1, 2, \dots, n-1$ steps ($\Delta\Phi = -\frac{n(n-1)}{2} \le -1$).
+- Therefore, on **every** legal move $P \to P'$ in Turkish Mangala:
+  $$\bigl(K(P'), \Phi(P')\bigr) <_{\text{lex}} \bigl(K(P), \Phi(P)\bigr)$$
+
+**Engineering Impact:**
+1. **Zero Cycles (Strict DAG):** Unlike Oware/Awale, Turkish Mangala has **zero cyclic states**. Every game terminates in at most $\mathcal{O}(K_{\max} + \Phi_{\max})$ moves.
+2. **Single-Pass Retrograde Induction:** Within each stone-count slice $K \in \{1, 2, \dots, K_{\max}\}$, sorting configurations in **increasing order of $\Phi(P) \in [K, 6K]$** guarantees that every same-slice child state $P'$ ($K(P') = K$) has already been solved before parent $P$ is evaluated. No iterative relaxation or graph coloring is required.
+
+---
+
+### Theorem 3: The Exponential Binary Merdiven (Staircase) Theorem ($2^k - 1$)
+Because Turkish Mangala leaves $1$ stone in the origin pit whenever $n > 1$ and sows the remaining $n - 1$ stones counterclockwise:
+- Sowing a pit at distance $d = 6 - i$ from the treasury holding exactly $n = d$ stones leaves $1$ stone in pit $i$, increments every pit $i+1 \dots 5$ by $+1$, deposits $+1$ into the treasury (`6`), and grants an **extra turn**.
+- Consequently, if a player's front $k$ pits $(6-k, \dots, 5)$ hold the staircase configuration $(k, k-1, \dots, 2, 1)$, executing the optimal front-to-back sequence behaves as a **binary down-counter**, generating:
+  $$\text{BonusTurns}(k) = 2^k - 1 \quad \text{and} \quad \text{GuaranteedTreasuryStones}(k) = 2^k - 1$$
+  before the opponent receives a single turn!
+  - $(1)$ at pit 5 $\implies 1$ free stone ($1$ bonus turn).
+  - $(2, 1)$ at pits 4–5 $\implies 3$ free stones ($5 \to 4 \to 5$).
+  - $(3, 2, 1)$ at pits 3–5 $\implies 7$ free stones ($5 \to 4 \to 5 \to 3 \to 5 \to 4 \to 5$).
+
+**Engineering Impact:**
+1. **Static Evaluation:** Static evaluation must score contiguous/semi-contiguous Merdiven suffixes nonlinearly ($2^k - 1$) rather than linearly.
+2. **Search Horizon Protection:** If every extra turn consumes a full search ply (`depth - 1`), a 3-pit Merdiven cascade consumes **7 plies of search depth** during a single player's turn! This explains why naive fixed-depth search severely mis-evaluates extra-turn cascades (and why [`src/mangala/book.py`](../src/mangala/book.py) previously preferred root move `4` over the extra-turn root move `3`). Our search engine fixes this via **Turn-Conserving Fractional-Ply Extensions**.
+
+---
+
+### Theorem 4: Terminal Score Even-Parity Identity
+Because total stones equal $48$, any terminal state satisfies $T_0 + T_1 = 48$. Thus:
+$$T_0 - T_1 = T_0 - (48 - T_0) = 2 T_0 - 48 \equiv 0 \pmod 2$$
+**Every terminal score difference in standard 48-stone Turkish Mangala is an EVEN integer in $\{-48, -46, \dots, 0, \dots, +46, +48\}$.**
+
+**Engineering Impact:** In exact endgame solving ($K \le 18$), consecutive distinct minimax values are separated by at least **2 full points**, allowing zero-window **Step-2 MTD(f)** to jump by increments of $2$ instead of crawling over floating-point epsilons.
+
+---
+
+## 2. Six-Pillar System Architecture
 
 ```mermaid
 flowchart TD
-    subgraph Pillar1["Pillar I: Ultra-Fast Core Engine"]
-        FlatArray["Flat Int32 Tuple Representation"] --> InlinedSow["Zero-Allocation Inlined Sowing"]
-        InlinedSow --> FastSpeed["500k nodes/s (Py) | 4M nodes/s (JS)"]
+    subgraph P1["Pillar I: Zero-Allocation Core & Zobrist Engine"]
+        Zobrist["Incremental 64-Bit Zobrist Hash"] --> FlatSim["Inlined Tuple / Int32Array Simulator"]
+        FlatSim --> PersistentTT["Persistent Two-Tier TT (Aging + Bukets)"]
     end
 
-    subgraph Pillar2["Pillar II: Advanced Search Innovations"]
-        MTDf["MTD(f) Zero-Window Driver"] --> SingularExt["Singular Move Extensions"]
-        SingularExt --> LMR_RFP["History-Driven LMR & RFP"]
-        LMR_RFP --> DeepSearch["Effective Depth 20 to 24 Plies"]
+    subgraph P2["Pillar II: Dual-Regime Search Engine"]
+        FracPly["Fractional-Ply Extra-Turn Extension"] --> MidPVS["Midgame: Centistone PVS + Aspiration + ProbCut"]
+        FracPly --> EndMTD["Endgame (K <= 18): Step-2 Integer MTD(f)"]
+        MidPVS --> TimeMgr["EBF Soft/Hard Time Mgr + Partial Root Rescue"]
     end
 
-    subgraph Pillar3["Pillar III: Combinadic Retrograde EGTB"]
-        StarsBars["Stars-and-Bars Indexer: C(K+11, 11)"] --> BackInduction["Backward Minimax Induction"]
-        BackInduction --> InvariantDelta["Treasury-Invariant Net Yield Delta(P, p)"]
-        InvariantDelta --> CompactEGTB["Precomputed K <= 14 Tablebase (< 1MB)"]
+    subgraph P3["Pillar III: Lexicographic DAG EGTB (K <= 14)"]
+        UnifiedComb["Unified Combinadic Index C(K+12, 12)"] --> LexDAG["Single-Pass (K, Phi) DAG Induction"]
+        LexDAG --> STMSym["180-Deg STM Canonical Table (< 1 MB)"]
     end
 
-    subgraph Pillar4["Pillar IV: Tapered 48-Weight Heuristics & SPSA"]
-        PhaseTaper["Tri-Phase Taper (Open / Mid / End)"] --> SPSA["SPSA & Texel Loss Optimizer"]
-        SPSA --> SelfPlayN["Large-Scale Self-Play (N >= 200,000)"]
+    subgraph P4["Pillar IV: Two-Stage Automated Tuning"]
+        StageA["Stage A (Eval): Pre-Extracted Features + Analytical AdamW"] --> Taper48["Tri-Phase 48-Weight Positional Matrix"]
+        StageB["Stage B (Search): Match-Based SPSA + SPRT Arena"] --> SearchParams["Tuned LMR / RFP / ProbCut Constants"]
     end
 
-    subgraph Pillar5["Pillar V: Quantized Sub-Microsecond NNUE"]
-        SparseAccum["Dual-Perspective Sparse Accumulator"] --> QuantizedLayers["Quantized int8 / int16 MLP"]
-        QuantizedLayers --> FastNNUE["< 20ns Incremental Inference"]
+    subgraph P5["Pillar V: Quantized Dual-Perspective NNUE"]
+        HalfPit["576->128->32->1 Sparse Accumulator"] --> Int8SIMD["Pure Stdlib int16/int8 ClippedReLU"]
     end
 
-    subgraph Pillar6["Pillar VI: Deep-Solved Opening Tree"]
-        Depth24Solver["Depth-24 Exhaustive Tree Search"] --> OpeningBook["Precomputed Grandmaster Opening Book"]
+    subgraph P6["Pillar VI: Turn-Normalized Opening DAG & Pondering"]
+        NormBook["Turn-Normalized Depth-24 Opening DAG"] --> WebWorker["Async Web Worker + Opponent-Time Pondering"]
     end
 
-    FastSpeed --> MasterEngine["🏆 Superhuman Turkish Mangala AI"]
-    DeepSearch --> MasterEngine
-    CompactEGTB --> MasterEngine
-    SelfPlayN --> MasterEngine
-    FastNNUE --> MasterEngine
-    OpeningBook --> MasterEngine
+    PersistentTT --> Master["🏆 Superhuman Turkish Mangala Engine"]
+    TimeMgr --> Master
+    EndMTD --> Master
+    STMSym --> Master
+    Taper48 --> Master
+    SearchParams --> Master
+    Int8SIMD --> Master
+    WebWorker --> Master
 ```
 
 ---
 
-## 🔬 Pillar I: Ultra-Fast Core Engine (Flat Representation & Inlined Sowing)
+## 3. Pillar-by-Pillar Engineering Specification
 
-### 1. The Allocation Bottleneck in Python Search
-In Python minimax engines, the primary throughput bottleneck is object instantiation (`GameState` objects, dictionary results, and tuple slicing inside `apply_move`). Profiling reveals that standard Python `apply_move` processes $\approx 50,000$ to $80,000$ nodes/second per core.
+### Pillar I: Zero-Allocation Core Simulator, 64-Bit Zobrist Hashing & Persistent TT
 
-### 2. High-Performance Architecture
-1. **Flat Immutable 15-Element Tuple**:
-   Represent state as an integer tuple:
-   $$\text{state} = (p_0, p_1, \dots, p_{11}, T_1, T_2, \text{player})$$
-2. **Inlined Fast Sowing Routine**:
-   Replace general dictionary event tracking with a tight, branchless integer update loop:
-   ```python
-   # Optimized core sowing step without object instantiation
-   def fast_apply(pits: tuple[int, ...], move: int, player: int) -> tuple[tuple[int, ...], int, bool]:
-       # Inlined sowing using precomputed circular landing tables
-       ...
-   ```
-3. **Precomputed Landing & Capture Lookup Tables**:
-   Precompute all circular sowing trajectories and capture endpoints in fixed tuples:
-   - `SOW_LANDING[player][pit][count % 13]`
-   - `CAPTURE_TARGET[player][pit]`
-4. **Throughput Target**:
-   - **Python 3.12+ (CPython)**: $> 400,000$ nodes/second/core.
-   - **JavaScript (V8 / Chromium)**: Flat `Int32Array(15)` achieves $> 3,500,000$ nodes/second.
+#### 1. Eliminating Per-Node Heap Allocations
+Currently, [`src/mangala/ai.py`](../src/mangala/ai.py) allocates a new `GameState` object, a `MoveEvents` dict, and a nested tuple `_key(state) = (tuple(state.pits), state.current_player)` on every node, while [`src/mangala/web/ai.js`](../src/mangala/web/ai.js) allocates a comma-joined string `state.pits.join(',')` on every node.
 
----
+We introduce a dedicated fast internal search representation:
+- **Python (`_FastState` / inlined step):**
+  Operate directly on a 16-tuple or flat list with incremental Zobrist hash:
+  ```python
+  def fast_step(
+      pits: tuple[int, ...],
+      player: int,
+      zhash: int,
+      move: int,
+      sweep_emptied: bool = True,
+  ) -> tuple[tuple[int, ...], int, int, int, bool, bool]:
+      """Return (new_pits, next_player, new_zhash, captured, extra_turn, game_over)."""
+  ```
+- **JavaScript (`src/mangala/web/ai.js`):**
+  Preallocate a ply-indexed stack of `Uint8Array(64 * 14)` buffers (`PLY_BUFFERS[ply]`) so making a move at `ply` copies 14 bytes in-place with **zero garbage collection or heap allocation** during the entire search!
 
-## 🎯 Pillar II: Advanced Search Innovations (MTD(f), Singular Extensions & LMR)
+#### 2. 64-Bit Incremental Zobrist Hashing
+Precompute deterministic 64-bit unsigned pseudo-random integers (seeded via `SplitMix64(0x4D414E47414C415F)` for 100% Python $\leftrightarrow$ JS identity):
+- `ZOBRIST_PIT[14][49]`: $14 \times 49$ table of 64-bit keys for each pit index $0 \dots 13$ and stone count $0 \dots 48$.
+- `ZOBRIST_SIDE`: 64-bit key XORed when `current_player == 1`.
 
-### 1. MTD(f) Driver Over Standard PVS
-Standard Alpha-Beta and Principal Variation Search (PVS) waste node expansions re-searching wide bounds. **MTD(f)** (Aske Plaat et al., 1996) calls zero-window searches exclusively, using the Transposition Table (TT) as memory:
+In JavaScript, to avoid `BigInt` boxing overhead in V8, store each Zobrist key as a pair of 32-bit unsigned integers `(HI32, LO32)` inside flat `Uint32Array` tables:
+- Table index: `idx = lo32 & TT_MASK` (where `TT_SIZE = 1 << 20`, i.e., $1,048,576$ entries).
+- Verification tag: `tag = hi32` stored in the entry to prevent hash collisions.
 
-```python
-def mtd_f(root_state: GameState, first_guess: float, depth: int) -> float:
-    g = first_guess
-    upper_bound = +INFINITY
-    lower_bound = -INFINITY
-    while lower_bound < upper_bound:
-        beta = g if g != lower_bound else g + EPSILON
-        g = alpha_beta_with_tt(root_state, depth, beta - EPSILON, beta)
-        if g < beta:
-            upper_bound = g
-        else:
-            lower_bound = g
-    return g
-```
-*Empirical advantage in Mancala/Kalah games*: Reduces node visits by **30% to 45%** compared to standard PVS.
-
-### 2. Singular Move Extensions
-In tactical positions with forced captures or one single crushing reply:
-- If the best move from the transposition table scores $\ge \alpha + s$ (where $s \approx 1.5$ stones) and all alternative sibling moves fail low at reduced depth $d - 3$, **extend the search depth of the singular move by $+1$ ply**.
-- **Impact**: Completely eliminates tactical blind spots in multi-turn ladder cascades and empty-hole capture traps.
-
-### 3. Dynamic Late Move Reduction (LMR) with History Heuristic
-Quiet moves ($i \ge 3$) that do not generate bonus turns or captures are searched with depth reduction:
-$$R = 1 + \left\lfloor 0.35 \cdot \ln(d) \cdot \ln(i) \right\rfloor$$
-If the history score is exceptionally high, reduction is suppressed ($R \leftarrow \max(0, R - 1)$). If a reduced move scores above $\alpha$, it is immediately re-searched at full depth.
-
-### 4. Reverse Futility Pruning (RFP) & Enhanced Transposition Cutoffs (ETC)
-- **RFP**: At near-leaf nodes ($d \le 2$), if $\text{eval}(s) - \text{margin}(d) \ge \beta$, return $\beta$ immediately.
-- **ETC**: Before expanding a node, probe the transposition table for all immediate child positions. If any child already yields a beta cutoff, prune the current node with zero move generations.
+#### 3. Persistent Two-Tier Transposition Table with Generation Aging
+Currently, `Searcher.analyse()` sets `self.tt = {}` at the start of every move, destroying all previously computed subtrees.
+- **Persistent Brain:** Retain the transposition table across turns (and across extra-turn chains!).
+- **2-Slot Bucket Replacement Policy:** Each hash bucket holds two slots:
+  1. **Slot 0 (Depth-Preferred + Age):** Replaced if `new_depth >= old_depth` OR `entry_age != current_age`.
+  2. **Slot 1 (Always-Replace):** Always stores the most recent search result to capture local tactical refutations.
+- **Collision Safety:** Store a 32-bit verification signature alongside `(depth, score, flag, best_move, age)`.
 
 ---
 
-## 🧮 Pillar III: Combinadic Retrograde Endgame Tablebases (EGTB)
+### Pillar II: Dual-Regime Search Engine & Turn-Conserving Extensions
 
-### 1. The Monotonic Depletion Invariance Theorem
-> **Theorem (Treasury-Invariant Net Yield):**
-> In Turkish Mangala, stones placed in the treasuries $T_1$ and $T_2$ never return to the active 12 pits. Therefore, for any pit configuration $P = (p_0, \dots, p_{11})$ and active player $p \in \{0, 1\}$, the optimal net stone yield:
-> $$\Delta(P, p) = \text{StonesCaptured}_0 - \text{StonesCaptured}_1$$
-> is **strictly invariant** with respect to the starting treasury values $(T_1, T_2)$. The terminal score difference is uniquely given by:
-> $$\text{ScoreDiff} = (T_1 - T_2) + \Delta(P, p)$$
+#### 1. Integer Centistone Scaling (Eliminating Float Instability)
+All heuristic evaluations are scaled to **integer centistones** (`1 stone = 100 centistones`, terminal win $= \pm 1,000,000 + 100 \cdot (T_0 - T_1)$).
+- Eliminates floating-point epsilon comparison bugs (`_PVS_EPSILON = 1e-4`).
+- Allows exact zero-window integer probes `alpha_beta(state, depth, beta - 1, beta)`.
 
-### 2. Mathematical State Indexing (Combinadics / Stars-and-Bars)
-Any configuration of $K$ stones distributed across 12 pits maps bijectively to an integer index $0 \le \text{idx} < \binom{K + 11}{11}$ using combinadics:
-$$\text{idx}(p_0, p_1, \dots, p_{11}) = \sum_{j=0}^{11} \binom{K_j + 11 - j}{12 - j}$$
-where $K_j = \sum_{m=j}^{11} p_m$.
+#### 2. Fractional-Ply Turn-Conserving Search (Solving the Extra-Turn Horizon Bug)
+Define search depth in **half-plies** (`1 normal move = 2 half-plies`):
+- **Normal move (`extra_turn == False`):** `next_depth = depth - 2`
+- **Extra-turn move (`extra_turn == True`):**
+  - If `consecutive_extra_turns <= 2`: `next_depth = depth - 1` (only costs $0.5$ ply!).
+  - If `consecutive_extra_turns > 2`: `next_depth = depth - 2` (prevents unbounded search explosion while still granting a full ply bonus to the cascade).
+- **Result:** The search engine evaluates both Player 0's entire multi-move turn AND Player 1's counter-response at the same effective turn horizon.
 
-### 3. Tablebase Sizing & Compact Storage
-| Stones on Board ($K$) | Configurations $\binom{K+11}{11}$ | Player States ($2 \times$) | Raw Storage (`int8`) | Compressed (LZMA) |
+#### 3. Midgame Regime ($K > 18$): Centistone PVS + Modern Pruning Suite
+1. **Iterative Deepening with Dynamic Aspiration Windows:**
+   - Start at $d = 4$ with window $[\text{prev\_score} - 35\text{ cs}, \text{prev\_score} + 35\text{ cs}]$.
+   - On fail-low/fail-high, widen exponentially ($\Delta \leftarrow 2.5 \times \Delta$: $35 \to 88 \to 220 \to \infty$) instead of immediately jumping to $(-\infty, +\infty)$.
+2. **Enhanced Transposition Cutoffs (ETC):**
+   - At nodes with $d \ge 3$, before sorting or searching children, do a rapid loop over legal moves checking if any child's TT entry already causes an immediate $\beta$-cutoff.
+3. **Reverse Futility Pruning (RFP / Static Null-Move):**
+   - At non-PV nodes with $d \le 3$ and no extra-turn streak: if $\text{static\_eval} - 120 \cdot d \ge \beta$, return $\text{static\_eval} - 120 \cdot d$.
+4. **ProbCut (Shallow Statistical Pruning):**
+   - At non-PV nodes with $d \ge 5$: search at shallow depth $d' = d - 3$ with bound $\beta_{\text{prob}} = \beta + 180\text{ cs}$. If the shallow search fails high ($\ge \beta_{\text{prob}}$), return $\beta$.
+5. **Move Ordering Hierarchy:**
+   - `1.` Immediate 25-stone threshold win (`+50,000,000`)
+   - `2.` TT PV move (`+20,000,000`)
+   - `3.` Extra-turn + Capture moves (`+10,000,000 + 1000 * capture`)
+   - `4.` Capture moves sorted by stone yield (`+5,000,000 + 1000 * capture`)
+   - `5.` Killer Moves (`slot 0`: `+2,000,000`, `slot 1`: `+1,900,000`)
+   - `6.` **Countermove Heuristic** (`countermove[prev_player][prev_move]`: `+1,500,000`)
+   - `7.` Quiet moves sorted by **Gravity-Decayed History Heuristic** (`history[p][m] += d^2 - history[p][m] * d^2 // 16384`, keeping history bounded in $[-16384, +16384]$).
+6. **Singular Move Extensions:**
+   - At $d \ge 6$, if a TT move exists with `tt_depth >= d - 3` and `tt_flag in (EXACT, LOWER_BOUND)`, run a reduced verification search excluding `tt_move` at depth $d/2 - 1$ with window $[\text{tt\_val} - 2 \cdot d \cdot 10, \text{tt\_val} - 2 \cdot d \cdot 10 + 1]$. If all other moves fail low, extend `tt_move` by $+1$ full ply (`+2` half-plies).
+
+#### 4. Endgame Regime ($K \le 18$): EGTB Probe + Step-2 Integer MTD(f)
+- **Instant EGTB Lookup ($K \le 12$ or $14$):** Return exact tablebase value $\Delta(P, s)$ in $\mathcal{O}(1)$ time ($0$ nodes searched).
+- **Bridge Solver ($12 < K \le 18$):** Because nearly every child of a $K \in [13, 18]$ position drops into the $K \le 12$ EGTB within $1\text{--}3$ plies, run **Step-2 Integer MTD(f)** (exploiting Theorem 4's even-score parity) to solve $K \le 18$ to 100% mathematical perfection in milliseconds.
+
+#### 5. Improved Quiescence Search (`_quiescence`)
+Fixes three concrete flaws in the current implementation:
+1. **25-Stone Victory Cutoff:** Immediately check `if own_t >= 25` / `if opp_t >= 25` at the top of `_quiescence`.
+2. **Noisy Move Sorting:** Sort noisy moves by `(extra_turn, capture_count)` descending before recursion so the largest capture / bonus turn triggers an immediate $\beta$-cutoff on move 0.
+3. **Delta Pruning:** If `stand_pat + max_possible_swing + 150 < alpha`, prune noisy moves that cannot possibly raise $\alpha$.
+
+#### 6. Time Management & Partial Root Rescue
+- **Partial Root Iteration Rescue:** In `_search_root`, if `_TimeUp` triggers after the PV move ($i = 0$) and at least one alternative move ($i \ge 1$) has completed and improved `best_val`, commit the new best move rather than discarding the entire unfinished depth $d$.
+- **Soft vs. Hard Budgets:**
+  - `hard_deadline = start + time_limit` (checked every 128 nodes).
+  - `soft_deadline = start + 0.45 * time_limit`: Checked between iterative deepening depths. If `best_move` has remained identical for the last 3 depths and score changed by $< 25\text{ cs}$, stop at `soft_deadline`. If `best_move` just changed or score dropped by $> 100\text{ cs}$ (blunder alert), extend up to `hard_deadline`.
+
+---
+
+### Pillar III: Lexicographic DAG Retrograde Endgame Tablebases (EGTB)
+
+#### 1. Unified Cumulative Combinadic Bijection
+Instead of maintaining 13 separate arrays for $k = 0, 1, \dots, 12$, we map **all** 12-pit configurations with total stones $k = \sum_{i=0}^{11} p_i \le K_{\max}$ bijectively into a **single contiguous integer index** $\text{idx}(P) \in \bigl[0, \binom{K_{\max} + 12}{12}\bigr)$:
+$$\text{idx}(p_0, p_1, \dots, p_{11}) = \binom{k + 11}{12} + \sum_{j=0}^{10} \binom{r_j + 10 - j}{11 - j}, \quad r_j = \sum_{m=j+1}^{11} p_m$$
+where $\binom{n}{r} = 0$ whenever $n < r$, and all binomial coefficients $\binom{n}{r}$ for $n \le 30, r \le 12$ are precomputed in a tiny $31 \times 13$ integer lookup table (`BINOM[31][13]`).
+- **Complexity:** $\mathcal{O}(1)$ time (12 table lookups and integer additions; zero divisions, zero allocations).
+
+#### 2. Exact Storage & Compression Budgets (With Theorem 1 STM Canonicalization)
+
+| Max Board Stones ($K_{\max}$) | Total Canonical States $\binom{K_{\max}+12}{12}$ | Raw `int8` Table Size | Zlib / LZMA Compressed | Lookup Latency |
 |:---:|:---:|:---:|:---:|:---:|
-| **$K \le 8$** | 75,582 | 151,164 | 151 KB | **38 KB** |
-| **$K \le 10$** | 352,716 | 705,432 | 705 KB | **165 KB** |
-| **$K \le 12$** | 1,352,078 | 2,704,156 | 2.70 MB | **580 KB** |
-| **$K \le 14$** | 4,457,400 | 8,914,800 | 8.91 MB | **1.85 MB** |
+| **$K_{\max} = 8$** | $125,970$ | $123.0\text{ KiB}$ | **$\approx 24\text{ KiB}$** | $< 80\text{ ns}$ |
+| **$K_{\max} = 10$** | $646,646$ | $631.5\text{ KiB}$ | **$\approx 115\text{ KiB}$** | $< 80\text{ ns}$ |
+| **$K_{\max} = 12$** | $2,704,156$ | $2.58\text{ MiB}$ | **$\approx 440\text{ KiB}$** | $< 90\text{ ns}$ |
+| **$K_{\max} = 14$** | $9,657,700$ | $9.21\text{ MiB}$ | **$\approx 1.45\text{ MiB}$** | $< 100\text{ ns}$ |
 
-### 4. Retrograde Induction Algorithm
-1. **Base Cases ($K = 0$ or terminal)**:
-   Any state where a player has 0 legal moves triggers Rule 5 (Sweep). The opponent's remaining stones are swept into the mover's treasury. Store $\Delta(P, p) = \text{SweepStones}$.
-2. **Backward Propagation**:
-   For $K = 1, 2, \dots, 12$:
-   - For every configuration $P$ and player $p$, generate all legal moves $m$.
-   - Compute child state $P'$ with transition stones gained $\delta_{capt}$.
-   - If child state has $K' < K$, lookup its already-solved $\Delta(P', p')$ from the previous level.
-   - For extra-turn moves ($p' = p$), maximize/minimize recursively.
-   - Set $\Delta(P, p) = \max_m (\delta_{capt} + \Delta(P', p'))$ (for $p=0$).
-3. **Runtime Integration**:
-   When stones on board drop to $\le 12$, bypass heuristic evaluation and search entirely:
-   $$\text{Best Move} = \arg\max_{m} \left( \delta_{capt}(m) + \Delta(P_{child}, p_{child}) \right)$$
-   **Execution time: $< 500$ nanoseconds, 100% mathematically proven optimal play.**
+*Note: We ship two tiers: a **Core Embedded Tier ($K_{\max} = 10$, $\approx 115\text{ KiB}$ compressed)** bundled directly in the repository for instant loading in both Python and browser JS, and an **Extended Grandmaster Tier ($K_{\max} = 12\text{--}14$)** generated via `python -m mangala.tablebase --build --max-stones 12`.*
 
----
+#### 3. Exact Single-Pass DAG Retrograde Algorithm
+```python
+def build_egtb(max_stones: int = 12, rules: Rules = DEFAULT_RULES) -> bytearray:
+    """Single-pass retrograde solver using Theorem 1 (STM=0) & Theorem 2 (K, Phi DAG)."""
+    total_states = math.comb(max_stones + 12, 12)
+    table = bytearray(total_states)  # stores signed int8 in [0..255] via (delta + 128)
 
-## 📊 Pillar IV: Tapered 48-Weight Positional Evaluation & SPSA Tuning
+    for k in range(0, max_stones + 1):
+        # Group all k-stone 12-pit configurations by intra-row potential Phi(P)
+        buckets: dict[int, list[tuple[int, ...]]] = defaultdict(list)
+        for pits_12 in generate_compositions(k, 12):
+            phi = sum((6 - i) * pits_12[i] for i in range(6)) + sum(
+                (12 - j) * pits_12[j] for j in range(6, 12)
+            )
+            buckets[phi].append(pits_12)
 
-### 1. Tri-Phase Game Interpolation
-Positional features possess radically different values across the game progression:
-- **Opening Phase** ($K \ge 36$ stones): Mobility, fortress stability, and avoiding early exposure dominate.
-- **Midgame Phase** ($20 \le K < 36$ stones): Ladder chaining, empty-hole traps, and treasury race dominate.
-- **Endgame Phase** ($K < 20$ stones): Direct sweep proximity and parity zugzwang dominate.
+        # Process strictly in increasing order of Phi(P) (Theorem 2 DAG guarantee)
+        for phi in sorted(buckets.keys()):
+            for pits_12 in buckets[phi]:
+                idx = combinadic_index(pits_12)
+                if sum(pits_12[0:6]) == 0:
+                    # Terminal: Player 0's row is already empty
+                    delta = sum(pits_12[6:12])
+                    table[idx] = delta + 128
+                    continue
+                if sum(pits_12[6:12]) == 0:
+                    # Terminal: Player 1's row is already empty
+                    delta = -sum(pits_12[0:6])
+                    table[idx] = delta + 128
+                    continue
 
-Evaluation linearly tapers between phases:
-$$\text{eval}(s) = \frac{\text{Phase}}{24} \cdot \text{eval}_{mid}(s) + \left(1 - \frac{\text{Phase}}{24}\right) \cdot \text{eval}_{end}(s)$$
-where $\text{Phase} = \min(24, K - 12)$.
+                best_delta = -127
+                for move in range(6):
+                    if pits_12[move] == 0:
+                        continue
+                    child_12, gain_p0, extra_turn, game_over = simulate_canonical_move(
+                        pits_12, move, rules
+                    )
+                    if game_over:
+                        val = gain_p0
+                    elif extra_turn:
+                        # Same player (STM=0) moves again; guaranteed (K', Phi') < (K, Phi)
+                        child_delta = table[combinadic_index(child_12)] - 128
+                        val = gain_p0 + child_delta
+                    else:
+                        # Opponent moves next: rotate board 180 deg and negate (Theorem 1)
+                        rot_child = child_12[6:12] + child_12[0:6]
+                        opp_delta = table[combinadic_index(rot_child)] - 128
+                        val = gain_p0 - opp_delta
 
-### 2. Comprehensive 48-Weight Feature Matrix
-The evaluation vector $\vec{w} \in \mathbb{R}^{48}$ encompasses:
-1. **Individual Pit Potency** ($2 \times 6 = 12$ weights):
-   - Stones in Pit 5 (closest to treasury) have high ladder conversion probability.
-   - Stones in Pit 0 (furthest back) provide defensive depth and reserve tempo.
-2. **Tactical Threats & Defense** ($16$ weights):
-   - Direct captures, empty-hole captures, cascade potential, and defensive fortress safety.
-3. **Parity Matrices** ($8$ weights):
-   - Odd/even parity per pit across player and opponent rows.
-4. **Endgame Proximity & Sweep Thresholds** ($12$ weights):
-   - Distance to 25 stones threshold acceleration and opponent denial bonuses.
-
-### 3. Automated SPSA & Texel Loss Pipeline
-- **Dataset Generation**: Automated multiprocessing self-play generating $N \ge 200,000$ quiet positions.
-- **Texel Loss Function**:
-  $$\mathcal{L}(\vec{w}) = \frac{1}{N} \sum_{i=1}^N \left( R_i - \sigma\left( \frac{K \cdot \text{eval}(s_i, \vec{w})}{400} \right) \right)^2$$
-- **SPRT Verification**: Candidate weights are accepted only if they pass Sequential Probability Ratio Testing (SPRT) against current champions with $95\%$ statistical confidence ($\alpha = \beta = 0.05, \Delta\text{Elo} \ge +25$).
-
----
-
-## 🧠 Pillar V: Sub-Microsecond Quantized NNUE Architecture
-
-### 1. Why NNUE for Mangala?
-Hand-crafted heuristics inevitably contain human blind spots in deep combinatorial configurations. Efficiently Updatable Neural Networks (NNUE) map board states directly to high-dimensional non-linear evaluations while maintaining microsecond evaluation speeds.
-
-### 2. Network Topology
-$$\mathbf{x} \in \{0, 1\}^{576} \xrightarrow{\mathbf{W}_1} \mathbf{h} \in \mathbb{R}^{128} \xrightarrow{\text{ClippedReLU}} \mathbf{h}_2 \in \mathbb{R}^{32} \xrightarrow{\mathbf{W}_3} \text{Score} \in \mathbb{R}$$
-- **Input Features**: Dual perspective (Player 0 and Player 1):
-  - $12 \text{ pits} \times 48 \text{ stone buckets} = 576$ binary input features.
-  - Active feature vector has exactly 12 active ones (one per pit).
-
-### 3. $O(1)$ Incremental Accumulator Update
-When a move is played, only the pits modified by the sowing step are updated:
-$$\mathbf{h}_{new} = \mathbf{h}_{old} - \sum_{i \in \text{emptied}} \mathbf{W}_1[:, \text{feature}(i, n_{old})] + \sum_{j \in \text{sown}} \mathbf{W}_1[:, \text{feature}(j, n_{new})]$$
-Because only 2 to 6 pits change per move, updating the accumulator requires only $\approx 100$ vector additions ($< 25$ nanoseconds on modern hardware).
-
-### 4. Pure Integer Quantization (`int8` / `int16`)
-- Quantize all weights into 8-bit signed integers (`int8`).
-- Accumulators operate in 16-bit integers (`int16`).
-- Output layer accumulates into 32-bit integer (`int32`).
-- **No external ML libraries (no PyTorch, no ONNX)**: Runs cleanly inside standard Python `array('h')` or JavaScript `Int16Array`.
-
----
-
-## 📖 Pillar VI: Deep-Solved Grandmaster Opening Tree
-
-### 1. Opening Branching in Turkish Mangala
-From the initial position $(4, 4, 4, 4, 4, 4 \mid 4, 4, 4, 4, 4, 4)$, Player 1 has exactly 6 opening moves:
-1. **Pit 0**: Lands in Pit 3.
-2. **Pit 1**: Lands in Pit 4.
-3. **Pit 2**: Lands in Pit 5.
-4. **Pit 3**: Lands directly in Treasury (Hazine) $\implies$ **Guaranteed Extra Turn!**
-5. **Pit 4**: Crosses into opponent's Pit 7.
-6. **Pit 5**: Crosses into opponent's Pit 8.
-
-### 2. Deep-Tree Solving (Plies 1 to 16)
-- Precompute an exhaustive opening tree up to ply 16 using depth-24 alpha-beta with transposition table persistence.
-- Store the minimax optimal move and PV line for all common defenses.
-- **Benefit**: AI plays the opening instantly ($0$ milliseconds) with mathematically verified theoretical precision.
-
----
-
-## 📅 Phased Implementation Roadmap
-
-```mermaid
-flowchart LR
-    M1["Milestone 1:<br/>Ultra-Fast Flat Simulator<br/>& Inlined Movegen"] --> M2["Milestone 2:<br/>MTD(f), Singular Ext<br/>& ETC Search"]
-    M2 --> M3["Milestone 3:<br/>Retrograde EGTB Solver<br/>(K <= 12 Stones)"]
-    M3 --> M4["Milestone 4:<br/>Tapered 48-Weight<br/>SPSA Tuning Suite"]
-    M4 --> M5["Milestone 5:<br/>Quantized NNUE<br/>Integer Inference"]
-    M5 --> M6["Milestone 6:<br/>Solved Grandmaster<br/>Opening Book (Depth 24)"]
+                    if val > best_delta:
+                        best_delta = val
+                table[idx] = best_delta + 128
+    return table
 ```
 
-### Detailed Milestone Specifications
+---
 
-#### Milestone 1: Core Engine Optimization (Target: +150 Elo in Blitz)
-- Implement `FastBoard` flat tuple and inlined sowing routines in `src/mangala/engine.py`.
-- Benchmark node throughput: reach $> 350,000$ nodes/sec in Python and $> 3,000,000$ nodes/sec in JavaScript.
-- Maintain 100% parity against current test fixtures.
+### Pillar IV: Tapered 48-Weight Positional Evaluation & Two-Stage Automated Tuning
 
-#### Milestone 2: Search Engine Revolution (Target: +200 Elo)
-- Implement MTD(f) search driver in `src/mangala/ai.py` and `src/mangala/web/ai.js`.
-- Add Singular Move Extensions and Enhanced Transposition Cutoffs (ETC).
-- Measure effective search depth increase: reach depth $18+$ within the 2.5-second time limit.
+#### 1. Fixing the Exact Mechanics of `_evaluate`
+Our audit of [`src/mangala/ai.py`](../src/mangala/ai.py) revealed several evaluation approximations that will be upgraded:
+1. **Exact Wrap-Around Empty-Hole Capture (`to_sow >= 8`):**
+   When sowing from pit $i$ with $n \ge 9$ (`to_sow >= 8`) lands in an initially empty own pit `pos`, the sow itself drops $+1$ stone into every opponent pit, including `opposite = 12 - pos`! Thus an empty-hole capture succeeds **even if `pits[opposite]` was `0` before the move**, provided `to_sow < 13` (so `pits[pos]` remains `0` until the final stone lands).
+2. **Exact Exponential Merdiven Detection (Theorem 3):**
+   Scan pits `5, 4, 3, 2, 1, 0` backwards to compute the exact contiguous staircase depth $k$ where $p_{6-d} == d$, rewarding $(2^k - 1) \cdot w_{\text{merdiven}}$, plus "1-stone-away" pre-staircase setups.
+3. **Rule-Aware Sweep Proximity (`rules.sweep_to`):**
+   Under `SWEEP_EMPTIED_SIDE` (default), having Low Own Stones + High Opponent Stones (`own_stones <= 3` and `opp_stones >= 8`) is a massive offensive starving threat ("Kurutma / Starvation"). Under `SWEEP_LAST_MOVER`, emptying the opponent's last pit via capture is rewarded.
 
-#### Milestone 3: Endgame Tablebase Integration (Target: Perfect Endgame Play)
-- Develop the offline retrograde solver in `tools/generate_egtb.py`.
-- Generate and compress the $K \le 12$ stone tablebase ($< 600$ KB zlib).
-- Integrate tablebase lookup in `src/mangala/tablebase.py` and embedded base64 in `src/mangala/web/ai.js`.
+#### 2. Tri-Phase Tapered 48-Parameter Feature Vector $\vec{\phi}(s) \in \mathbb{R}^{48}$
+Instead of a single static weight set, we define two 24-feature weight vectors—**Midgame ($\vec{w}_{\text{mg}} \in \mathbb{R}^{24}$)** and **Endgame ($\vec{w}_{\text{eg}} \in \mathbb{R}^{24}$)**—blended smoothly by board stone count $K = \sum_{i \in \text{pits}} p_i$:
+$$\alpha_{\text{phase}} = \text{clamp}\left(\frac{K - 12}{36 - 12}, 0.0, 1.0\right), \quad \text{eval}(s) = \Delta T + \alpha_{\text{phase}} (\vec{w}_{\text{mg}} \cdot \vec{\phi}(s)) + (1 - \alpha_{\text{phase}}) (\vec{w}_{\text{eg}} \cdot \vec{\phi}(s))$$
 
-#### Milestone 4: Large-Scale Positional Tuning (Target: +180 Elo)
-- Expand `EvalWeights` to 48 tapered parameters.
-- Run parallel self-play generator to produce 250,000 quiet positions.
-- Execute SPSA / Texel tuning optimizer on multi-core CPU.
-- Verify Elo advancement via automated 500-game SPRT tournaments.
+The 24 structural features $\phi_1(s) \dots \phi_{24}(s)$ (each having a Midgame and Endgame weight, totaling $48$ tunable parameters):
+- **Features 1–6 (`w_pit_0` .. `w_pit_5`):** Net stone differential in each individual pit pair `(pits[i] - pits[i+7])` for $i \in \{0..5\}$, capturing geometric value (Pit 0 anchor reserve vs. Pit 5 treasury gateway).
+- **Features 7–10 (Tactical Tempo & Merdiven):**
+  - `phi_7`: Immediate single-stone treasury extra turns (`pits[5] == 1`).
+  - `phi_8`: Multi-stone treasury extra turns (`landing == treasury`).
+  - `phi_9`: Exponential Merdiven cascade value $(2^k - 1)$ difference.
+  - `phi_10`: Secondary cascade setups (pits needing $+1$ stone to complete a Merdiven).
+- **Features 11–14 (Capture Offense & Exposure):**
+  - `phi_11`: Highest immediate Rule 3 (even) capture yield.
+  - `phi_12`: Secondary Rule 3 capture threats (sum of additional targets).
+  - `phi_13`: Highest immediate Rule 4 (empty-hole) capture yield (including wrap-around).
+  - `phi_14`: Opponent's maximum immediate capture threat (exposure penalty).
+- **Features 15–18 (Parity & Vulnerability Geometry):**
+  - `phi_15`: Count of own non-empty even pits (immune to single-stone Rule 3 capture).
+  - `phi_16`: Count of own vulnerable odd pits (`pits[i] in (1, 3, 5, 7)`) weighted by stone count.
+  - `phi_17`: Count of own empty pits opposite non-empty opponent pits (empty-hole trap readiness).
+  - `phi_18`: Opponent empty-hole trap readiness against our heavy pits.
+- **Features 19–24 (Macro Strategy, Starvation & Thresholds):**
+  - `phi_19`: Active pit mobility differential (number of non-empty pits: `len(legal_own) - len(legal_opp)`).
+  - `phi_20`: Starvation / Kurutma pressure: $\max(0, 5 - \text{own\_stones}) \times \text{opp\_stones}$ when leading or close in treasury.
+  - `phi_21`: Back-pit Kroşe / Anchor accumulator (`pits[0] >= 8` or `pits[1] >= 8`).
+  - `phi_22`: Treasury 20–24 threshold proximity nonlinear urgency.
+  - `phi_23`: Heavy pit overload penalty (pits with $n == 13$, which wrap around and feed every opponent pit while landing in own empty pit with $2$ stones, failing to capture!).
+  - `phi_24`: Side-to-move tempo bonus (`+1` if root to move, `-1` otherwise).
 
-#### Milestone 5: Quantized NNUE Inference (Target: Superhuman Midgame)
-- Implement `NNUESearcher` with dual-perspective sparse accumulator.
-- Export trained 8-bit quantized weights as pure integer arrays.
-- Validate $< 50$ nanosecond evaluation speed in pure Python and JavaScript.
+#### 3. Two-Stage Optimizer Architecture (Upgrading `src/mangala/tune.py`)
 
-#### Milestone 6: Grandmaster Opening Book (Target: Solved Openings)
-- Run deep cluster search (depth 24) across all opening lines.
-- Store compressed opening tree in `src/mangala/book.py`.
-- Guarantee $+1.5$ to $+2.5$ stone theoretical advantage out of the opening.
+> [!TIP]
+> **Why Two Stages?** Because $\text{eval}(s, \vec{w}) = \Delta T + \vec{w} \cdot \vec{\tilde{\phi}}(s)$ is **strictly linear** in $\vec{w}$, using gradient-free 2-point SPSA while re-running `_evaluate()` on `GameState` objects is unnecessarily slow and noisy. Pre-extracting $\vec{\tilde{\phi}}(s_i) \in \mathbb{R}^{48}$ once and using **Exact Analytical Gradients with AdamW** is **$50\times$ faster** and converges to the exact global optimum!
+
+1. **Stage A — Offline Analytical AdamW on Dual-Target Texel Loss (For the 48 Eval Weights):**
+   - **Self-Play Data Generation:** Generate $N \ge 100,000$ positions using randomized opening plies ($2\text{--}5$ plies) + Dirichlet/softmax temperature sampling + EGTB endgame adjudication.
+   - **Dual-Target Labeling (TD-Leaf + Game Outcome):** Record both the final game outcome $R_i \in \{0.0, 0.5, 1.0\}$ AND the search/quiescence evaluation $q_i$:
+     $$y_i = \lambda R_i + (1 - \lambda) \sigma(K_{\text{scale}} \cdot q_i), \quad \lambda = 0.65$$
+   - **Pre-Extraction:** Compute matrix $\mathbf{\Phi} \in \mathbb{R}^{N \times 48}$ and treasury vector $\mathbf{\Delta T} \in \mathbb{R}^N$ **once** before optimization.
+   - **Exact Analytical Gradient Step:**
+     $$\hat{p}_i = \sigma\bigl(K_{\text{scale}} (\Delta T_i + \vec{w} \cdot \vec{\tilde{\phi}}_i)\bigr), \quad \frac{\partial \mathcal{L}}{\partial \vec{w}} = -\frac{2 K_{\text{scale}}}{N} \sum_{i=1}^N (y_i - \hat{p}_i) \hat{p}_i (1 - \hat{p}_i) \vec{\tilde{\phi}}_i + 2 \lambda_{L2} (\vec{w} - \vec{w}_0)$$
+   - Optimize via **AdamW with Cosine Annealing** in pure Python (`src/mangala/tune.py`).
+2. **Stage B — Online Match-Based SPSA + SPRT (For Search Hyperparameters):**
+   - Tune non-differentiable search constants (`lmr_base`, `lmr_divisor`, `rfp_margin`, `probcut_margin`, `aspiration_delta`) by playing head-to-head paired games (swapping sides on identical random openings) between $\vec{\theta} + c_k \vec{\Delta}$ and $\vec{\theta} - c_k \vec{\Delta}$.
+   - Gate all updates with **Wald's Sequential Probability Ratio Test (SPRT)** ($H_0: \Delta\text{Elo} = 0$, $H_1: \Delta\text{Elo} = +15$, $\alpha = \beta = 0.05$).
 
 ---
 
-## 🎯 Verification & Quality Metrics
+### Pillar V: Sub-Microsecond Quantized NNUE (`src/mangala/nnue.py`)
 
-1. **Test Suite Coverage**:
-   - $\ge 120$ comprehensive unit and property-based tests in `pytest`.
-   - $\ge 650$ cross-language parity fixtures in `node --test tests/test_parity.mjs`.
-2. **Static Analysis & Linting**:
-   - Zero warnings in `ruff check .`.
-   - Zero type errors in `mypy src/` with strict mode enabled.
-3. **Benchmarking & Competitions**:
-   - Head-to-head SPRT tournament engine testing candidate vs baseline agents.
-   - 100% win rate against previous tournament-grade baselines at equivalent time controls.
+#### 1. Dual-Perspective Factored Input Representation
+To capture non-linear pit interactions (e.g., simultaneously holding an empty pit `3`, a 4-stone pit `0` that lands in `3`, and a heavy opponent pit `9` across from `3`), we design a tiny, Stockfish-inspired **Quantized NNUE**:
+- **Input Layer ($576$ binary features per perspective):**
+  - 14 pits (12 active pits + 2 treasuries) bucketed into stone counts:
+    - Pits `0..5` and `7..12`: exact stone counts $0, 1, \dots, 20, \ge 21$ ($12 \times 22 = 264$ features) + parity/modulo-13 flags ($24$ features) = $288$ features per perspective ($576$ total across `us` and `them`).
+  - At any time, **at most 28 features are active (`1`)**, making the input vector $> 95\%$ sparse.
+
+#### 2. Quantized Integer Architecture (`int16` / `int8` / `int32`)
+$$\text{Input (28 active indices)} \xrightarrow{\text{Lookup } \mathbf{W}_1 \text{ (int16)}} \mathbf{A}_{\text{us}}, \mathbf{A}_{\text{them}} \in \mathbb{Z}^{64} \xrightarrow{\text{CReLU}} \mathbb{Z}_{[0, 127]}^{128} \xrightarrow{\mathbf{W}_2 \text{ (int8)}} \mathbb{Z}_{[0, 127]}^{32} \xrightarrow{\mathbf{W}_3 \text{ (int8)}} \text{Score (cs)}$$
+- **Incremental Accumulator Update:** When a move alters $m \in [2, 13]$ pits, update $\mathbf{A}$ by subtracting the old `(pit, count)` rows and adding the new `(pit, count)` rows from $\mathbf{W}_1$.
+- **Quantization Scales:**
+  - Accumulator scale $Q_A = 127$, hidden weight scale $Q_W = 64$.
+  - ClippedReLU activation: `crelu(x) = min(127, max(0, x))` (bit-shift `>> 6` after linear layer).
+- **Hybrid Evaluation Blending:**
+  $$\text{eval}_{\text{hybrid}}(s) = 100 \cdot \Delta T + \left\lfloor \frac{3 \cdot \text{NNUE}(s) + 1 \cdot \text{Classical48}(s)}{4} \right\rfloor$$
+  Guarantees tactical sanity in extreme high-stone configurations while leveraging neural pattern recognition in complex midgames.
+
+---
+
+### Pillar VI: Turn-Normalized Deep-Solved Opening DAG & Async Pondering
+
+#### 1. Auditing & Fixing the Opening Book (`src/mangala/book.py`)
+In standard Turkish Mangala from the initial board `(4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0)`:
+- **Move `3` (Pit 3):** Sows 3 stones into `4, 5, 6 (Treasury)`, scoring $+1$ stone immediately and retaining the turn (`(4, 4, 4, 1, 5, 5, 1 | 4, 4, 4, 4, 4, 4, 0)`, Player 0 to move again!).
+- Previously, fixed-depth book generation penalized Move `3` because Player 0's two-step turn consumed 2 plies of fixed search depth.
+- With **Turn-Normalized Search** (where a full player turn = 1 turn unit regardless of extra turns) to **Depth 24 half-plies**, we build a complete **Opening Directed Acyclic Graph (DAG)** covering:
+  - Every legal Player 0 opening line (`3 -> 5`, `3 -> 4`, `3 -> 2`, `4`, `5`, `2`, `1`, `0`).
+  - All suboptimal human responses up to 12 plies deep, with exact minimax refutations.
+  - Stored in `src/mangala/book.py` and `src/mangala/web/book.js` with 180° rotational canonicalization.
+
+#### 2. Web Worker Execution & Opponent-Time Pondering (`src/mangala/web/`)
+- **Non-Blocking Web Worker:** Run client search inside a dedicated worker thread (`ai_worker.js` or inline Blob Worker fallback) so 60fps UI animations and hover previews never stutter during deep searches.
+- **Pondering:** While waiting for the human player to move, the engine predicts the human's best move from the previous PV (`pv[1]`) and runs continuous iterative deepening in the background, populating the persistent Transposition Table. If the human plays the predicted move (or any move whose subtree overlaps in the TT), the AI responds with **effective depth +2 to +4 plies higher**!
+
+---
+
+## 4. Concrete Implementation Roadmap & File-by-File Matrix
+
+| Milestone | Target Files | Key Deliverables | Verification Gate & Target Metric |
+|:---|:---|:---|:---|
+| **M1: Zero-Alloc Core, Zobrist & Persistent TT** | `src/mangala/engine.py`<br/>`src/mangala/ai.py`<br/>`src/mangala/web/ai.js` | • `ZOBRIST_PIT` & `ZOBRIST_SIDE` (SplitMix64)<br/>• Inlined `fast_step` simulator<br/>• Persistent 2-tier TT with aging<br/>• Preallocated ply buffers in JS | • $\ge 3.5\times$ node/s speedup in Python & JS<br/>• 100% parity on 629 fixtures (`test_parity.mjs`) |
+| **M2: Lexicographic DAG EGTB ($K \le 12$)** | `src/mangala/tablebase.py`<br/>`tools/generate_egtb.py`<br/>`src/mangala/web/ai.js` | • Unified $\binom{K+12}{12}$ combinadic indexer<br/>• $(K, \Phi)$ single-pass retrograde builder<br/>• Embedded $K \le 10$ zlib table + $K \le 12$ CLI generator | • 100% agreement between EGTB lookup and exact terminal minimax across $10,000$ random endgames<br/>• $< 1\text{ }\mu\text{s}$ lookup latency |
+| **M3: Dual-Regime Search & Fractional Plies** | `src/mangala/ai.py`<br/>`src/mangala/web/ai.js`<br/>`tests/test_ai.py` | • Centistone scaling ($1\text{ stone} = 100\text{ cs}$)<br/>• Fractional-ply extra-turn extension<br/>• Step-2 MTD(f) for $K \le 18$<br/>• ProbCut, ETC, Countermove, Quiescence sort<br/>• Partial root rescue & soft/hard time mgr | • $+180\text{ Elo}$ in self-play SPRT vs v1 baseline at equal time controls ($0.2\text{s}$/move) |
+| **M4: 48-Weight Tapered Eval & Analytical AdamW** | `src/mangala/ai.py`<br/>`src/mangala/tune.py`<br/>`tests/test_tune.py` | • 48-parameter tapered `EvalWeights` (including exact $2^k-1$ Merdiven & wrap-around empty capture)<br/>• Pre-extracted feature matrix $\mathbf{\Phi}$ + Analytical AdamW optimizer<br/>• Online match-based SPSA for search params | • Loss reduction $> 20\%$ on $50,000$ held-out quiet positions<br/>• $+120\text{ Elo}$ SPRT gain over hand-tuned weights |
+| **M5: Quantized Dual-Perspective NNUE** | `src/mangala/nnue.py`<br/>`src/mangala/web/ai.js`<br/>`tests/test_nnue.py` | • $576 \to 128 \to 32 \to 1$ incremental accumulator<br/>• Pure `array('h')` / `Int16Array` CReLU inference<br/>• Knowledge distillation trainer in `tune.py` | • $< 5\text{ }\mu\text{s}$ incremental update in Python; $< 200\text{ ns}$ in JS<br/>• $+100\text{ Elo}$ SPRT gain over classical eval |
+| **M6: Solved Opening DAG & Web Pondering** | `src/mangala/book.py`<br/>`src/mangala/web/book.js`<br/>`src/mangala/web/app.js` | • Turn-normalized depth-24 Opening DAG ($> 500$ canonical nodes)<br/>• Client Web Worker + background pondering | • $0\text{ ms}$ opening response through ply 12<br/>• Zero UI frame drops during 2.5s deep search |
+
+---
+
+## 5. Verification, Benchmarking & Quality Contract
+
+1. **Mathematical Invariant Property Tests (`tests/test_properties.py`):**
+   - Hypothesis property test verifying $\bigl(K(P'), \Phi(P')\bigr) <_{\text{lex}} \bigl(K(P), \Phi(P)\bigr)$ across $10,000$ random legal moves.
+   - Hypothesis property test verifying incremental Zobrist hash equals full-board Zobrist recomputation after any sequence of moves.
+   - Hypothesis property test verifying EGTB value $\Delta(P, 0) == -\Delta(\mathcal{R}(P), 1)$ and matches exhaustive alpha-beta terminal value for all $K \le 10$.
+2. **Cross-Language Parity (`tests/test_parity.mjs`):**
+   - 100% bit-exact parity on board transitions, Zobrist hashes, combinadic EGTB indices, static evaluation scores, and fixed-depth best moves between Python and JavaScript.
+3. **Zero-Warning Static Analysis:**
+   - `ruff check .` (0 warnings) and `mypy src/` (0 errors, strict typing).
+4. **Statistical SPRT Gate:**
+   - Every milestone must pass an automated paired-opening SPRT match ($\alpha = \beta = 0.05$) proving positive Elo advancement before merge.

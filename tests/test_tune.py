@@ -11,7 +11,9 @@ from mangala.tune import (
     _clamp_param,
     _is_quiet_position,
     _sigmoid,
+    extract_linear_features,
     generate_selfplay_dataset,
+    run_adam_tuning,
     run_sprt_arena,
     run_spsa_tuning,
     texel_loss,
@@ -147,3 +149,30 @@ def test_generate_selfplay_dataset_small() -> None:
         assert len(p.pits) == TOTAL
         assert p.current_player in (0, 1)
         assert p.result in (0.0, 0.5, 1.0)
+
+
+def test_extract_linear_features_and_adam_tuning() -> None:
+    pits1 = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
+    pits2 = [2, 5, 1, 3, 4, 2, 10, 3, 2, 4, 1, 5, 2, 4]
+    positions = [
+        TrainingPosition(pits=pits1, current_player=0, result=1.0),
+        TrainingPosition(pits=pits2, current_player=1, result=1.0),
+    ]
+
+    extracted = extract_linear_features(positions)
+    assert len(extracted) == 2
+
+    # Verify exact affine decomposition: b0 + sum(w_k * phi_k) == _evaluate(st, 0, w)
+    w_test = EvalWeights(w_mobility=0.22, w_ladder_cascade=0.55, w_fortress=0.31)
+    w_dict = w_test.to_dict()
+    for pos, (b0, phi, _res) in zip(positions, extracted, strict=True):
+        st = GameState(pits=pos.pits, current_player=pos.current_player)
+        exact_ev = _evaluate(st, root=0, weights=w_test)
+        linear_ev = b0 + sum(w_dict[k] * phi[k] for k in w_dict)
+        assert abs(exact_ev - linear_ev) < 1e-9
+
+    # Verify AdamW analytical tuning reduces or preserves loss cleanly
+    tuned_w, losses = run_adam_tuning(DEFAULT_WEIGHTS, positions, iterations=15, lr=0.03)
+    assert len(losses) == 16
+    assert min(losses) <= losses[0] + 1e-12
+    assert isinstance(tuned_w, EvalWeights)

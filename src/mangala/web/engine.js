@@ -32,6 +32,61 @@
     )
   );
 
+  const TOTAL_STONES = 48;
+  const MASK64 = 0xFFFFFFFFFFFFFFFFn;
+
+  function splitmix64(seed) {
+    const nextSeed = (seed + 0x9E3779B97F4A7C15n) & MASK64;
+    let z = nextSeed;
+    z = ((z ^ (z >> 30n)) * 0xBF58476D1CE4E5B9n) & MASK64;
+    z = ((z ^ (z >> 27n)) * 0x94D049BB133111EBn) & MASK64;
+    const val = (z ^ (z >> 31n)) & MASK64;
+    return [val, nextSeed];
+  }
+
+  const [ZOBRIST_PIT, ZOBRIST_SIDE] = (function initZobrist() {
+    let st = 0x4D414E47414C415Fn;
+    const pitTable = [];
+    for (let pit = 0; pit < TOTAL; pit++) {
+      const row = [];
+      for (let cnt = 0; cnt <= TOTAL_STONES; cnt++) {
+        const [val, nextSt] = splitmix64(st);
+        st = nextSt;
+        row.push(val);
+      }
+      pitTable.push(row);
+    }
+    const [sideVal] = splitmix64(st);
+    return [pitTable, sideVal];
+  })();
+
+  function zobristHash(state) {
+    const pits = state.pits;
+    let h = state.current_player === 1 ? ZOBRIST_SIDE : 0n;
+    for (let i = 0; i < TOTAL; i++) {
+      const c = pits[i];
+      if (c >= 0 && c <= TOTAL_STONES) {
+        h ^= ZOBRIST_PIT[i][c];
+      } else {
+        h ^= ZOBRIST_PIT[i][TOTAL_STONES] ^ (BigInt(c) << BigInt(i * 3));
+      }
+    }
+    return h & MASK64;
+  }
+
+  function lexicographicPotential(state) {
+    const p = state.pits;
+    const k = (
+      p[0] + p[1] + p[2] + p[3] + p[4] + p[5] +
+      p[7] + p[8] + p[9] + p[10] + p[11] + p[12]
+    );
+    const phi = (
+      6 * p[0] + 5 * p[1] + 4 * p[2] + 3 * p[3] + 2 * p[4] + 1 * p[5] +
+      6 * p[7] + 5 * p[8] + 4 * p[9] + 3 * p[10] + 2 * p[11] + 1 * p[12]
+    );
+    return [k, phi];
+  }
+
   function initialState() {
     const pits = Array(TOTAL).fill(4);
     pits[P1_TREAS] = 0;
@@ -158,6 +213,10 @@
     OWN_PITS_RANGE,
     OPP_PITS_RANGE,
     SOW_LANDING,
+    ZOBRIST_PIT,
+    ZOBRIST_SIDE,
+    zobristHash,
+    lexicographicPotential,
     initialState,
     legalMoves,
     applyMove

@@ -54,6 +54,7 @@ from .engine import (
     legal_moves,
     score,
 )
+from .tablebase import DEFAULT_EGTB_STONES, probe_egtb
 
 _OWN_PITS_TUPLE: tuple[tuple[int, ...], tuple[int, ...]] = (tuple(P1_PITS), tuple(P2_PITS))
 _OPP_PITS_TUPLE: tuple[tuple[int, ...], tuple[int, ...]] = (tuple(P2_PITS), tuple(P1_PITS))
@@ -220,11 +221,12 @@ def _evaluate(state: GameState, root: int, weights: EvalWeights = DEFAULT_WEIGHT
             # Extra turn into treasury; bonus higher for direct single-step ladder
             extra_bonus += weights.w_extra_single if n == 1 and i == own_max else weights.w_extra_multi
             own_ladders += 1
-        elif own_min <= pos <= own_max and pits[pos] == 0:
-            # Rule 4: Empty pit capture on own side
+        elif own_min <= pos <= own_max and pits[pos] == 0 and sow_count < 13:
+            # Rule 4: Empty pit capture on own side (including wrap-around sow_count >= 8)
             opposite = 12 - pos
-            if pits[opposite] > 0:
-                empty_hole_offense += weights.w_empty_hole_offense * (pits[opposite] + 1)
+            opp_after = pits[opposite] + (1 if sow_count >= 8 else 0)
+            if opp_after > 0:
+                empty_hole_offense += weights.w_empty_hole_offense * (opp_after + 1)
         elif opp_min <= pos <= opp_max and (pits[pos] + 1) % 2 == 0:
             # Rule 3: Regular capture on opponent's side (lands on odd pit, making it even)
             capture_offense += weights.w_capture_offense * (pits[pos] + 1)
@@ -243,11 +245,29 @@ def _evaluate(state: GameState, root: int, weights: EvalWeights = DEFAULT_WEIGHT
             # Opponent landing in our pit makes count even if it was odd
             capture_exposure += weights.w_capture_exposure * (pits[pos] + 1)
 
-    # Multi-step ladder cascade (Merdiven Serisi): chaining consecutive bonus turns
+    # Exact Exponential Binary Merdiven Cascade (Theorem 3: 2^k - 1 consecutive bonus turns)
+    own_stair = 0
+    for d in range(1, 7):
+        if pits[own_max + 1 - d] == d:
+            own_stair += 1
+        else:
+            break
+    opp_stair = 0
+    for d in range(1, 7):
+        if pits[opp_max + 1 - d] == d:
+            opp_stair += 1
+        else:
+            break
+
     ladder_cascade_bonus = 0.0
-    if own_ladders >= 2:
+    if own_stair >= 2:
+        ladder_cascade_bonus += weights.w_ladder_cascade * ((1 << own_stair) - 1 - own_stair)
+    elif own_ladders >= 2:
         ladder_cascade_bonus += weights.w_ladder_cascade * (own_ladders - 1)
-    if opp_ladders >= 2:
+
+    if opp_stair >= 2:
+        ladder_cascade_bonus -= weights.w_ladder_cascade * ((1 << opp_stair) - 1 - opp_stair)
+    elif opp_ladders >= 2:
         ladder_cascade_bonus -= weights.w_ladder_cascade * (opp_ladders - 1)
 
     # Empty-hole exposure: check if opponent lands in their own empty pit opposite our stones
@@ -335,11 +355,19 @@ class Searcher:
         self._deadline = _INF
         self.killer_moves: list[list[int]] = [[] for _ in range(_MAX_PLY)]
         self.history_table: list[list[int]] = [[0] * TOTAL for _ in range(2)]
+        self.counter_moves: list[list[int]] = [[-1] * TOTAL for _ in range(2)]
 
     # -- move generation & ordering ----------------------------------------
 
-    def _record_cutoff(self, player: int, move: int, ply: int, depth: int) -> None:
-        """Update killer moves and history heuristic table upon a beta cutoff."""
+    def _record_cutoff(
+        self,
+        player: int,
+        move: int,
+        ply: int,
+        depth: int,
+        prev_move: int = -1,
+    ) -> None:
+        """Update killer moves, countermove table, and history heuristic upon a beta cutoff."""
         if ply < len(self.killer_moves):
             killers = self.killer_moves[ply]
             if move not in killers:
@@ -347,23 +375,32 @@ class Searcher:
                 if len(killers) > 2:
                     killers.pop()
         self.history_table[player][move] += depth * depth
+        if 0 <= prev_move < TOTAL:
+            self.counter_moves[player][prev_move] = move
 
-    def _ordered_children(self, state: GameState,
-                          pv_move: int = -1,
-                          ply: int = 0) -> list[tuple[int, GameState]]:
+    def _ordered_children(
+        self,
+        state: GameState,
+        pv_move: int = -1,
+        ply: int = 0,
+        prev_move: int = -1,
+    ) -> list[tuple[int, GameState]]:
         """Legal (move, child) pairs sorted best-first.
 
         Ordering priority:
-          1. PV move from transposition table (10,000,000)
-          2. Extra-turn moves (5,000,000 + capture bonus)
-          3. Tactically capturing moves (3,000,000 + capture bonus)
-          4. Killer moves for this search ply (1,000,000 / 900,000)
-          5. Quiet moves sorted by history heuristic score
+          1. Immediate 25-stone threshold win (20,000,000)
+          2. PV move from transposition table (10,000,000)
+          3. Extra-turn moves (5,000,000 + capture bonus)
+          4. Tactically capturing moves (3,000,000 + capture bonus)
+          5. Killer moves for this search ply (1,000,000 / 900,000)
+          6. Countermove refutation for previous move (800,000)
+          7. Quiet moves sorted by history heuristic score
         """
         scored = []
         killers = self.killer_moves[ply] if ply < len(self.killer_moves) else []
         curr_p = state.current_player
         curr_treas = _OWN_TREAS_TUPLE[curr_p]
+        counter_m = self.counter_moves[curr_p][prev_move] if 0 <= prev_move < TOTAL else -1
 
         for m in legal_moves(state):
             child, ev = apply_move(state, m, self.rules)
@@ -378,6 +415,8 @@ class Searcher:
                 priority = 3_000_000 + ev['capture'] * 10_000
             elif m in killers:
                 priority = 1_000_000 - (killers.index(m) * 100_000)
+            elif m == counter_m:
+                priority = 800_000
             else:
                 priority = self.history_table[curr_p][m]
             scored.append((priority, m, child))
@@ -394,10 +433,27 @@ class Searcher:
         if state.game_over:
             return _terminal_value(state, root)
 
+        pits = state.pits
+        own_t = pits[_OWN_TREAS_TUPLE[root]]
+        opp_t = pits[_OPP_TREAS_TUPLE[root]]
+        if own_t >= 25:
+            return _WIN + (own_t - opp_t)
+        if opp_t >= 25:
+            return -_WIN + (own_t - opp_t)
+
         stand_pat = _evaluate(state, root, self.weights)
 
         if q_depth == 0:
             return stand_pat
+
+        # Collect and sort noisy moves (extra turns and high captures first)
+        noisy_children: list[tuple[int, GameState]] = []
+        for m in legal_moves(state):
+            child, ev = apply_move(state, m, self.rules)
+            if ev['capture'] > 0 or ev['extra_turn']:
+                noisy_score = (1000 if ev['extra_turn'] else 0) + ev['capture']
+                noisy_children.append((noisy_score, child))
+        noisy_children.sort(key=lambda t: t[0], reverse=True)
 
         if state.current_player == root:
             # Maximiser: stand_pat is a lower bound (can always stand pat).
@@ -405,10 +461,7 @@ class Searcher:
                 return stand_pat
             alpha = max(alpha, stand_pat)
             best = stand_pat
-            for m in legal_moves(state):
-                child, ev = apply_move(state, m, self.rules)
-                if not (ev['capture'] > 0 or ev['extra_turn']):
-                    continue  # only noisy moves in quiescence
+            for _, child in noisy_children:
                 val = self._quiescence(child, alpha, beta, root, q_depth - 1)
                 if val > best:
                     best = val
@@ -423,10 +476,7 @@ class Searcher:
                 return stand_pat
             beta = min(beta, stand_pat)
             best = stand_pat
-            for m in legal_moves(state):
-                child, ev = apply_move(state, m, self.rules)
-                if not (ev['capture'] > 0 or ev['extra_turn']):
-                    continue
+            for _, child in noisy_children:
                 val = self._quiescence(child, alpha, beta, root, q_depth - 1)
                 if val < best:
                     best = val
@@ -438,9 +488,18 @@ class Searcher:
 
     # -- alpha-beta / PVS with TT ------------------------------------------
 
-    def _search(self, state: GameState, depth: int, alpha: float, beta: float,
-                root: int, ply: int = 0) -> float:
-        """Principal Variation Search (PVS) with TT, LMR, and RFP heuristics."""
+    def _search(
+        self,
+        state: GameState,
+        depth: int,
+        alpha: float,
+        beta: float,
+        root: int,
+        ply: int = 0,
+        prev_move: int = -1,
+        extra_streak: int = 0,
+    ) -> float:
+        """Principal Variation Search (PVS) with TT, EGTB, Fractional-Ply Extensions, LMR, and RFP."""
         self.nodes += 1
         # Time guard — checked every 128 nodes to keep overhead negligible.
         if (self.nodes & _TIME_CHECK_MASK) == 0 and _time.monotonic() >= self._deadline:
@@ -458,17 +517,29 @@ class Searcher:
         if opp_t >= 25:
             return -_WIN + (own_t - opp_t)
 
+        stones_on_board = sum(pits[0:6]) + sum(pits[7:13])
+
+        # Instant O(1) Retrograde Endgame Tablebase lookup when stones <= DEFAULT_EGTB_STONES
+        if stones_on_board <= DEFAULT_EGTB_STONES and ply > 0:
+            egtb_diff = probe_egtb(state, max_stones=DEFAULT_EGTB_STONES, rules=self.rules)
+            if egtb_diff is not None:
+                root_diff = egtb_diff if state.current_player == root else -egtb_diff
+                if root_diff > 0:
+                    return _WIN + root_diff
+                if root_diff < 0:
+                    return -_WIN + root_diff
+                return 0.0
+
         # Endgame exact solver: when few stones remain the tree is tiny;
         # override depth and search all the way to terminal for competitive modes.
-        stones_on_board = sum(pits[0:6]) + sum(pits[7:13])
         if stones_on_board <= _ENDGAME_STONES and depth >= 4 and depth < _ENDGAME_DEPTH:
             depth = _ENDGAME_DEPTH
 
-        if depth == 0:
+        if depth <= 0:
             return self._quiescence(state, alpha, beta, root, _Q_DEPTH)
 
         # --- Reverse Futility Pruning (Static Null-Move Pruning) at shallow depths ---
-        if depth <= 2 and stones_on_board > _ENDGAME_STONES:
+        if depth <= 2 and stones_on_board > _ENDGAME_STONES and extra_streak == 0:
             eval_margin = 1.5 * depth
             static_eval = _evaluate(state, root, self.weights)
             if state.current_player == root and static_eval - eval_margin >= beta:
@@ -497,7 +568,7 @@ class Searcher:
         alpha_orig = alpha
         beta_orig  = beta
 
-        children = self._ordered_children(state, pv_move, ply)
+        children = self._ordered_children(state, pv_move, ply, prev_move)
         if not children:
             return _evaluate(state, root, self.weights)
 
@@ -507,23 +578,32 @@ class Searcher:
 
         if maximising:
             for i, (m, child) in enumerate(children):
+                is_extra = child.current_player == state.current_player
+                next_streak = (extra_streak + 1) if is_extra else 0
+                # Turn-conserving extension on the first bonus turn of a cascade at depth >= 3
+                ext = 1 if (is_extra and extra_streak == 0 and 3 <= depth < _ENDGAME_DEPTH) else 0
+                next_d = depth - 1 + ext
+
                 if i == 0:
-                    val = self._search(child, depth - 1, alpha, beta, root, ply + 1)
+                    val = self._search(child, next_d, alpha, beta, root, ply + 1, m, next_streak)
                 else:
                     # Late Move Reduction (LMR) on quiet, non-capture moves ordered late
-                    do_lmr = (i >= 3 and depth >= 3 and
-                              child.pits[_OWN_TREAS_TUPLE[root]] == pits[_OWN_TREAS_TUPLE[root]] and
-                              child.current_player != state.current_player)
+                    do_lmr = (i >= 3 and depth >= 3 and not is_extra and
+                              child.pits[_OWN_TREAS_TUPLE[root]] == pits[_OWN_TREAS_TUPLE[root]])
                     reduction = 1 if do_lmr else 0
 
                     val = self._search(
-                        child, depth - 1 - reduction, alpha, alpha + _PVS_EPSILON, root, ply + 1,
+                        child, next_d - reduction, alpha, alpha + _PVS_EPSILON,
+                        root, ply + 1, m, next_streak,
                     )
                     if reduction > 0 and val > alpha:
-                        val = self._search(child, depth - 1, alpha, alpha + _PVS_EPSILON, root, ply + 1)
+                        val = self._search(
+                            child, next_d, alpha, alpha + _PVS_EPSILON,
+                            root, ply + 1, m, next_streak,
+                        )
 
                     if alpha < val < beta:
-                        val = self._search(child, depth - 1, val, beta, root, ply + 1)
+                        val = self._search(child, next_d, val, beta, root, ply + 1, m, next_streak)
 
                 if val > best_val:
                     best_val  = val
@@ -531,25 +611,35 @@ class Searcher:
                 if best_val > alpha:
                     alpha = best_val
                 if alpha >= beta:
-                    self._record_cutoff(state.current_player, m, ply, depth)
+                    self._record_cutoff(state.current_player, m, ply, depth, prev_move)
                     break   # beta cutoff
         else:
             for i, (m, child) in enumerate(children):
+                is_extra = child.current_player == state.current_player
+                next_streak = (extra_streak + 1) if is_extra else 0
+                ext = 1 if (is_extra and extra_streak == 0 and 3 <= depth < _ENDGAME_DEPTH) else 0
+                next_d = depth - 1 + ext
+
                 if i == 0:
-                    val = self._search(child, depth - 1, alpha, beta, root, ply + 1)
+                    val = self._search(child, next_d, alpha, beta, root, ply + 1, m, next_streak)
                 else:
                     # Late Move Reduction (LMR) on quiet, non-capture moves ordered late
-                    do_lmr = (i >= 3 and depth >= 3 and
-                              child.pits[_OPP_TREAS_TUPLE[root]] == pits[_OPP_TREAS_TUPLE[root]] and
-                              child.current_player != state.current_player)
+                    do_lmr = (i >= 3 and depth >= 3 and not is_extra and
+                              child.pits[_OPP_TREAS_TUPLE[root]] == pits[_OPP_TREAS_TUPLE[root]])
                     reduction = 1 if do_lmr else 0
 
-                    val = self._search(child, depth - 1 - reduction, beta - _PVS_EPSILON, beta, root, ply + 1)
+                    val = self._search(
+                        child, next_d - reduction, beta - _PVS_EPSILON, beta,
+                        root, ply + 1, m, next_streak,
+                    )
                     if reduction > 0 and val < beta:
-                        val = self._search(child, depth - 1, beta - _PVS_EPSILON, beta, root, ply + 1)
+                        val = self._search(
+                            child, next_d, beta - _PVS_EPSILON, beta,
+                            root, ply + 1, m, next_streak,
+                        )
 
                     if alpha < val < beta:
-                        val = self._search(child, depth - 1, alpha, val, root, ply + 1)
+                        val = self._search(child, next_d, alpha, val, root, ply + 1, m, next_streak)
 
                 if val < best_val:
                     best_val  = val
@@ -557,7 +647,7 @@ class Searcher:
                 if best_val < beta:
                     beta = best_val
                 if alpha >= beta:
-                    self._record_cutoff(state.current_player, m, ply, depth)
+                    self._record_cutoff(state.current_player, m, ply, depth, prev_move)
                     break   # alpha cutoff
 
         # --- Depth-preferred transposition table replacement ---
@@ -659,6 +749,7 @@ class Searcher:
         self.nodes = 0
         self.killer_moves = [[] for _ in range(_MAX_PLY)]
         self.history_table = [[0] * TOTAL for _ in range(2)]
+        self.counter_moves = [[-1] * TOTAL for _ in range(2)]
 
         root_key = _key(state)
 

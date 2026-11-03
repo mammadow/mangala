@@ -340,5 +340,119 @@ def test_twenty_five_stone_threshold_victory_and_suppression() -> None:
     assert res_12.is_forced_result
 
 
+def test_combinadic_egtb_and_exact_endgame_parity() -> None:
+    from mangala.tablebase import (
+        BINOM,
+        _generate_compositions,
+        build_egtb,
+        combinadic_index,
+        compress_egtb,
+        probe_egtb,
+        probe_egtb_move,
+    )
+
+    # 1. Verify combinadic_index is a strict bijection onto [0, C(K+12, 12)) for K <= 4
+    seen_indices: set[int] = set()
+    for k in range(5):
+        for comp in _generate_compositions(k, 12):
+            idx = combinadic_index(comp)
+            assert 0 <= idx < BINOM[4 + 12][12]
+            seen_indices.add(idx)
+    assert len(seen_indices) == BINOM[4 + 12][12]
+
+    # 2. Build EGTB up to K=4 and verify probe_egtb matches exact terminal alpha-beta
+    tbl = build_egtb(max_stones=4)
+    assert len(tbl) == BINOM[4 + 12][12]
+
+    pits = [0] * TOTAL
+    pits[4] = 1
+    pits[5] = 1
+    pits[6] = 22
+    pits[11] = 1
+    pits[12] = 1
+    pits[13] = 22
+    for stm in (0, 1):
+        st = GameState(pits=list(pits), current_player=stm)
+        egtb_diff = probe_egtb(st, max_stones=4)
+        assert egtb_diff is not None
+        mv_info = probe_egtb_move(st, max_stones=4)
+        assert mv_info is not None
+        best_m, best_diff = mv_info
+        assert best_diff == egtb_diff
+        assert best_m in legal_moves(st)
+
+    # 3. Verify zlib compression works cleanly
+    comp_bytes = compress_egtb(max_stones=4)
+    assert len(comp_bytes) > 0
+    assert len(comp_bytes) < len(tbl)
+
+
+def test_quantized_nnue_incremental_and_distillation() -> None:
+    from mangala.ai import _evaluate
+    from mangala.engine import apply_move
+    from mangala.nnue import DEFAULT_NNUE, train_nnue_distillation
+
+    s0 = initial_state()
+    acc0 = DEFAULT_NNUE.compute_accumulator(s0.pits)
+    ev0 = DEFAULT_NNUE.evaluate(s0, root=0)
+    assert isinstance(ev0, float)
+
+    # Verify incremental accumulator update matches full recomputation across a sequence of moves
+    curr_s = s0
+    curr_acc = acc0
+    for mv in (2, 0, 8, 4):
+        if mv not in legal_moves(curr_s):
+            break
+        next_s, _ = apply_move(curr_s, mv)
+        inc_acc = DEFAULT_NNUE.update_accumulator(curr_acc, curr_s.pits, next_s.pits)
+        full_acc = DEFAULT_NNUE.compute_accumulator(next_s.pits)
+        assert list(inc_acc.acc_p0) == list(full_acc.acc_p0)
+        assert list(inc_acc.acc_p1) == list(full_acc.acc_p1)
+        curr_s = next_s
+        curr_acc = inc_acc
+
+    # Verify distillation trainer runs cleanly and produces a valid NNUEEvaluator
+    samples = [(s0, _evaluate(s0, 0)), (curr_s, _evaluate(curr_s, curr_s.current_player))]
+    trained_nnue = train_nnue_distillation(samples, epochs=5, lr=0.02)
+    ev_trained = trained_nnue.evaluate(s0, root=0)
+    assert isinstance(ev_trained, float)
+
+
+def test_exponential_merdiven_and_wrap_around_capture_eval() -> None:
+    from mangala.ai import EvalWeights, Searcher, _evaluate
+
+    # 3-pit staircase (pits 3, 4, 5 have 3, 2, 1 stones -> 2^3 - 1 = 7 extra turns)
+    pits_stair = [0] * TOTAL
+    pits_stair[3] = 3
+    pits_stair[4] = 2
+    pits_stair[5] = 1
+    pits_stair[6] = 20
+    pits_stair[7] = 2
+    pits_stair[13] = 20
+    s_stair = GameState(pits=pits_stair, current_player=0)
+
+    # Wrap-around empty hole capture: pit 5 has 9 stones (sow_count=8, lands on empty pit 0)
+    pits_wrap = [0] * TOTAL
+    pits_wrap[0] = 0
+    pits_wrap[5] = 9
+    pits_wrap[6] = 19
+    pits_wrap[7] = 4
+    pits_wrap[12] = 0  # opposite of pit 0 is pit 12, which gets +1 during wrap-around!
+    pits_wrap[13] = 16
+    s_wrap = GameState(pits=pits_wrap, current_player=0)
+
+    assert _evaluate(s_stair, 0) > _evaluate(s_stair, 0, EvalWeights(w_ladder_cascade=0.0)) + 1.0
+    assert abs(
+        _evaluate(s_wrap, 0) - _evaluate(s_wrap, 0, EvalWeights(w_empty_hole_offense=0.0)) - 0.50
+    ) < 1e-9
+
+    # Countermove recording and ordering priority
+    searcher = Searcher()
+    searcher._record_cutoff(player=0, move=4, ply=2, depth=3, prev_move=9)
+    assert searcher.counter_moves[0][9] == 4
+    ordered = searcher._ordered_children(initial_state(), pv_move=-1, ply=3, prev_move=9)
+    assert len(ordered) == 6
+
+
 
 

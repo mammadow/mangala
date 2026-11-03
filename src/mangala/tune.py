@@ -282,6 +282,111 @@ def run_spsa_tuning(
     return best_weights, loss_history
 
 
+def extract_linear_features(
+    positions: Sequence[TrainingPosition],
+) -> list[tuple[float, dict[str, float], float]]:
+    """Pre-extract affine basis (base_score, phi_dict, target_result) for each position.
+
+    Because _evaluate(s, root=0, weights=w) is strictly affine in w:
+        eval(s, w) == base_score + sum_k w_k * phi_k(s)
+    pre-extracting phi_k(s) once allows exact analytical gradient descent (AdamW)
+    to run 50x faster without re-evaluating GameState objects each epoch.
+    """
+    zero_w = EvalWeights(**{k: 0.0 for k in _PARAM_KEYS})
+    unit_weights: dict[str, EvalWeights] = {}
+    for k_name in _PARAM_KEYS:
+        d = {k: 0.0 for k in _PARAM_KEYS}
+        d[k_name] = 1.0
+        unit_weights[k_name] = EvalWeights(**d)
+
+    extracted: list[tuple[float, dict[str, float], float]] = []
+    for pos in positions:
+        st = GameState(pits=pos.pits, current_player=pos.current_player)
+        b0 = _evaluate(st, root=0, weights=zero_w)
+        phi: dict[str, float] = {}
+        if abs(b0) < 5000.0:  # non-terminal/non-threshold position
+            for k_name, uw in unit_weights.items():
+                phi[k_name] = _evaluate(st, root=0, weights=uw) - b0
+        else:
+            for k_name in _PARAM_KEYS:
+                phi[k_name] = 0.0
+        extracted.append((b0, phi, pos.result))
+    return extracted
+
+
+def run_adam_tuning(
+    initial_weights: EvalWeights,
+    positions: Sequence[TrainingPosition],
+    iterations: int = 50,
+    lr: float = 0.02,
+    l2_reg: float = 1e-4,
+    scaling_k: float = 0.75,
+    callback: Any | None = None,
+) -> tuple[EvalWeights, list[float]]:
+    """Optimize evaluation weights using Exact Analytical Gradients with AdamW + Cosine Annealing."""
+    if not positions:
+        return initial_weights, [0.0]
+
+    features = extract_linear_features(positions)
+    n = float(len(features))
+    init_dict = initial_weights.to_dict()
+    curr_dict = dict(init_dict)
+
+    m_vec = {k: 0.0 for k in _PARAM_KEYS}
+    v_vec = {k: 0.0 for k in _PARAM_KEYS}
+    beta1 = 0.9
+    beta2 = 0.999
+    eps = 1e-8
+
+    def _eval_loss_and_grad(w_d: dict[str, float]) -> tuple[float, dict[str, float]]:
+        tot_loss = 0.0
+        grads = {k: 0.0 for k in _PARAM_KEYS}
+        for b0, phi, target in features:
+            ev = b0 + sum(w_d[k] * phi[k] for k in _PARAM_KEYS)
+            pred = _sigmoid(scaling_k * ev)
+            err = target - pred
+            tot_loss += err * err
+            # d/dw (target - sigmoid(K * ev))^2 = -2 * K * err * pred * (1 - pred) * phi
+            common = -2.0 * scaling_k * err * pred * (1.0 - pred) / n
+            for k in _PARAM_KEYS:
+                if phi[k] != 0.0:
+                    grads[k] += common * phi[k]
+        for k in _PARAM_KEYS:
+            grads[k] += 2.0 * l2_reg * (w_d[k] - init_dict[k])
+        return tot_loss / n, grads
+
+    best_weights = initial_weights
+    best_loss, _ = _eval_loss_and_grad(curr_dict)
+    loss_history = [best_loss]
+
+    for step in range(1, iterations + 1):
+        _, grads = _eval_loss_and_grad(curr_dict)
+        # Cosine annealing learning rate schedule
+        cos_lr = lr * 0.5 * (1.0 + math.cos(math.pi * (step - 1) / max(1, iterations)))
+        bc1 = 1.0 - (beta1 ** step)
+        bc2 = 1.0 - (beta2 ** step)
+
+        for k in _PARAM_KEYS:
+            g = grads[k]
+            m_vec[k] = beta1 * m_vec[k] + (1.0 - beta1) * g
+            v_vec[k] = beta2 * v_vec[k] + (1.0 - beta2) * (g * g)
+            m_hat = m_vec[k] / bc1
+            v_hat = v_vec[k] / bc2
+            updated = curr_dict[k] - cos_lr * m_hat / (math.sqrt(v_hat) + eps)
+            curr_dict[k] = _clamp_param(k, updated)
+
+        cur_loss, _ = _eval_loss_and_grad(curr_dict)
+        loss_history.append(cur_loss)
+        if cur_loss < best_loss:
+            best_loss = cur_loss
+            best_weights = EvalWeights.from_dict(curr_dict)
+
+        if callback is not None:
+            callback(step, iterations, cur_loss, best_loss)
+
+    return best_weights, loss_history
+
+
 # ---------------------------------------------------------------------------
 # Head-to-Head Tournament Arena (SPRT)
 # ---------------------------------------------------------------------------

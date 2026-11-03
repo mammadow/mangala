@@ -60,6 +60,32 @@ SOW_LANDING: tuple[tuple[tuple[int, ...], ...], ...] = tuple(
     for p in range(2)
 )
 
+
+def _splitmix64(seed: int) -> tuple[int, int]:
+    """Deterministic 64-bit PRNG (SplitMix64) for cross-language Zobrist parity."""
+    z = (seed + 0x9E3779B97F4A7C15) & 0xFFFFFFFFFFFFFFFF
+    z = ((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9) & 0xFFFFFFFFFFFFFFFF
+    z = ((z ^ (z >> 27)) * 0x94D049BB133111EB) & 0xFFFFFFFFFFFFFFFF
+    val = (z ^ (z >> 31)) & 0xFFFFFFFFFFFFFFFF
+    return val, (seed + 0x9E3779B97F4A7C15) & 0xFFFFFFFFFFFFFFFF
+
+
+def _init_zobrist() -> tuple[tuple[tuple[int, ...], ...], int]:
+    state = 0x4D414E47414C415F  # "MANGALA_" in ASCII hex
+    pit_table: list[tuple[int, ...]] = []
+    for _pit in range(TOTAL):
+        row: list[int] = []
+        for _cnt in range(TOTAL_STONES + 1):
+            val, state = _splitmix64(state)
+            row.append(val)
+        pit_table.append(tuple(row))
+    side_val, _ = _splitmix64(state)
+    return tuple(pit_table), side_val
+
+
+# Precomputed 64-bit Zobrist hash tables: ZOBRIST_PIT[14][49] and ZOBRIST_SIDE
+ZOBRIST_PIT, ZOBRIST_SIDE = _init_zobrist()
+
 # End-game sweep variants (see Rules.sweep_to).
 SWEEP_EMPTIED_SIDE = "emptied_side"
 SWEEP_LAST_MOVER = "last_mover"
@@ -144,6 +170,40 @@ def is_terminal(state: GameState) -> bool:
 def score(state: GameState) -> tuple[int, int]:
     """Return (p1_treasury, p2_treasury)."""
     return state.pits[P1_TREASURY], state.pits[P2_TREASURY]
+
+
+def zobrist_hash(state: GameState) -> int:
+    """Compute the 64-bit Zobrist hash of *state*."""
+    pits = state.pits
+    h = ZOBRIST_SIDE if state.current_player == 1 else 0
+    for i in range(TOTAL):
+        c = pits[i]
+        if 0 <= c <= TOTAL_STONES:
+            h ^= ZOBRIST_PIT[i][c]
+        else:
+            h ^= ZOBRIST_PIT[i][TOTAL_STONES] ^ (c << (i * 3))
+    return h & 0xFFFFFFFFFFFFFFFF
+
+
+def lexicographic_potential(state: GameState) -> tuple[int, int]:
+    """Compute the strictly decreasing DAG potential (K(P), Phi(P)) (Theorem 2).
+
+    K(P)   : Total active stones on the 12 small pits.
+    Phi(P) : Intra-row treasury distance sum:
+             sum_{i=0..5} (6 - i) * pits[i] + sum_{j=7..12} (13 - j) * pits[j]
+
+    Every legal move in Turkish Mangala strictly decreases (K, Phi) lexicographically.
+    """
+    pits = state.pits
+    k = (
+        pits[0] + pits[1] + pits[2] + pits[3] + pits[4] + pits[5]
+        + pits[7] + pits[8] + pits[9] + pits[10] + pits[11] + pits[12]
+    )
+    phi = (
+        6 * pits[0] + 5 * pits[1] + 4 * pits[2] + 3 * pits[3] + 2 * pits[4] + 1 * pits[5]
+        + 6 * pits[7] + 5 * pits[8] + 4 * pits[9] + 3 * pits[10] + 2 * pits[11] + 1 * pits[12]
+    )
+    return k, phi
 
 
 def apply_move(state: GameState, pit_index: int,

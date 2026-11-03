@@ -11,7 +11,9 @@ from mangala.engine import (
     initial_state,
     is_terminal,
     legal_moves,
+    lexicographic_potential,
     validate_state,
+    zobrist_hash,
 )
 
 
@@ -41,13 +43,22 @@ def test_stone_conservation_and_invariants(rnd: random.Random) -> None:
         # Snapshot for immutability check
         pits_before = list(state.pits)
         player_before = state.current_player
+        pot_before = lexicographic_potential(state)
+        hash_before = zobrist_hash(state)
+        assert 0 <= hash_before <= 0xFFFFFFFFFFFFFFFF
 
         chosen_move = rnd.choice(moves)
         next_state, _events = apply_move(state, chosen_move)
+        pot_after = lexicographic_potential(next_state)
+
+        # Theorem 2: (K(P'), Phi(P')) < (K(P), Phi(P)) strictly decreases on every move
+        assert pot_after < pot_before
 
         # Immutability
         assert state.pits == pits_before
         assert state.current_player == player_before
+        assert zobrist_hash(state) == hash_before
+        assert zobrist_hash(next_state) != hash_before
 
         # Conservation of stones
         assert sum(next_state.pits) == TOTAL_STONES

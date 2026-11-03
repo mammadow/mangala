@@ -89,6 +89,16 @@ test('Client AI Evaluation and Move Search Parity', (t) => {
 
   const s0 = MangalaEngine.initialState();
 
+  // Verify lexicographicPotential and zobristHash on initial state
+  assert.equal(typeof MangalaEngine.lexicographicPotential, 'function');
+  assert.equal(typeof MangalaEngine.zobristHash, 'function');
+  const [k0, phi0] = MangalaEngine.lexicographicPotential(s0);
+  assert.equal(k0, 48);
+  assert.equal(phi0, 168);
+  const h0 = MangalaEngine.zobristHash(s0);
+  assert.equal(typeof h0, 'bigint');
+  assert.ok(h0 > 0n);
+
   // Test evaluation from both player perspectives
   const ev0 = MangalaAI.evaluate(s0, 0);
   const ev1 = MangalaAI.evaluate(s0, 1);
@@ -103,6 +113,9 @@ test('Client AI Evaluation and Move Search Parity', (t) => {
 
   // Move to player 1's turn and test best move from player 1
   const { state: s1 } = MangalaEngine.applyMove(s0, 0);
+  const [k1, phi1] = MangalaEngine.lexicographicPotential(s1);
+  assert.ok(k1 < k0 || (k1 === k0 && phi1 < phi0), 'DAG potential must strictly decrease');
+  assert.notEqual(MangalaEngine.zobristHash(s1), h0);
   const evP1 = MangalaAI.evaluate(s1, s1.current_player);
   assert.equal(typeof evP1, 'number');
   assert.ok(!isNaN(evP1));
