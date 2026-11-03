@@ -2033,31 +2033,91 @@ let roomPollInterval = null;
 let lastMoveSeq = 0;
 let p2pPeer = null;
 let p2pConn = null;
+let p2pHeartbeat = null;
+
+const PEER_CONFIG = {
+  debug: 1,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    ]
+  }
+};
+
+function startP2PHeartbeat(conn) {
+  if (p2pHeartbeat) clearInterval(p2pHeartbeat);
+  p2pHeartbeat = setInterval(() => {
+    if (conn && conn.open) {
+      try { conn.send({ type: 'ping' }); } catch (_) {}
+    }
+  }, 10000);
+}
+
+function stopP2PHeartbeat() {
+  if (p2pHeartbeat) {
+    clearInterval(p2pHeartbeat);
+    p2pHeartbeat = null;
+  }
+}
+
+function updateOnlineBadges() {
+  if (mode !== 'online') return;
+  const b1 = document.getElementById('badge1');
+  const b2 = document.getElementById('badge2');
+  const av1 = document.getElementById('avatar1');
+  const av2 = document.getElementById('avatar2');
+  if (b1) b1.textContent = (onlinePlayerSide === 0) ? 'You (P1)' : 'Opponent (P1)';
+  if (b2) b2.textContent = (onlinePlayerSide === 1) ? 'You (P2)' : 'Opponent (P2)';
+  if (av1) av1.textContent = '👤';
+  if (av2) av2.textContent = '👤';
+}
 
 function setupP2PConnection(conn) {
   p2pConn = conn;
+  startP2PHeartbeat(conn);
+
   conn.on('open', () => {
+    mode = 'online';
+    players = ['human', 'human'];
+    updateToolbarMenuBtn();
+    updateOnlineBadges();
+    document.getElementById('menuOverlay').classList.add('hidden');
+
     if (onlinePlayerSide === 0) {
-      mode = 'online';
-      players = ['human', 'human'];
-      updateToolbarMenuBtn();
-      document.getElementById('menuOverlay').classList.add('hidden');
+      // Ensure host has authoritative clean state
+      if (!S || S.game_over) {
+        S = window.MangalaEngine.initialState();
+        matchHistory = [JSON.parse(JSON.stringify(S))];
+      }
       conn.send({ type: 'sync', state: S, room: currentRoom });
-      banner(`Guest joined Room ${currentRoom}! Match started.`, '#48db8c');
+      render(S);
+      banner(`🎉 Friend connected to Room ${currentRoom}! Game begins!`, '#48db8c');
     } else {
-      banner(`Connected to Room ${currentRoom}! You are Player 2.`, '#48db8c');
+      banner(`🟢 Connected to Room ${currentRoom}! You are Player 2.`, '#48db8c');
     }
   });
 
   conn.on('data', async (data) => {
     if (!data) return;
+    if (data.type === 'ping') return;
+
     if (data.type === 'sync' && data.state) {
       S = data.state;
-      if (matchHistory.length === 0) matchHistory = [JSON.parse(JSON.stringify(S))];
+      matchHistory = [JSON.parse(JSON.stringify(S))];
+      updateOnlineBadges();
       render(S);
+      for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], false);
+      banner(`🎮 Game started! Host moves first.`, 'var(--gold)');
     } else if (data.type === 'move' && typeof data.pit === 'number') {
       if (S && !S.game_over) {
         await playMove(data.pit);
+        if (data.state) {
+          S = data.state;
+        }
         pushHistory();
         render(S);
       }
@@ -2065,6 +2125,7 @@ function setupP2PConnection(conn) {
   });
 
   conn.on('close', () => {
+    stopP2PHeartbeat();
     banner('⚠️ Opponent disconnected from room', '#ff6e6e');
   });
 
@@ -2074,13 +2135,24 @@ function setupP2PConnection(conn) {
 }
 
 async function createRoom() {
+  // Ensure host board is freshly initialized before creating room
+  S = window.MangalaEngine.initialState();
+  matchHistory = [JSON.parse(JSON.stringify(S))];
+  logEntries = [];
+  busy = false;
+  flipped = false;
+  applyFlip();
+  render(S);
+
   if (typeof Peer !== 'undefined') {
     try {
-      const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
       const peerId = 'mangala-room-' + code;
-      if (p2pPeer) { try { p2pPeer.destroy(); } catch (_) {} }
 
-      p2pPeer = new Peer(peerId);
+      if (p2pPeer) { try { p2pPeer.destroy(); } catch (_) {} }
+      p2pPeer = new Peer(peerId, PEER_CONFIG);
       currentRoom = code;
       onlinePlayerSide = 0;
 
@@ -2088,7 +2160,7 @@ async function createRoom() {
         document.getElementById('roomCreatedBox').style.display = 'block';
         document.getElementById('displayRoomCode').textContent = currentRoom;
         document.getElementById('roomJoinBox').style.display = 'none';
-        banner(`Room ${currentRoom} created! Share code or link with a friend.`, 'var(--gold)');
+        banner(`Room ${currentRoom} created! Share code or link with your friend.`, 'var(--gold)');
       });
 
       p2pPeer.on('connection', (conn) => {
@@ -2100,7 +2172,7 @@ async function createRoom() {
         if (err.type === 'unavailable-id') {
           createRoom();
         } else {
-          alert('WebRTC Room Error: ' + err.message);
+          alert('WebRTC Room Notice: ' + err.message);
         }
       });
       return;
@@ -2136,16 +2208,27 @@ async function joinRoom(code) {
   }
   const cleanCode = code.trim().toUpperCase();
 
+  // Initialize fresh local state for guest
+  S = window.MangalaEngine.initialState();
+  matchHistory = [JSON.parse(JSON.stringify(S))];
+  logEntries = [];
+  busy = false;
+
   if (typeof Peer !== 'undefined') {
     try {
       if (p2pPeer) { try { p2pPeer.destroy(); } catch (_) {} }
-      p2pPeer = new Peer();
+      p2pPeer = new Peer(PEER_CONFIG);
       currentRoom = cleanCode;
       onlinePlayerSide = 1;
 
+      banner(`⏳ Connecting to room ${cleanCode}…`, 'var(--gold)');
+
       p2pPeer.on('open', () => {
         const targetPeerId = 'mangala-room-' + cleanCode;
-        const conn = p2pPeer.connect(targetPeerId, { reliable: true });
+        const conn = p2pPeer.connect(targetPeerId, {
+          reliable: true,
+          serialization: 'json'
+        });
         setupP2PConnection(conn);
 
         mode = 'online';
@@ -2153,11 +2236,12 @@ async function joinRoom(code) {
         flipped = true;
         applyFlip();
         updateToolbarMenuBtn();
-        document.getElementById('menuOverlay').classList.add('hidden');
+        updateOnlineBadges();
       });
 
       p2pPeer.on('error', (err) => {
-        alert("Failed to connect to room " + cleanCode + ": " + err.message);
+        console.warn('Peer connection error:', err);
+        alert(`Could not connect to room "${cleanCode}". Make sure the host has the room open.`);
       });
       return;
     } catch (err) {
@@ -2201,6 +2285,7 @@ function startRoomPolling() {
         mode = 'online';
         players = ['human', 'human'];
         updateToolbarMenuBtn();
+        updateOnlineBadges();
         document.getElementById('menuOverlay').classList.add('hidden');
         banner(`Guest joined Room ${currentRoom}! Match started.`, '#48db8c');
       }
@@ -2232,7 +2317,9 @@ function render(state) {
 
   clearHL();
   if (!busy && !state.game_over && players[state.current_player] === 'human') {
-    for (const m of (state.legal || [])) pitEls[m].classList.add('legal');
+    if (mode !== 'online' || state.current_player === onlinePlayerSide) {
+      for (const m of (state.legal || [])) pitEls[m].classList.add('legal');
+    }
   }
   updateTurnText(state);
   updateAnalysisButtons();
@@ -2255,6 +2342,7 @@ function clearHoverPreview() {
 
 function showHoverPreview(pit) {
   if (busy || !S || S.game_over || players[S.current_player] !== 'human') return;
+  if (mode === 'online' && S.current_player !== onlinePlayerSide) return;
   if (!(S.legal || []).includes(pit)) return;
   clearHoverPreview();
   const { path } = sowPath(S, pit);
@@ -2405,7 +2493,15 @@ function updateTurnText(state) {
   }
   const p = state.current_player;
   big.textContent = `Player ${p + 1}'s Turn`;
-  sub.textContent = players[p] === 'ai' ? '🤖 AI is analyzing…' : '👉 your turn';
+  if (mode === 'online') {
+    if (p === onlinePlayerSide) {
+      sub.textContent = `👉 Your Turn (Player ${onlinePlayerSide + 1})`;
+    } else {
+      sub.textContent = '⏳ Opponent is thinking…';
+    }
+  } else {
+    sub.textContent = players[p] === 'ai' ? '🤖 AI is analyzing…' : '👉 your turn';
+  }
 }
 
 // ── Board Rotation ─────────────────────────────────────────────────────────
@@ -2645,7 +2741,7 @@ async function onPitClick(idx) {
     render(S);
 
     if (p2pConn && p2pConn.open) {
-      p2pConn.send({ type: 'move', pit: idx });
+      p2pConn.send({ type: 'move', pit: idx, state: S });
       return;
     }
 
