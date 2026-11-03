@@ -32,7 +32,10 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-gui = ["pygame>=2.5"]
+gui = [
+    "pygame-ce>=2.5; python_version >= '3.13'",
+    "pygame>=2.5; python_version < '3.13'",
+]
 dev = [
     "pytest>=8",
     "pytest-cov>=5",

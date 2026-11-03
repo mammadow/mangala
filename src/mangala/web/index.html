@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏺</text></svg>">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
 :root {
   --bg-dark: #0d0a14;
@@ -1782,7 +1783,9 @@ function openReview() {
   for (let i = 1; i < matchHistory.length; i++) {
     const prev = matchHistory[i - 1];
     const curr = matchHistory[i];
+    if (!prev || !curr) continue;
     const player = prev.current_player;
+    if (player !== 0 && player !== 1) continue;
     try {
       const ePrev = window.MangalaAI.evaluate(prev, player);
       const eCurr = window.MangalaAI.evaluate(curr, player);
@@ -1949,6 +1952,7 @@ function loadPuzzleOnBoard() {
   applyFlip();
   updateToolbarMenuBtn();
   document.getElementById('puzzleOverlay').classList.add('hidden');
+  matchHistory = [JSON.parse(JSON.stringify(S))];
   render(S);
   banner(`🧩 Loaded Puzzle ${p.id}: ${p.title}`, 'var(--gold)');
 }
@@ -2017,19 +2021,96 @@ function loadTutorialOnBoard() {
   applyFlip();
   updateToolbarMenuBtn();
   document.getElementById('rulesOverlay').classList.add('hidden');
+  matchHistory = [JSON.parse(JSON.stringify(S))];
   render(S);
   banner(`🎓 ${step.title}: Click glowing pit [${step.targetPit + 1}]!`, 'var(--gold)');
 }
 
-// ── Online P2P Multiplayer ─────────────────────────────────────────────────
+// ── Online P2P Multiplayer (WebRTC DataChannel via PeerJS + REST Fallback) ───
 let currentRoom = null;
 let onlinePlayerSide = 0; // 0 for host, 1 for guest
 let roomPollInterval = null;
 let lastMoveSeq = 0;
+let p2pPeer = null;
+let p2pConn = null;
+
+function setupP2PConnection(conn) {
+  p2pConn = conn;
+  conn.on('open', () => {
+    if (onlinePlayerSide === 0) {
+      mode = 'online';
+      players = ['human', 'human'];
+      updateToolbarMenuBtn();
+      document.getElementById('menuOverlay').classList.add('hidden');
+      conn.send({ type: 'sync', state: S, room: currentRoom });
+      banner(`Guest joined Room ${currentRoom}! Match started.`, '#48db8c');
+    } else {
+      banner(`Connected to Room ${currentRoom}! You are Player 2.`, '#48db8c');
+    }
+  });
+
+  conn.on('data', async (data) => {
+    if (!data) return;
+    if (data.type === 'sync' && data.state) {
+      S = data.state;
+      if (matchHistory.length === 0) matchHistory = [JSON.parse(JSON.stringify(S))];
+      render(S);
+    } else if (data.type === 'move' && typeof data.pit === 'number') {
+      if (S && !S.game_over) {
+        await playMove(data.pit);
+        pushHistory();
+        render(S);
+      }
+    }
+  });
+
+  conn.on('close', () => {
+    banner('⚠️ Opponent disconnected from room', '#ff6e6e');
+  });
+
+  conn.on('error', (err) => {
+    console.warn('P2P connection error:', err);
+  });
+}
 
 async function createRoom() {
+  if (typeof Peer !== 'undefined') {
+    try {
+      const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const peerId = 'mangala-room-' + code;
+      if (p2pPeer) { try { p2pPeer.destroy(); } catch (_) {} }
+
+      p2pPeer = new Peer(peerId);
+      currentRoom = code;
+      onlinePlayerSide = 0;
+
+      p2pPeer.on('open', () => {
+        document.getElementById('roomCreatedBox').style.display = 'block';
+        document.getElementById('displayRoomCode').textContent = currentRoom;
+        document.getElementById('roomJoinBox').style.display = 'none';
+        banner(`Room ${currentRoom} created! Share code or link with a friend.`, 'var(--gold)');
+      });
+
+      p2pPeer.on('connection', (conn) => {
+        setupP2PConnection(conn);
+      });
+
+      p2pPeer.on('error', (err) => {
+        console.warn('Peer error:', err);
+        if (err.type === 'unavailable-id') {
+          createRoom();
+        } else {
+          alert('WebRTC Room Error: ' + err.message);
+        }
+      });
+      return;
+    } catch (err) {
+      console.warn('WebRTC create failed, falling back to REST:', err);
+    }
+  }
+
   if (offlineMode || window.location.hostname.endsWith('github.io')) {
-    alert("ℹ️ Remote Room Multiplayer requires the Python server (run 'pip install git+https://github.com/mammadow/mangala.git' and 'mangala').\n\nOn GitHub Pages, enjoy 1-Player vs AI, AI vs AI, Hotseat 2-Player, and Tactical Puzzles!");
+    alert("ℹ️ PeerJS script loading. Please check your internet connection.");
     return;
   }
   try {
@@ -2049,16 +2130,47 @@ async function createRoom() {
 }
 
 async function joinRoom(code) {
-  if (offlineMode || window.location.hostname.endsWith('github.io')) {
-    alert("ℹ️ Remote Room Multiplayer requires the Python server (run 'pip install git+https://github.com/mammadow/mangala.git' and 'mangala').\n\nOn GitHub Pages, enjoy 1-Player vs AI, AI vs AI, Hotseat 2-Player, and Tactical Puzzles!");
-    return;
-  }
   if (!code) {
     alert("Please enter a 4-character Room Code.");
     return;
   }
+  const cleanCode = code.trim().toUpperCase();
+
+  if (typeof Peer !== 'undefined') {
+    try {
+      if (p2pPeer) { try { p2pPeer.destroy(); } catch (_) {} }
+      p2pPeer = new Peer();
+      currentRoom = cleanCode;
+      onlinePlayerSide = 1;
+
+      p2pPeer.on('open', () => {
+        const targetPeerId = 'mangala-room-' + cleanCode;
+        const conn = p2pPeer.connect(targetPeerId, { reliable: true });
+        setupP2PConnection(conn);
+
+        mode = 'online';
+        players = ['human', 'human'];
+        flipped = true;
+        applyFlip();
+        updateToolbarMenuBtn();
+        document.getElementById('menuOverlay').classList.add('hidden');
+      });
+
+      p2pPeer.on('error', (err) => {
+        alert("Failed to connect to room " + cleanCode + ": " + err.message);
+      });
+      return;
+    } catch (err) {
+      console.warn('WebRTC join failed, falling back to REST:', err);
+    }
+  }
+
+  if (offlineMode || window.location.hostname.endsWith('github.io')) {
+    alert("ℹ️ PeerJS script loading. Please check your internet connection.");
+    return;
+  }
   try {
-    const res = await api('/api/room/join', { room: code.toUpperCase() });
+    const res = await api('/api/room/join', { room: cleanCode });
     currentRoom = res.room;
     onlinePlayerSide = 1;
     lastMoveSeq = 0;
@@ -2316,7 +2428,7 @@ async function banner(text, color) {
 }
 
 // ── API Bridge (Dual-Mode: Python REST or In-Browser Client Engine) ────────
-let offlineMode = (window.location.protocol === 'file:');
+let offlineMode = (window.location.protocol === 'file:' || window.location.hostname.endsWith('github.io'));
 
 async function localApi(path, body) {
   if (path === '/api/new') {
@@ -2531,6 +2643,12 @@ async function onPitClick(idx) {
     await playMove(idx);
     pushHistory();
     render(S);
+
+    if (p2pConn && p2pConn.open) {
+      p2pConn.send({ type: 'move', pit: idx });
+      return;
+    }
+
     try {
       await api('/api/room/move', { room: currentRoom, player: onlinePlayerSide, pit: idx });
     } catch (e) {
