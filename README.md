@@ -7,12 +7,12 @@
 ### Authentic Game Engine • Tournament AI • Responsive Web • Terminal CLI • Desktop Arcade
 
 [![CI Status](https://img.shields.io/github/actions/workflow/status/mammadow/mangala/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/mammadow/mangala/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/release-v0.2.0-blue?style=flat-square)](https://github.com/mammadow/mangala/releases)
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue?style=flat-square)](https://github.com/mammadow/mangala)
+[![PyPI](https://img.shields.io/pypi/v/mangala-game.svg?style=flat-square&color=blue)](https://pypi.org/project/mangala-game/)
+[![Python](https://img.shields.io/pypi/pyversions/mangala-game.svg?style=flat-square)](https://pypi.org/project/mangala-game/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square)](https://github.com/mammadow/mangala)
 [![Parity](https://img.shields.io/badge/parity-629%20passed-brightgreen?style=flat-square)](https://github.com/mammadow/mangala)
 [![PWA](https://img.shields.io/badge/PWA-installable%20offline-orange?style=flat-square)](https://mammadow.github.io/mangala/)
-[![Multiplayer](https://img.shields.io/badge/multiplayer-P2P%20room%20codes-purple?style=flat-square)](https://mammadow.github.io/mangala/)
+[![Multiplayer](https://img.shields.io/badge/multiplayer-WebRTC%20P2P-purple?style=flat-square)](https://mammadow.github.io/mangala/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square)](https://github.com/astral-sh/ruff)
 
@@ -54,19 +54,25 @@
 
 ### Installation
 
-#### Option 1: Direct from GitHub via `pip` (Recommended)
+#### Option 1: Official PyPI Package (Recommended)
 
-Install directly into your Python environment without cloning:
+Install directly from [PyPI](https://pypi.org/project/mangala-game/):
 
 ```bash
-# Standard installation (Web GUI + CLI, zero external dependencies)
-pip install git+https://github.com/mammadow/mangala.git
+# Standard installation (Modern Web GUI + CLI + AI Engine, zero external dependencies)
+pip install mangala-game
 
-# With Pygame desktop arcade GUI
-pip install "mangala-game[gui] @ git+https://github.com/mammadow/mangala.git"
+# With optional Pygame desktop arcade GUI (works on Python 3.10–3.14)
+pip install "mangala-game[gui]"
 ```
 
-#### Option 2: Clone & Run from Source
+#### Option 2: Direct from GitHub
+
+```bash
+pip install git+https://github.com/mammadow/mangala.git
+```
+
+#### Option 3: Clone & Develop from Source
 
 ```bash
 git clone https://github.com/mammadow/mangala.git
@@ -75,16 +81,6 @@ python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e ".[dev,gui]"
 ```
-
-#### Option 3: Local Wheel Install
-
-Install the pre-built distribution wheel in `dist/`:
-
-```bash
-pip install dist/mangala_game-0.2.0-py3-none-any.whl
-```
-
-*(To publish `mangala-game` to the public PyPI registry so that bare `pip install mangala-game` works worldwide, see [Publishing to PyPI](#-publishing-to-pypi).)*
 
 ---
 
