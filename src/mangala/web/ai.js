@@ -26,7 +26,151 @@
   let historyTable = [new Array(14).fill(0), new Array(14).fill(0)];
   let counterMoves = [new Array(14).fill(-1), new Array(14).fill(-1)];
 
-  function recordCutoff(player, move, ply, depth, prevMove = -1) {
+  // Precomputed binomial coefficients BINOM[n][r] for combinadic EGTB indexing
+  const BINOM = Array.from({ length: 33 }, (_, n) =>
+    Array.from({ length: 14 }, (_, r) => {
+      if (r > n) return 0;
+      if (r === 0 || r === n) return 1;
+      let res = 1;
+      for (let i = 1; i <= r; i++) res = Math.round((res * (n - i + 1)) / i);
+      return res;
+    })
+  );
+
+  const EGTB_MAX_STONES = 6;
+  let egtbCache = null;
+
+  function combinadicIndex(p12) {
+    const k = p12[0] + p12[1] + p12[2] + p12[3] + p12[4] + p12[5] +
+              p12[6] + p12[7] + p12[8] + p12[9] + p12[10] + p12[11];
+    let idx = BINOM[k + 11][12];
+    let rem = k;
+    for (let j = 0; j < 11; j++) {
+      rem -= p12[j];
+      if (rem <= 0) break;
+      idx += BINOM[rem + 10 - j][11 - j];
+    }
+    return idx;
+  }
+
+  function simulateCanonicalMove(p12, move) {
+    const b = [
+      p12[0], p12[1], p12[2], p12[3], p12[4], p12[5], 0,
+      p12[6], p12[7], p12[8], p12[9], p12[10], p12[11], 0
+    ];
+    const stones = b[move];
+    let toSow;
+    if (stones > 1) { b[move] = 1; toSow = stones - 1; }
+    else { b[move] = 0; toSow = 1; }
+    let idx = move;
+    for (let s = 0; s < toSow; s++) {
+      idx = (idx + 1) % 14;
+      if (idx === 13) idx = 0;
+      b[idx]++;
+    }
+    const last = idx;
+    const extraTurn = (last === 6);
+    if (last >= 7 && last <= 12 && b[last] % 2 === 0 && b[last] > 0) {
+      b[6] += b[last];
+      b[last] = 0;
+    } else if (last >= 0 && last <= 5 && p12[last] === 0 && b[last] === 1) {
+      const oppIdx = 12 - last;
+      if (b[oppIdx] > 0) {
+        b[6] += 1 + b[oppIdx];
+        b[last] = 0;
+        b[oppIdx] = 0;
+      }
+    }
+    const ownRem = b[0] + b[1] + b[2] + b[3] + b[4] + b[5];
+    const oppRem = b[7] + b[8] + b[9] + b[10] + b[11] + b[12];
+    let gameOver = false;
+    if (ownRem === 0) {
+      b[6] += oppRem;
+      for (let j = 7; j < 13; j++) b[j] = 0;
+      gameOver = true;
+    } else if (oppRem === 0) {
+      b[13] += ownRem;
+      for (let i = 0; i < 6; i++) b[i] = 0;
+      gameOver = true;
+    }
+    const child12 = [b[0], b[1], b[2], b[3], b[4], b[5], b[7], b[8], b[9], b[10], b[11], b[12]];
+    return { child12, gain: b[6] - b[13], extraTurn: extraTurn && !gameOver, gameOver };
+  }
+
+  function buildEgtb() {
+    if (egtbCache) return egtbCache;
+    const totalStates = BINOM[EGTB_MAX_STONES + 12][12];
+    const tbl = new Int8Array(totalStates);
+    const cur = new Array(12).fill(0);
+
+    function genCompositions(rem, pos, buckets) {
+      if (pos === 11) {
+        cur[11] = rem;
+        const copy = cur.slice();
+        const phi = 6 * copy[0] + 5 * copy[1] + 4 * copy[2] + 3 * copy[3] + 2 * copy[4] + copy[5] +
+                    6 * copy[6] + 5 * copy[7] + 4 * copy[8] + 3 * copy[9] + 2 * copy[10] + copy[11];
+        if (!buckets[phi]) buckets[phi] = [];
+        buckets[phi].push(copy);
+        return;
+      }
+      for (let v = 0; v <= rem; v++) {
+        cur[pos] = v;
+        genCompositions(rem - v, pos + 1, buckets);
+      }
+    }
+
+    for (let k = 0; k <= EGTB_MAX_STONES; k++) {
+      const buckets = [];
+      genCompositions(k, 0, buckets);
+      for (let phi = 0; phi < buckets.length; phi++) {
+        const list = buckets[phi];
+        if (!list) continue;
+        for (let idxL = 0; idxL < list.length; idxL++) {
+          const p12 = list[idxL];
+          const idx = combinadicIndex(p12);
+          const ownSum = p12[0] + p12[1] + p12[2] + p12[3] + p12[4] + p12[5];
+          const oppSum = p12[6] + p12[7] + p12[8] + p12[9] + p12[10] + p12[11];
+          if (ownSum === 0) { tbl[idx] = oppSum; continue; }
+          if (oppSum === 0) { tbl[idx] = -ownSum; continue; }
+          let bestDelta = -120;
+          for (let m = 0; m < 6; m++) {
+            if (p12[m] === 0) continue;
+            const { child12, gain, extraTurn, gameOver } = simulateCanonicalMove(p12, m);
+            let val;
+            if (gameOver) val = gain;
+            else if (extraTurn) val = gain + tbl[combinadicIndex(child12)];
+            else {
+              const rot = [
+                child12[6], child12[7], child12[8], child12[9], child12[10], child12[11],
+                child12[0], child12[1], child12[2], child12[3], child12[4], child12[5]
+              ];
+              val = gain - tbl[combinadicIndex(rot)];
+            }
+            if (val > bestDelta) bestDelta = val;
+          }
+          tbl[idx] = bestDelta;
+        }
+      }
+    }
+    egtbCache = tbl;
+    return tbl;
+  }
+
+  function probeEgtb(state) {
+    const p = state.pits;
+    const ownT = state.current_player === 0 ? p[6] : p[13];
+    const oppT = state.current_player === 0 ? p[13] : p[6];
+    if (state.game_over) return ownT - oppT;
+    const k = p[0] + p[1] + p[2] + p[3] + p[4] + p[5] + p[7] + p[8] + p[9] + p[10] + p[11] + p[12];
+    if (k > EGTB_MAX_STONES) return null;
+    const tbl = buildEgtb();
+    const can = state.current_player === 0
+      ? [p[0], p[1], p[2], p[3], p[4], p[5], p[7], p[8], p[9], p[10], p[11], p[12]]
+      : [p[7], p[8], p[9], p[10], p[11], p[12], p[0], p[1], p[2], p[3], p[4], p[5]];
+    return (ownT - oppT) + tbl[combinadicIndex(can)];
+  }
+
+  function recordCutoff(player, move, ply, depth, prevMove = -1, quietTried = null) {
     if (ply < killerMoves.length) {
       const killers = killerMoves[ply];
       if (!killers.includes(move)) {
@@ -34,7 +178,16 @@
         if (killers.length > 2) killers.pop();
       }
     }
-    historyTable[player][move] += depth * depth;
+    const bonus = depth * depth;
+    historyTable[player][move] += bonus;
+    if (quietTried) {
+      for (let i = 0; i < quietTried.length; i++) {
+        const qm = quietTried[i];
+        if (qm !== move) {
+          historyTable[player][qm] = Math.max(-65536, historyTable[player][qm] - bonus);
+        }
+      }
+    }
     if (prevMove >= 0 && prevMove < 14) {
       counterMoves[player][prevMove] = move;
     }
@@ -252,6 +405,16 @@
     let stonesOnBoard = 0;
     for (let i = 0; i < 6; i++) stonesOnBoard += state.pits[i];
     for (let i = 7; i < 13; i++) stonesOnBoard += state.pits[i];
+
+    // Instant O(1) Combinadic EGTB lookup when stones <= EGTB_MAX_STONES
+    if (stonesOnBoard <= EGTB_MAX_STONES && ply > 0) {
+      const egtbDiff = probeEgtb(state);
+      if (egtbDiff !== null) {
+        const rootDiff = state.current_player === rootPlayer ? egtbDiff : -egtbDiff;
+        return rootDiff > 0 ? (WIN + rootDiff) : (rootDiff < 0 ? (-WIN + rootDiff) : 0);
+      }
+    }
+
     if (stonesOnBoard <= 16 && depth < 64) depth = 64;
 
     if (depth <= 0) return quiescence(state, alpha, beta, rootPlayer, Q_DEPTH);
@@ -267,16 +430,28 @@
 
     const isMax = (state.current_player === rootPlayer);
 
-    // Reverse Futility Pruning (Static Null-Move Pruning) at shallow depths
+    // Reverse Futility Pruning & Razoring at shallow depths
     if (depth <= 2 && stonesOnBoard > 16 && extraStreak === 0) {
       const evalMargin = 1.5 * depth;
       const staticEval = evaluate(state, rootPlayer);
-      if (isMax && staticEval - evalMargin >= beta) return staticEval - evalMargin;
-      if (!isMax && staticEval + evalMargin <= alpha) return staticEval + evalMargin;
+      if (isMax) {
+        if (staticEval - evalMargin >= beta) return staticEval - evalMargin;
+        if (depth === 1 && staticEval + 2.5 <= alpha) return quiescence(state, alpha, beta, rootPlayer, Q_DEPTH);
+      } else {
+        if (staticEval + evalMargin <= alpha) return staticEval + evalMargin;
+        if (depth === 1 && staticEval - 2.5 >= beta) return quiescence(state, alpha, beta, rootPlayer, Q_DEPTH);
+      }
     }
 
     const moves = Engine.legalMoves(state);
     if (moves.length === 0) return evaluate(state, rootPlayer);
+
+    const pvMove = entry ? entry.bestMove : -1;
+
+    // Internal Iterative Reduction (IIR) on deep unvisited nodes
+    if (depth >= 4 && pvMove === -1 && stonesOnBoard > 16 && extraStreak === 0) {
+      depth -= 1;
+    }
 
     const alphaOrig = alpha;
     const betaOrig = beta;
@@ -285,7 +460,6 @@
     const currTreas = Engine.PLAYER_TREAS[state.current_player];
     const currPlayer = state.current_player;
 
-    const pvMove = entry ? entry.bestMove : -1;
     const killers = (ply < killerMoves.length) ? killerMoves[ply] : [];
     const counterM = (prevMove >= 0 && prevMove < 14) ? counterMoves[currPlayer][prevMove] : -1;
 
@@ -304,10 +478,12 @@
       scored.push({m, child, score});
     }
     scored.sort((a, b) => b.score - a.score);
+    const quietTried = [];
 
     for (let i = 0; i < scored.length; i++) {
       const {m, child} = scored[i];
       const isExtra = (child.current_player === currPlayer);
+      const isQuiet = (!isExtra && child.pits[currTreas] === state.pits[currTreas]);
       const nextStreak = isExtra ? (extraStreak + 1) : 0;
       const ext = (isExtra && extraStreak === 0 && depth >= 3 && depth < 64) ? 1 : 0;
       const nextD = depth - 1 + ext;
@@ -317,7 +493,7 @@
         val = search(child, nextD, alpha, beta, rootPlayer, ply + 1, m, nextStreak);
       } else {
         // Late Move Reduction (LMR) on quiet moves ordered late
-        const doLmr = (i >= 3 && depth >= 3 && child.pits[currTreas] === state.pits[currTreas] && !isExtra);
+        const doLmr = (i >= 3 && depth >= 3 && isQuiet);
         const reduction = doLmr ? 1 : 0;
 
         // PVS zero-window scout search (reduced first if LMR)
@@ -327,16 +503,17 @@
           if (reduction > 0 && val > scoutAlpha) {
             val = search(child, nextD, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, ply + 1, m, nextStreak);
           }
-          if (val > bestVal && val < beta) {
-            val = search(child, nextD, val, beta, rootPlayer, ply + 1, m, nextStreak);
+          if (val > scoutAlpha && val < beta) {
+            val = search(child, nextD, scoutAlpha, beta, rootPlayer, ply + 1, m, nextStreak);
           }
         } else {
-          val = search(child, nextD - reduction, beta - PVS_EPSILON, beta, rootPlayer, ply + 1, m, nextStreak);
-          if (reduction > 0 && val < beta) {
-            val = search(child, nextD, beta - PVS_EPSILON, beta, rootPlayer, ply + 1, m, nextStreak);
+          const scoutBeta = Math.min(beta, bestVal);
+          val = search(child, nextD - reduction, scoutBeta - PVS_EPSILON, scoutBeta, rootPlayer, ply + 1, m, nextStreak);
+          if (reduction > 0 && val < scoutBeta) {
+            val = search(child, nextD, scoutBeta - PVS_EPSILON, scoutBeta, rootPlayer, ply + 1, m, nextStreak);
           }
-          if (val < beta && val > alpha) {
-            val = search(child, nextD, alpha, val, rootPlayer, ply + 1, m, nextStreak);
+          if (val < scoutBeta && val > alpha) {
+            val = search(child, nextD, alpha, scoutBeta, rootPlayer, ply + 1, m, nextStreak);
           }
         }
       }
@@ -348,7 +525,7 @@
         }
         if (bestVal > alpha) alpha = bestVal;
         if (alpha >= beta) {
-          recordCutoff(currPlayer, m, ply, depth, prevMove);
+          recordCutoff(currPlayer, m, ply, depth, prevMove, quietTried);
           break;
         }
       } else {
@@ -358,10 +535,11 @@
         }
         if (bestVal < beta) beta = bestVal;
         if (alpha >= beta) {
-          recordCutoff(currPlayer, m, ply, depth, prevMove);
+          recordCutoff(currPlayer, m, ply, depth, prevMove, quietTried);
           break;
         }
       }
+      if (isQuiet) quietTried.push(m);
     }
 
     // Depth-preferred Transposition Table replacement
@@ -399,14 +577,19 @@
 
     for (let i = 0; i < scored.length; i++) {
       const {m, child} = scored[i];
+      const isExtra = (child.current_player === rootPlayer);
+      const nextStreak = isExtra ? 1 : 0;
+      const ext = (isExtra && depth >= 3 && depth < 64) ? 1 : 0;
+      const nextD = depth - 1 + ext;
+
       let val;
       if (i === 0) {
-        val = search(child, depth - 1, alpha, beta, rootPlayer, 1);
+        val = search(child, nextD, alpha, beta, rootPlayer, 1, m, nextStreak);
       } else {
         const scoutAlpha = Math.max(alpha, bestVal);
-        val = search(child, depth - 1, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, 1);
-        if (val > bestVal && val < beta) {
-          val = search(child, depth - 1, val, beta, rootPlayer, 1);
+        val = search(child, nextD, scoutAlpha, scoutAlpha + PVS_EPSILON, rootPlayer, 1, m, nextStreak);
+        if (val > scoutAlpha && val < beta) {
+          val = search(child, nextD, scoutAlpha, beta, rootPlayer, 1, m, nextStreak);
         }
       }
 
@@ -479,7 +662,8 @@
   const MangalaAI = {
     bestMove,
     search,
-    evaluate
+    evaluate,
+    probeEgtb
   };
 
   if (typeof module !== 'undefined' && module.exports) {

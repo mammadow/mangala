@@ -405,14 +405,39 @@ class ArenaResult:
         return self.score_a / max(1, self.games_played)
 
 
+def _get_opening_suite() -> list[GameState]:
+    """Generate deterministic suite of opening positions (initial + 1-turn + 2-turn openings)."""
+    s0 = initial_state()
+    suite: list[GameState] = [s0]
+    turn1: list[GameState] = []
+    for m0 in legal_moves(s0):
+        c1, ev1 = apply_move(s0, m0)
+        if ev1["extra_turn"]:
+            for m0b in legal_moves(c1):
+                c1b, _ = apply_move(c1, m0b)
+                turn1.append(c1b)
+        else:
+            turn1.append(c1)
+    suite.extend(turn1)
+    for st1 in turn1:
+        for m1 in legal_moves(st1):
+            c2, _ = apply_move(st1, m1)
+            suite.append(c2)
+    return suite
+
+
+_OPENING_SUITE: list[GameState] = _get_opening_suite()
+
+
 def _play_arena_pair(args: tuple[int, int, dict[str, float], dict[str, float]]) -> tuple[float, float]:
-    """Play two mirrored games (game 1: A as P0, game 2: B as P0) from initial state."""
-    _, depth, weights_a_dict, weights_b_dict = args
+    """Play two mirrored games (game 1: A as P0, game 2: B as P0) from a matched opening position."""
+    pair_idx, depth, weights_a_dict, weights_b_dict = args
     w_a = EvalWeights.from_dict(weights_a_dict)
     w_b = EvalWeights.from_dict(weights_b_dict)
+    start_state = _OPENING_SUITE[pair_idx % len(_OPENING_SUITE)]
 
     # Game 1: Player 0 = A, Player 1 = B
-    s1 = initial_state()
+    s1 = start_state
     while not s1.game_over:
         curr = s1.current_player
         w = w_a if curr == 0 else w_b
@@ -423,7 +448,7 @@ def _play_arena_pair(args: tuple[int, int, dict[str, float], dict[str, float]]) 
     pts1_a = 1.0 if p1 > p2 else (0.5 if p1 == p2 else 0.0)
 
     # Game 2: Player 0 = B, Player 1 = A
-    s2 = initial_state()
+    s2 = start_state
     while not s2.game_over:
         curr = s2.current_player
         w = w_b if curr == 0 else w_a

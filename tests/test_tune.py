@@ -172,7 +172,24 @@ def test_extract_linear_features_and_adam_tuning() -> None:
         assert abs(exact_ev - linear_ev) < 1e-9
 
     # Verify AdamW analytical tuning reduces or preserves loss cleanly
-    tuned_w, losses = run_adam_tuning(DEFAULT_WEIGHTS, positions, iterations=15, lr=0.03)
+    steps: list[int] = []
+    tuned_w, losses = run_adam_tuning(
+        DEFAULT_WEIGHTS,
+        positions,
+        iterations=15,
+        lr=0.03,
+        callback=lambda s, tot, cl, bl: steps.append(s),
+    )
     assert len(losses) == 16
+    assert len(steps) == 15
     assert min(losses) <= losses[0] + 1e-12
     assert isinstance(tuned_w, EvalWeights)
+
+    # Empty positions edge case and threshold position in extract_linear_features
+    w_empty, l_empty = run_adam_tuning(DEFAULT_WEIGHTS, [], iterations=5)
+    assert w_empty == DEFAULT_WEIGHTS
+    assert l_empty == [0.0]
+
+    pos_thresh = TrainingPosition(pits=[0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 22], current_player=0, result=1.0)
+    ext_thresh = extract_linear_features([pos_thresh])
+    assert all(v == 0.0 for v in ext_thresh[0][1].values())

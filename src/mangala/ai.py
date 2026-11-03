@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import math
 import time as _time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from .book import get_book_move
@@ -54,7 +55,8 @@ from .engine import (
     legal_moves,
     score,
 )
-from .tablebase import DEFAULT_EGTB_STONES, probe_egtb
+from .nnue import DEFAULT_NNUE
+from .tablebase import DEFAULT_EGTB_STONES, probe_egtb, probe_egtb_move
 
 _OWN_PITS_TUPLE: tuple[tuple[int, ...], tuple[int, ...]] = (tuple(P1_PITS), tuple(P2_PITS))
 _OPP_PITS_TUPLE: tuple[tuple[int, ...], tuple[int, ...]] = (tuple(P2_PITS), tuple(P1_PITS))
@@ -347,15 +349,28 @@ def _key(state: GameState) -> tuple:
 class Searcher:
     """One search context (TT, clock, counters, heuristics). Not shared between threads."""
 
-    def __init__(self, rules: Rules = DEFAULT_RULES, weights: EvalWeights = DEFAULT_WEIGHTS) -> None:
+    def __init__(
+        self,
+        rules: Rules = DEFAULT_RULES,
+        weights: EvalWeights = DEFAULT_WEIGHTS,
+        use_nnue: bool = False,
+    ) -> None:
         self.rules = rules
         self.weights = weights
+        self.use_nnue = use_nnue
         self.tt: dict = {}
         self.nodes = 0
         self._deadline = _INF
         self.killer_moves: list[list[int]] = [[] for _ in range(_MAX_PLY)]
         self.history_table: list[list[int]] = [[0] * TOTAL for _ in range(2)]
         self.counter_moves: list[list[int]] = [[-1] * TOTAL for _ in range(2)]
+
+    def _eval_state(self, state: GameState, root: int) -> float:
+        """Evaluate *state* from *root* perspective using heuristic (and optional NNUE blend)."""
+        base_ev = _evaluate(state, root, self.weights)
+        if not self.use_nnue or abs(base_ev) >= _WIN:
+            return base_ev
+        return 0.75 * base_ev + 0.25 * DEFAULT_NNUE.evaluate(state, root)
 
     # -- move generation & ordering ----------------------------------------
 
@@ -366,15 +381,20 @@ class Searcher:
         ply: int,
         depth: int,
         prev_move: int = -1,
+        quiet_tried: Sequence[int] = (),
     ) -> None:
-        """Update killer moves, countermove table, and history heuristic upon a beta cutoff."""
+        """Update killer moves, countermove table, and history heuristic (with malus) upon a cutoff."""
         if ply < len(self.killer_moves):
             killers = self.killer_moves[ply]
             if move not in killers:
                 killers.insert(0, move)
                 if len(killers) > 2:
                     killers.pop()
-        self.history_table[player][move] += depth * depth
+        bonus = depth * depth
+        self.history_table[player][move] += bonus
+        for qm in quiet_tried:
+            if qm != move:
+                self.history_table[player][qm] = max(-65536, self.history_table[player][qm] - bonus)
         if 0 <= prev_move < TOTAL:
             self.counter_moves[player][prev_move] = move
 
@@ -441,7 +461,7 @@ class Searcher:
         if opp_t >= 25:
             return -_WIN + (own_t - opp_t)
 
-        stand_pat = _evaluate(state, root, self.weights)
+        stand_pat = self._eval_state(state, root)
 
         if q_depth == 0:
             return stand_pat
@@ -538,14 +558,20 @@ class Searcher:
         if depth <= 0:
             return self._quiescence(state, alpha, beta, root, _Q_DEPTH)
 
-        # --- Reverse Futility Pruning (Static Null-Move Pruning) at shallow depths ---
+        # --- Reverse Futility Pruning & Razoring at shallow depths ---
         if depth <= 2 and stones_on_board > _ENDGAME_STONES and extra_streak == 0:
             eval_margin = 1.5 * depth
-            static_eval = _evaluate(state, root, self.weights)
-            if state.current_player == root and static_eval - eval_margin >= beta:
-                return static_eval - eval_margin
-            elif state.current_player != root and static_eval + eval_margin <= alpha:
-                return static_eval + eval_margin
+            static_eval = self._eval_state(state, root)
+            if state.current_player == root:
+                if static_eval - eval_margin >= beta:
+                    return static_eval - eval_margin
+                if depth == 1 and static_eval + 2.5 <= alpha:
+                    return self._quiescence(state, alpha, beta, root, _Q_DEPTH)
+            else:
+                if static_eval + eval_margin <= alpha:
+                    return static_eval + eval_margin
+                if depth == 1 and static_eval - 2.5 >= beta:
+                    return self._quiescence(state, alpha, beta, root, _Q_DEPTH)
 
         # --- Transposition table lookup ---
         key        = _key(state)
@@ -565,20 +591,29 @@ class Searcher:
                 if alpha >= beta:
                     return tt_val
 
+        # Internal Iterative Reduction (IIR) on deep unvisited nodes
+        if depth >= 4 and pv_move == -1 and stones_on_board > _ENDGAME_STONES and extra_streak == 0:
+            depth -= 1
+
         alpha_orig = alpha
         beta_orig  = beta
 
         children = self._ordered_children(state, pv_move, ply, prev_move)
         if not children:
-            return _evaluate(state, root, self.weights)
+            return self._eval_state(state, root)
 
         maximising = state.current_player == root
         best_val   = -_INF if maximising else _INF
         best_here  = children[0][0]
+        quiet_tried: list[int] = []
 
         if maximising:
             for i, (m, child) in enumerate(children):
                 is_extra = child.current_player == state.current_player
+                is_quiet = (
+                    not is_extra
+                    and child.pits[_OWN_TREAS_TUPLE[root]] == pits[_OWN_TREAS_TUPLE[root]]
+                )
                 next_streak = (extra_streak + 1) if is_extra else 0
                 # Turn-conserving extension on the first bonus turn of a cascade at depth >= 3
                 ext = 1 if (is_extra and extra_streak == 0 and 3 <= depth < _ENDGAME_DEPTH) else 0
@@ -588,8 +623,7 @@ class Searcher:
                     val = self._search(child, next_d, alpha, beta, root, ply + 1, m, next_streak)
                 else:
                     # Late Move Reduction (LMR) on quiet, non-capture moves ordered late
-                    do_lmr = (i >= 3 and depth >= 3 and not is_extra and
-                              child.pits[_OWN_TREAS_TUPLE[root]] == pits[_OWN_TREAS_TUPLE[root]])
+                    do_lmr = i >= 3 and depth >= 3 and is_quiet
                     reduction = 1 if do_lmr else 0
 
                     val = self._search(
@@ -603,7 +637,7 @@ class Searcher:
                         )
 
                     if alpha < val < beta:
-                        val = self._search(child, next_d, val, beta, root, ply + 1, m, next_streak)
+                        val = self._search(child, next_d, alpha, beta, root, ply + 1, m, next_streak)
 
                 if val > best_val:
                     best_val  = val
@@ -611,11 +645,17 @@ class Searcher:
                 if best_val > alpha:
                     alpha = best_val
                 if alpha >= beta:
-                    self._record_cutoff(state.current_player, m, ply, depth, prev_move)
+                    self._record_cutoff(state.current_player, m, ply, depth, prev_move, quiet_tried)
                     break   # beta cutoff
+                if is_quiet:
+                    quiet_tried.append(m)
         else:
             for i, (m, child) in enumerate(children):
                 is_extra = child.current_player == state.current_player
+                is_quiet = (
+                    not is_extra
+                    and child.pits[_OPP_TREAS_TUPLE[root]] == pits[_OPP_TREAS_TUPLE[root]]
+                )
                 next_streak = (extra_streak + 1) if is_extra else 0
                 ext = 1 if (is_extra and extra_streak == 0 and 3 <= depth < _ENDGAME_DEPTH) else 0
                 next_d = depth - 1 + ext
@@ -624,8 +664,7 @@ class Searcher:
                     val = self._search(child, next_d, alpha, beta, root, ply + 1, m, next_streak)
                 else:
                     # Late Move Reduction (LMR) on quiet, non-capture moves ordered late
-                    do_lmr = (i >= 3 and depth >= 3 and not is_extra and
-                              child.pits[_OPP_TREAS_TUPLE[root]] == pits[_OPP_TREAS_TUPLE[root]])
+                    do_lmr = i >= 3 and depth >= 3 and is_quiet
                     reduction = 1 if do_lmr else 0
 
                     val = self._search(
@@ -639,7 +678,7 @@ class Searcher:
                         )
 
                     if alpha < val < beta:
-                        val = self._search(child, next_d, alpha, val, root, ply + 1, m, next_streak)
+                        val = self._search(child, next_d, alpha, beta, root, ply + 1, m, next_streak)
 
                 if val < best_val:
                     best_val  = val
@@ -647,8 +686,10 @@ class Searcher:
                 if best_val < beta:
                     beta = best_val
                 if alpha >= beta:
-                    self._record_cutoff(state.current_player, m, ply, depth, prev_move)
+                    self._record_cutoff(state.current_player, m, ply, depth, prev_move, quiet_tried)
                     break   # alpha cutoff
+                if is_quiet:
+                    quiet_tried.append(m)
 
         # --- Depth-preferred transposition table replacement ---
         if best_val <= alpha_orig:
@@ -675,14 +716,27 @@ class Searcher:
         children = self._ordered_children(state, pv_move, ply=0)
 
         for i, (m, child) in enumerate(children):
+            is_extra = child.current_player == root
+            next_streak = 1 if is_extra else 0
+            ext = 1 if (is_extra and 3 <= depth < _ENDGAME_DEPTH) else 0
+            next_d = depth - 1 + ext
+
             if i == 0:
-                val = self._search(child, depth - 1, alpha, beta, root, ply=1)
+                val = self._search(
+                    child, next_d, alpha, beta, root, ply=1, prev_move=m, extra_streak=next_streak,
+                )
             else:
                 # Scout search
                 scout_alpha = max(alpha, best_val)
-                val = self._search(child, depth - 1, scout_alpha, scout_alpha + _PVS_EPSILON, root, ply=1)
-                if val > best_val and val < beta:
-                    val = self._search(child, depth - 1, val, beta, root, ply=1)
+                val = self._search(
+                    child, next_d, scout_alpha, scout_alpha + _PVS_EPSILON,
+                    root, ply=1, prev_move=m, extra_streak=next_streak,
+                )
+                if val > scout_alpha and val < beta:
+                    val = self._search(
+                        child, next_d, scout_alpha, beta,
+                        root, ply=1, prev_move=m, extra_streak=next_streak,
+                    )
 
             if val > best_val or best_m == -1:
                 best_val = val
@@ -728,7 +782,7 @@ class Searcher:
 
         # Fast-path 1: Single legal move
         if len(moves) == 1:
-            return SearchResult(moves[0], _evaluate(state, state.current_player, self.weights),
+            return SearchResult(moves[0], self._eval_state(state, state.current_player),
                                 0, 0, 0.0, [moves[0]])
 
         # Fast-path 2: Opening book (when enabled and running time-budget search)
@@ -737,11 +791,30 @@ class Searcher:
             if book_mv is not None and book_mv in moves:
                 return SearchResult(
                     move=book_mv,
-                    score=_evaluate(state, state.current_player, self.weights),
+                    score=self._eval_state(state, state.current_player),
                     depth=16,
                     nodes=1,
                     elapsed=0.0,
                     pv=[book_mv],
+                )
+
+        # Fast-path 3: Exact Retrograde EGTB lookup at root when <= DEFAULT_EGTB_STONES remain
+        stones_on_board = sum(state.pits[0:6]) + sum(state.pits[7:13])
+        if stones_on_board <= DEFAULT_EGTB_STONES:
+            egtb_res = probe_egtb_move(state, max_stones=DEFAULT_EGTB_STONES, rules=self.rules)
+            if egtb_res is not None:
+                egtb_mv, egtb_diff = egtb_res
+                egtb_score = (
+                    (_WIN + egtb_diff) if egtb_diff > 0
+                    else ((-_WIN + egtb_diff) if egtb_diff < 0 else 0.0)
+                )
+                return SearchResult(
+                    move=egtb_mv,
+                    score=egtb_score,
+                    depth=_ENDGAME_DEPTH,
+                    nodes=1,
+                    elapsed=0.0,
+                    pv=[egtb_mv],
                 )
 
         start = _time.monotonic()
@@ -810,9 +883,10 @@ def analyse(state: GameState, depth: int | None = None,
             time_limit: float = DEFAULT_TIME_LIMIT,
             rules: Rules = DEFAULT_RULES,
             use_book: bool = False,
-            weights: EvalWeights = DEFAULT_WEIGHTS) -> SearchResult:
+            weights: EvalWeights = DEFAULT_WEIGHTS,
+            use_nnue: bool = False) -> SearchResult:
     """Search *state* and return a :class:`SearchResult`."""
-    return Searcher(rules, weights=weights).analyse(
+    return Searcher(rules, weights=weights, use_nnue=use_nnue).analyse(
         state, depth=depth, time_limit=time_limit, use_book=use_book,
     )
 
@@ -821,7 +895,8 @@ def best_move(state: GameState, depth: int | None = None,
               time_limit: float = DEFAULT_TIME_LIMIT,
               rules: Rules = DEFAULT_RULES,
               use_book: bool = True,
-              weights: EvalWeights = DEFAULT_WEIGHTS) -> int:
+              weights: EvalWeights = DEFAULT_WEIGHTS,
+              use_nnue: bool = False) -> int:
     """Return the pit index of the best move for the current player.
 
     Parameters
@@ -833,8 +908,17 @@ def best_move(state: GameState, depth: int | None = None,
     rules      : Rule variants (see :class:`mangala.engine.Rules`).
     use_book   : If True, uses the precomputed opening book when available.
     weights    : Custom or tuned heuristic evaluation weights.
+    use_nnue   : If True, blends heuristic evaluation with the quantized NNUE.
     """
-    res = analyse(state, depth=depth, time_limit=time_limit, rules=rules, use_book=use_book, weights=weights)
+    res = analyse(
+        state,
+        depth=depth,
+        time_limit=time_limit,
+        rules=rules,
+        use_book=use_book,
+        weights=weights,
+        use_nnue=use_nnue,
+    )
     return res.move
 
 

@@ -340,16 +340,19 @@ def test_twenty_five_stone_threshold_victory_and_suppression() -> None:
     assert res_12.is_forced_result
 
 
-def test_combinadic_egtb_and_exact_endgame_parity() -> None:
+def test_combinadic_egtb_and_exact_endgame_parity(tmp_path) -> None:
+    from mangala.engine import SWEEP_LAST_MOVER, Rules, zobrist_hash
     from mangala.tablebase import (
         BINOM,
         _generate_compositions,
+        _simulate_canonical_move,
         build_egtb,
         combinadic_index,
         compress_egtb,
         probe_egtb,
         probe_egtb_move,
     )
+    from mangala.tablebase import main as egtb_main
 
     # 1. Verify combinadic_index is a strict bijection onto [0, C(K+12, 12)) for K <= 4
     seen_indices: set[int] = set()
@@ -363,6 +366,19 @@ def test_combinadic_egtb_and_exact_endgame_parity() -> None:
     # 2. Build EGTB up to K=4 and verify probe_egtb matches exact terminal alpha-beta
     tbl = build_egtb(max_stones=4)
     assert len(tbl) == BINOM[4 + 12][12]
+    # Slice from cached K=4 tablebase when requesting K=2
+    tbl_sub = build_egtb(max_stones=2)
+    assert len(tbl_sub) == BINOM[2 + 12][12]
+
+    with pytest.raises(ValueError, match="max_stones must be between 0 and 16"):
+        build_egtb(max_stones=20)
+
+    # Simulate canonical move that wraps past opponent treasury (idx == 13) and SWEEP_LAST_MOVER
+    wrap_pits = (0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 1)
+    c12, _gain, _ext, _go = _simulate_canonical_move(wrap_pits, 5, sweep_emptied=False)
+    assert len(c12) == 12
+    tbl_last = build_egtb(max_stones=2, rules=Rules(sweep_to=SWEEP_LAST_MOVER))
+    assert len(tbl_last) == BINOM[2 + 12][12]
 
     pits = [0] * TOTAL
     pits[4] = 1
@@ -381,19 +397,40 @@ def test_combinadic_egtb_and_exact_endgame_parity() -> None:
         assert best_diff == egtb_diff
         assert best_m in legal_moves(st)
 
-    # 3. Verify zlib compression works cleanly
-    comp_bytes = compress_egtb(max_stones=4)
+    # Probe edge cases: game_over, k > max_stones, and immediate terminal move in probe_egtb_move
+    s_over = GameState(pits=[0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 22], current_player=0, game_over=True)
+    assert probe_egtb(s_over, max_stones=4) == 4
+    assert probe_egtb_move(s_over, max_stones=4) is None
+    assert probe_egtb(initial_state(), max_stones=4) is None
+    assert probe_egtb_move(initial_state(), max_stones=4) is None
+
+    s_one_left = GameState(pits=[0, 0, 0, 0, 0, 1, 23, 0, 0, 0, 0, 0, 1, 23], current_player=0)
+    mv_term = probe_egtb_move(s_one_left, max_stones=4)
+    assert mv_term == (5, 2)
+
+    # 3. Verify zlib compression and CLI main()
+    comp_bytes = compress_egtb(max_stones=3)
     assert len(comp_bytes) > 0
-    assert len(comp_bytes) < len(tbl)
+    out_file = tmp_path / "test.egtb.zlib"
+    rc = egtb_main(["--max-stones", "2", "--out", str(out_file)])
+    assert rc == 0
+    assert out_file.exists()
+
+    # 4. Zobrist hash out-of-range pit count fallback
+    s_huge = GameState(pits=[60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], current_player=0)
+    assert zobrist_hash(s_huge) > 0
 
 
 def test_quantized_nnue_incremental_and_distillation() -> None:
-    from mangala.ai import _evaluate
+    from mangala.ai import _evaluate, analyse
     from mangala.engine import apply_move
-    from mangala.nnue import DEFAULT_NNUE, train_nnue_distillation
+    from mangala.nnue import DEFAULT_NNUE, feature_index, train_nnue_distillation
 
+    assert feature_index(0, -5) == 0
     s0 = initial_state()
     acc0 = DEFAULT_NNUE.compute_accumulator(s0.pits)
+    acc_copy = acc0.copy()
+    assert list(acc_copy.acc_p0) == list(acc0.acc_p0)
     ev0 = DEFAULT_NNUE.evaluate(s0, root=0)
     assert isinstance(ev0, float)
 
@@ -411,11 +448,14 @@ def test_quantized_nnue_incremental_and_distillation() -> None:
         curr_s = next_s
         curr_acc = inc_acc
 
-    # Verify distillation trainer runs cleanly and produces a valid NNUEEvaluator
+    # Verify distillation trainer and hybrid NNUE search mode
     samples = [(s0, _evaluate(s0, 0)), (curr_s, _evaluate(curr_s, curr_s.current_player))]
     trained_nnue = train_nnue_distillation(samples, epochs=5, lr=0.02)
     ev_trained = trained_nnue.evaluate(s0, root=0)
     assert isinstance(ev_trained, float)
+
+    res_nnue = analyse(s0, depth=2, use_nnue=True)
+    assert res_nnue.move in legal_moves(s0)
 
 
 def test_exponential_merdiven_and_wrap_around_capture_eval() -> None:

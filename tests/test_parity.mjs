@@ -122,6 +122,19 @@ test('Client AI Evaluation and Move Search Parity', (t) => {
 
   const mv1 = MangalaAI.bestMove(s1, 2);
   assert.ok(s1.legal.includes(mv1), `AI move ${mv1} must be in player 1 legal moves`);
+
+  // Verify client-side Combinadic EGTB probe in ai.js matches exact endgame differential
+  assert.equal(typeof MangalaAI.probeEgtb, 'function');
+  const sEnd = {
+    pits: [0, 0, 0, 0, 1, 1, 22, 0, 0, 0, 0, 1, 1, 22],
+    current_player: 0,
+    game_over: false,
+    winner: null,
+    legal: [4, 5]
+  };
+  const egtbVal = MangalaAI.probeEgtb(sEnd);
+  assert.equal(typeof egtbVal, 'number');
+  assert.equal(egtbVal, 2); // P0 finishes with 25 vs P1's 23 -> exact differential +2
 });
 
 
