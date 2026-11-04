@@ -109,6 +109,29 @@ body.theme-terracotta {
   --text-dim: #d1b19a;
 }
 
+body.theme-topkapi {
+  --bg-gradient: radial-gradient(1200px 800px at 50% -10%, #092c25 0%, #051915 50%, #020b09 100%);
+  --wood-outer: #163b32;
+  --wood-mid: #1f5245;
+  --wood-inner: #0d2620;
+  --wood-rim: #c89d3c;
+  --felt-dark: #071e1a;
+  --felt-light: #0f3830;
+  --pit-edge: #d4af37;
+  --pit-mid: #1b493e;
+  --pit-base: #091c17;
+  --treas-light: #f3d078;
+  --treas-dark: #9c741e;
+  --stone-top: #ecfeff;
+  --stone-mid: #67e8f9;
+  --stone-shadow: #0e7490;
+  --gold: #f5c542;
+  --p1-color: #34d399;
+  --p2-color: #fb7185;
+  --text-main: #f0fdf4;
+  --text-dim: #86efac;
+}
+
 /* ── Clocks ──────────────────────────────────────────── */
 .pclock {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -139,7 +162,43 @@ body.theme-terracotta {
   50% { opacity: 0.5; }
 }
 
-/* ── Evaluation Bar ──────────────────────────────────── */
+/* ── 25-Stone Victory Target Mini-Meter ──────────────── */
+.win25-wrap {
+  width: 100%;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.win25-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.win25-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pcard.p1 .win25-fill { background: linear-gradient(90deg, var(--p1-color), #48db8c); }
+.pcard.p2 .win25-fill { background: linear-gradient(90deg, var(--p2-color), #ffcf33); }
+.win25-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.4px;
+}
+
+/* ── Evaluation Bar & Live Engine Telemetry Strip ────── */
+.eval-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
 .eval-wrap {
   display: flex;
   align-items: center;
@@ -149,12 +208,22 @@ body.theme-terracotta {
 }
 .eval-track {
   flex: 1;
-  height: 8px;
+  height: 9px;
   background: var(--p2-color);
-  border-radius: 4px;
+  border-radius: 5px;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.45);
+}
+.eval-track::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.45);
+  z-index: 2;
 }
 .eval-fill {
   height: 100%;
@@ -166,18 +235,64 @@ body.theme-terracotta {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 800;
-  color: var(--text-dim);
-  min-width: 44px;
+  color: var(--text-main);
+  min-width: 48px;
   text-align: right;
   letter-spacing: 0.5px;
 }
+.engine-telemetry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.telem-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.telem-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 10.5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+.telem-pill.book {
+  background: rgba(90, 166, 255, 0.16);
+  border-color: rgba(90, 166, 255, 0.4);
+  color: #8bc2ff;
+}
+.telem-pill.egtb {
+  background: rgba(72, 219, 140, 0.16);
+  border-color: rgba(72, 219, 140, 0.45);
+  color: #48db8c;
+}
+.telem-pill.search {
+  background: rgba(255, 207, 51, 0.14);
+  border-color: rgba(255, 207, 51, 0.35);
+  color: var(--gold);
+}
 
-/* ── Match Review Modal ──────────────────────────────── */
+/* ── Match Review Modal & SVG Chart ──────────────────── */
 .review-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin: 16px 0;
+  margin: 12px 0;
 }
 .review-card {
   background: rgba(0, 0, 0, 0.25);
@@ -206,6 +321,34 @@ body.theme-terracotta {
   color: var(--text-dim);
 }
 .review-row span.num { font-weight: 700; color: var(--text-main); }
+.review-chart-wrap {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  text-align: left;
+}
+.review-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.review-svg {
+  width: 100%;
+  height: 110px;
+  display: block;
+  cursor: pointer;
+}
+.review-svg circle.pt {
+  transition: r 0.15s ease;
+}
+.review-svg circle.pt:hover {
+  r: 5.5px;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body {
@@ -767,6 +910,74 @@ header {
   100% { transform: translate(var(--tx, 0px), var(--ty, -120px)) scale(0); opacity: 0; }
 }
 
+/* ── Tactical Hover Outcome Pill & Sowing Delta Badges ─── */
+.tactical-pill {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  transform: translate(-50%, -8px) scale(0.92);
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(12, 9, 18, 0.92);
+  border: 1.5px solid rgba(255, 207, 51, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+  color: var(--gold);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 15;
+  white-space: nowrap;
+}
+.tactical-pill.show {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+.tactical-pill.extra {
+  border-color: var(--green);
+  color: var(--green);
+}
+.tactical-pill.capture {
+  border-color: #ff4757;
+  color: #ff6e6e;
+}
+.sow-delta {
+  position: absolute;
+  bottom: 24px;
+  right: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(12, 9, 18, 0.88);
+  border: 1px solid rgba(255, 207, 51, 0.55);
+  color: var(--gold);
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  z-index: 6;
+}
+.treas .sow-delta {
+  bottom: 28px;
+  right: 8px;
+}
+.sow-delta.show {
+  opacity: 1;
+  transform: scale(1);
+}
+.sow-delta.cap {
+  border-color: #ff4757;
+  background: rgba(255, 71, 87, 0.22);
+  color: #ff858f;
+}
+.sow-delta.extra {
+  border-color: var(--green);
+  background: rgba(72, 219, 140, 0.2);
+  color: var(--green);
+}
+
 /* ── Banner Announcements ──────────────────────────────── */
 .banner {
   position: absolute;
@@ -789,29 +1000,101 @@ header {
 }
 .banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-/* ── Footer / Move Log ──────────────────────────────────── */
+/* ── Footer / Interactive Move Timeline & Scrubber ──────── */
 .footer {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
 }
 .log {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 12px;
-  padding: 8px 14px;
-  min-height: 50px;
-  max-height: 80px;
+  padding: 8px 12px;
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   overflow: hidden;
+}
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .log h4 {
   font-size: 10px;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.4px;
   color: var(--text-dim);
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin: 0;
 }
+.scrubber-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.scrub-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.scrub-btn:hover:not(:disabled) {
+  background: rgba(255, 207, 51, 0.16);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.scrub-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.scrub-btn.live-warn {
+  background: rgba(255, 207, 51, 0.22);
+  border-color: var(--gold);
+  color: var(--gold);
+  animation: pulseGoldBtn 1.2s infinite alternate;
+}
+#logLines {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.log-chip {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.log-chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+.log-chip.active {
+  border-color: var(--gold);
+  background: rgba(255, 207, 51, 0.16);
+  box-shadow: 0 0 10px rgba(255, 207, 51, 0.25);
+}
+.log-chip.p1 { color: var(--p1-color); }
+.log-chip.p2 { color: var(--p2-color); }
 .log .line {
   font-size: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -822,7 +1105,66 @@ header {
 .log .line.p2 { color: var(--p2-color); }
 @keyframes fadein { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 
-.analysis { display: flex; gap: 6px; flex-wrap: wrap; }
+.analysis { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* ── Player Profile, ELO & Achievements Modal ──────────── */
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+@media (max-width: 480px) {
+  .profile-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.profile-stat-box {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.profile-stat-box .val {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.profile-stat-box .lbl {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-top: 2px;
+}
+.ach-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+  text-align: left;
+}
+@media (max-width: 480px) {
+  .ach-grid { grid-template-columns: 1fr; }
+}
+.ach-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  opacity: 0.48;
+  transition: all 0.2s ease;
+}
+.ach-card.unlocked {
+  opacity: 1;
+  background: rgba(255, 207, 51, 0.1);
+  border-color: rgba(255, 207, 51, 0.4);
+}
+.ach-icon { font-size: 22px; }
+.ach-info .ach-title { font-size: 12px; font-weight: 700; color: var(--text-main); }
+.ach-info .ach-desc { font-size: 10.5px; color: var(--text-dim); }
 
 /* ── Modals & Overlays ─────────────────────────────────── */
 .overlay {
@@ -1368,12 +1710,14 @@ header {
     <div class="toolbar">
       <button class="btn ghost" id="tutToolbarBtn" title="Interactive Tutorial — Master All Rules in One Go">🎓 Tutorial</button>
       <button class="btn ghost" id="puzzleBtn" title="Tactical Puzzles Trainer (16 Scenarios)">🧩 Puzzles</button>
-      <button class="btn ghost" id="soundBtn" title="Toggle sound effects">🔊 Sound</button>
-      <button class="btn ghost" id="themeBtn" title="Switch board theme (Walnut / Marble / Obsidian / Terracotta)">🎨 Walnut</button>
+      <button class="btn ghost" id="profileBtn" title="Player Career Profile, ELO Rating & Achievements">🏆 <span id="headerEloBadge">1200</span></button>
       <button class="btn ghost" id="reviewBtn" title="View Match Analysis & Accuracy">📊 Review</button>
       <button class="btn ghost" id="rulesBtn" title="Rules & Interactive Guide">📖 Guide</button>
+      <button class="btn ghost" id="themeBtn" title="Switch board theme (Walnut / Marble / Obsidian / Terracotta / Topkapı)">🎨 Walnut</button>
+      <button class="btn ghost" id="soundBtn" title="Toggle sound effects (M)">🔊 Sound</button>
       <button class="btn ghost" id="flipBtn" title="Rotate board 180° (F)">⟲ Flip</button>
       <button class="btn ghost" id="speedBtn" title="Animation speed">⚡ 1x</button>
+      <button class="btn ghost" id="fsBtn" title="Toggle Fullscreen">⛶</button>
       <button class="btn ghost" id="menuBtn">⚙️ Modes</button>
       <button class="btn" id="newBtn">New Game</button>
     </div>
@@ -1423,11 +1767,15 @@ header {
 
   <div class="scorebar">
     <div class="pcard p1" id="card1">
-      <div class="avatar">👤</div>
+      <div class="avatar" id="avatar1">👤</div>
       <div class="pinfo">
         <span class="who">Player 1</span>
         <span class="sc" id="sc1">0</span>
         <span class="badge" id="badge1">You</span>
+        <div class="win25-wrap" title="Progress toward 25-stone instant victory threshold">
+          <div class="win25-track"><div class="win25-fill" id="win25Fill1"></div></div>
+          <span class="win25-lbl" id="win25Lbl1">0 / 25 to win</span>
+        </div>
         <div class="pclock" id="clock1">--:--</div>
       </div>
     </div>
@@ -1441,25 +1789,42 @@ header {
         <span class="who">Player 2</span>
         <span class="sc" id="sc2">0</span>
         <span class="badge" id="badge2">AI (Expert)</span>
+        <div class="win25-wrap" title="Progress toward 25-stone instant victory threshold">
+          <div class="win25-track"><div class="win25-fill" id="win25Fill2"></div></div>
+          <span class="win25-lbl" id="win25Lbl2">0 / 25 to win</span>
+        </div>
         <div class="pclock" id="clock2">--:--</div>
       </div>
     </div>
   </div>
 
-  <div class="eval-wrap" id="evalWrap" title="Live Advantage Evaluation">
-    <div class="eval-track">
-      <div class="eval-fill" id="evalFill" style="width: 50%;"></div>
+  <div class="eval-container">
+    <div class="eval-wrap" id="evalWrap" title="Live Advantage Evaluation">
+      <div class="eval-track">
+        <div class="eval-fill" id="evalFill" style="width: 50%;"></div>
+      </div>
+      <div class="eval-badge" id="evalBadge">0.0</div>
     </div>
-    <div class="eval-badge" id="evalBadge">0.0</div>
+    <div class="engine-telemetry" id="engineTelemetry">
+      <div class="telem-group">
+        <span class="telem-pill" id="telemWinProb" title="Estimated Win Probability">⚖️ P1 50% · P2 50%</span>
+        <span class="telem-pill" id="telemPhase" title="Game Phase & Active Board Stones">🌱 Opening · 48 stones in play</span>
+      </div>
+      <div class="telem-group">
+        <span class="telem-pill book" id="telemSource" title="Live AI / Tablebase / Opening Book Status">📖 120-Line GM Book Ready</span>
+      </div>
+    </div>
   </div>
 
   <div class="board-wrapper">
     <div class="board">
+      <div class="tactical-pill" id="tacticalPill"></div>
       <div class="felt">
         <!-- P2 Treasury (Left) -->
         <div class="treas p2" id="t13" title="Player 2 Hazine">
           <div class="tlabel">P2 HAZINE</div>
           <div class="stones"></div>
+          <div class="sow-delta"></div>
           <div class="tcount">0</div>
         </div>
 
@@ -1475,6 +1840,7 @@ header {
         <div class="treas p1" id="t6" title="Player 1 Hazine">
           <div class="tlabel">P1 HAZINE</div>
           <div class="stones"></div>
+          <div class="sow-delta"></div>
           <div class="tcount">0</div>
         </div>
       </div>
@@ -1485,7 +1851,15 @@ header {
 
   <div class="footer">
     <div class="log">
-      <h4>Recent Turns</h4>
+      <div class="log-header">
+        <h4 id="logHeaderTitle">Move Timeline</h4>
+        <div class="scrubber-btns">
+          <button class="scrub-btn" id="scrubFirstBtn" title="First turn (Home)" disabled>⏮</button>
+          <button class="scrub-btn" id="scrubPrevBtn" title="Previous turn (◀)" disabled>◀</button>
+          <button class="scrub-btn" id="scrubNextBtn" title="Next turn (▶)" disabled>▶</button>
+          <button class="scrub-btn" id="scrubLastBtn" title="Return to live board (End)" disabled>⏭ Live</button>
+        </div>
+      </div>
       <div id="logLines"></div>
     </div>
     <div class="analysis" id="analysisTools" style="display:none">
@@ -1735,6 +2109,7 @@ header {
   <div class="panel win">
     <h2 id="winTitle">Player 1 Wins!</h2>
     <div class="score" id="winScore">0 — 0</div>
+    <div id="winEloDelta" style="display:none;margin-bottom:10px;font-size:13px;font-weight:800;padding:4px 12px;border-radius:999px;background:rgba(255,207,51,0.16);border:1px solid var(--gold);color:var(--gold);"></div>
     <div class="win-stats">
       <div class="win-stat"><div class="val" id="statMoves">0</div><div class="lbl">Moves</div></div>
       <div class="win-stat"><div class="val" id="statCaptures">0</div><div class="lbl">Captures</div></div>
@@ -1750,10 +2125,18 @@ header {
 
 <!-- Match Review Overlay -->
 <div class="overlay hidden" id="reviewOverlay">
-  <div class="panel" style="max-width: 500px;">
+  <div class="panel" style="max-width: 540px;">
     <button class="modal-close-btn" id="closeReviewBtn" title="Close">✕</button>
     <h2>📊 Match Review</h2>
-    <p class="sub" id="reviewSubtitle">Quality of play evaluated across all turns</p>
+    <p class="sub" id="reviewSubtitle">Quality of play & advantage curve evaluated across all turns</p>
+
+    <div class="review-chart-wrap" id="reviewChartWrap">
+      <div class="review-chart-header">
+        <span>📈 Advantage Timeline (Click any turn dot to inspect board)</span>
+        <span id="reviewChartHint" style="color:var(--gold);font-weight:700;">Live Eval</span>
+      </div>
+      <svg class="review-svg" id="reviewSvgChart" viewBox="0 0 460 110" preserveAspectRatio="none"></svg>
+    </div>
 
     <div class="review-stats">
       <div class="review-card review-p1">
@@ -1771,7 +2154,7 @@ header {
     <!-- MPGN Notation Section -->
     <div style="margin-top: 14px; text-align: left;">
       <div class="section-label">Mancala Portable Game Notation (MPGN)</div>
-      <textarea id="mpgnArea" readonly style="width: 100%; height: 75px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text-dim); font-family: ui-monospace, monospace; font-size: 11px; padding: 6px; resize: none;"></textarea>
+      <textarea id="mpgnArea" readonly style="width: 100%; height: 70px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text-dim); font-family: ui-monospace, monospace; font-size: 11px; padding: 6px; resize: none;"></textarea>
       <div style="display: flex; gap: 8px; margin-top: 6px;">
         <button class="btn ghost" id="copyMpgnBtn" style="flex: 1; font-size: 12px; padding: 6px 10px;">📋 Copy MPGN</button>
         <button class="btn ghost" id="dlMpgnBtn" style="flex: 1; font-size: 12px; padding: 6px 10px;">💾 Download .mpgn</button>
@@ -1779,6 +2162,42 @@ header {
     </div>
 
     <button class="btn" id="closeReviewOkBtn" style="width:100%;margin-top:14px;">Back to Game</button>
+  </div>
+</div>
+
+<!-- Player Profile, ELO & Achievements Overlay -->
+<div class="overlay hidden" id="profileOverlay">
+  <div class="panel" style="max-width: 540px;">
+    <button class="modal-close-btn" id="closeProfileBtn" title="Close">✕</button>
+    <h2>🏆 Player Career & Achievements</h2>
+    <p class="sub" id="profileRankTitle" style="color:var(--gold);font-weight:700;margin-bottom:10px;">Rank: Anatolian Tactician (1200 ELO)</p>
+
+    <div class="profile-grid">
+      <div class="profile-stat-box">
+        <div class="val" id="profElo">1200</div>
+        <div class="lbl">ELO Rating</div>
+      </div>
+      <div class="profile-stat-box">
+        <div class="val" id="profWins">0</div>
+        <div class="lbl">Victories</div>
+      </div>
+      <div class="profile-stat-box">
+        <div class="val" id="profWinRate">0%</div>
+        <div class="lbl">Win Rate</div>
+      </div>
+      <div class="profile-stat-box">
+        <div class="val" id="profStreak">0</div>
+        <div class="lbl">Best Streak</div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:14px;">Unlockable Honors & Badges</div>
+    <div class="ach-grid" id="achGrid"></div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn ghost" id="resetProfileBtn" style="font-size:11px;padding:8px 12px;">↺ Reset Stats</button>
+      <button class="btn" id="closeProfileOkBtn" style="flex:1;">Close Profile</button>
+    </div>
   </div>
 </div>
 
@@ -2022,10 +2441,164 @@ let history = [];
 let histIdx = -1;
 let matchHistory = [];
 let logEntries = [];
+let viewingHistIdx = null; // null = live board; number = inspecting matchHistory[viewingHistIdx]
+let lastEngineTelemetry = null;
 let flipped = false;
 
 // Statistics
 let matchStats = { moves: 0, captures: 0, extraTurns: 0 };
+
+// ── Player Career Profile, ELO & Achievements ──────────────────────────────
+const AI_ELO_MAP = { easy: 1000, medium: 1300, hard: 1600, expert: 1950 };
+const ACHIEVEMENTS = [
+  { id: 'first_win', icon: '🥇', title: 'First Victory', desc: 'Win your first match of Turkish Mangala' },
+  { id: 'merdiven_3', icon: '⚡', title: 'Merdiven Master', desc: 'Earn 3+ extra turns in a single match' },
+  { id: 'win25_blitz', icon: '💎', title: '25-Stone Blitz', desc: 'Win a match by crossing 25+ stones in under 20 moves' },
+  { id: 'beat_expert', icon: '👑', title: 'Grandmaster Slayer', desc: 'Defeat the Expert (Depth 6 + Book + EGTB) AI' },
+  { id: 'streak_3', icon: '🔥', title: 'Unstoppable Streak', desc: 'Achieve a 3-game winning streak vs AI' },
+  { id: 'blowout_30', icon: '🌊', title: 'Anatolian Sweep', desc: 'Finish a match with 32 or more stones in your Hazine' },
+  { id: 'puzzle_5', icon: '🧩', title: 'Tactical Scholar', desc: 'Solve at least 5 Tactical Puzzles' },
+  { id: 'veteran_10', icon: '🏛️', title: 'Palace Veteran', desc: 'Complete 10 career matches' }
+];
+
+function getProfile() {
+  const def = { elo: 1200, games: 0, wins: 0, draws: 0, losses: 0, streak: 0, bestStreak: 0, unlocked: [] };
+  try {
+    const raw = localStorage.getItem('mangala_profile_v1');
+    if (!raw) return def;
+    const p = JSON.parse(raw);
+    return {
+      elo: typeof p.elo === 'number' ? p.elo : 1200,
+      games: p.games || 0,
+      wins: p.wins || 0,
+      draws: p.draws || 0,
+      losses: p.losses || 0,
+      streak: p.streak || 0,
+      bestStreak: p.bestStreak || 0,
+      unlocked: Array.isArray(p.unlocked) ? p.unlocked : []
+    };
+  } catch (_) {
+    return def;
+  }
+}
+
+function saveProfile(prof) {
+  try {
+    localStorage.setItem('mangala_profile_v1', JSON.stringify(prof));
+  } catch (_) {}
+  updateHeaderElo(prof);
+}
+
+function getRankTitle(elo) {
+  if (elo >= 1850) return '👑 Imperial Grandmaster';
+  if (elo >= 1600) return '🟣 Palace Master';
+  if (elo >= 1400) return '🟡 Anatolian Strategist';
+  if (elo >= 1200) return '🟢 Hazine Tactician';
+  return '🌱 Apprentice Sower';
+}
+
+function updateHeaderElo(prof = getProfile()) {
+  const el = document.getElementById('headerEloBadge');
+  if (el) el.textContent = Math.round(prof.elo);
+}
+
+function recordMatchCareer() {
+  if (!S || !S.game_over) return null;
+  const prof = getProfile();
+  const solvedCount = getSolvedPuzzles().size;
+  const unlockedSet = new Set(prof.unlocked);
+  if (solvedCount >= 5) unlockedSet.add('puzzle_5');
+
+  let humanSide = -1;
+  if (mode === 'hva') {
+    humanSide = players[0] === 'human' ? 0 : 1;
+  } else if (mode === 'hvh' || mode === 'online') {
+    humanSide = mode === 'online' ? onlinePlayerSide : 0;
+  } else {
+    prof.unlocked = [...unlockedSet];
+    saveProfile(prof);
+    return null;
+  }
+
+  prof.games += 1;
+  if (prof.games >= 10) unlockedSet.add('veteran_10');
+
+  const humanScore = S.pits[OWN_TREAS[humanSide]];
+  const isWin = (S.winner === humanSide);
+  const isDraw = (S.winner === -1);
+
+  let eloDelta = 0;
+  if (mode === 'hva') {
+    const oppElo = AI_ELO_MAP[aiLevel] || 1500;
+    const expected = 1 / (1 + Math.pow(10, (oppElo - prof.elo) / 400));
+    const actual = isWin ? 1.0 : (isDraw ? 0.5 : 0.0);
+    eloDelta = Math.round(32 * (actual - expected));
+    prof.elo = Math.max(800, prof.elo + eloDelta);
+  }
+
+  if (isWin) {
+    prof.wins += 1;
+    prof.streak += 1;
+    if (prof.streak > prof.bestStreak) prof.bestStreak = prof.streak;
+    unlockedSet.add('first_win');
+    if (prof.streak >= 3) unlockedSet.add('streak_3');
+    if (matchStats.extraTurns >= 3) unlockedSet.add('merdiven_3');
+    if (humanScore >= 25 && matchStats.moves <= 20) unlockedSet.add('win25_blitz');
+    if (humanScore >= 32) unlockedSet.add('blowout_30');
+    if (mode === 'hva' && aiLevel === 'expert') unlockedSet.add('beat_expert');
+  } else if (isDraw) {
+    prof.draws += 1;
+  } else {
+    prof.losses += 1;
+    prof.streak = 0;
+  }
+
+  prof.unlocked = [...unlockedSet];
+  saveProfile(prof);
+  return { eloDelta, newElo: prof.elo, mode };
+}
+
+function openProfile() {
+  const prof = getProfile();
+  const solvedCount = getSolvedPuzzles().size;
+  if (solvedCount >= 5 && !prof.unlocked.includes('puzzle_5')) {
+    prof.unlocked.push('puzzle_5');
+    saveProfile(prof);
+  }
+  const rankEl = document.getElementById('profileRankTitle');
+  if (rankEl) rankEl.textContent = `${getRankTitle(prof.elo)} · ${prof.games} Matches Played`;
+  document.getElementById('profElo').textContent = Math.round(prof.elo);
+  document.getElementById('profWins').textContent = prof.wins;
+  const wr = prof.games > 0 ? Math.round((prof.wins / prof.games) * 100) : 0;
+  document.getElementById('profWinRate').textContent = wr + '%';
+  document.getElementById('profStreak').textContent = prof.bestStreak;
+
+  const grid = document.getElementById('achGrid');
+  if (grid) {
+    grid.innerHTML = '';
+    ACHIEVEMENTS.forEach(a => {
+      const isUnl = prof.unlocked.includes(a.id);
+      const card = document.createElement('div');
+      card.className = 'ach-card' + (isUnl ? ' unlocked' : '');
+      card.innerHTML = `
+        <div class="ach-icon">${a.icon}</div>
+        <div class="ach-info">
+          <div class="ach-title">${a.title} ${isUnl ? '✓' : ''}</div>
+          <div class="ach-desc">${a.desc}</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+  document.getElementById('profileOverlay').classList.remove('hidden');
+}
+
+function resetProfile() {
+  if (!confirm("Reset your ELO rating, career match record, and unlocked achievements?")) return;
+  try { localStorage.removeItem('mangala_profile_v1'); } catch (_) {}
+  updateHeaderElo();
+  openProfile();
+}
 
 // ── DOM Construction ───────────────────────────────────────────────────────
 const pitEls = {};
@@ -2055,6 +2628,7 @@ function makePit(idx, label, keyHint) {
   el.innerHTML = `
     <div class="kbadge">${keyHint}</div>
     <div class="stones"></div>
+    <div class="sow-delta"></div>
     <div class="count">0</div>
     <div class="pid">${label}</div>
   `;
@@ -2095,7 +2669,8 @@ const THEMES = [
   { id: 'walnut', label: '🎨 Walnut' },
   { id: 'marble', label: '🏛️ Marble' },
   { id: 'obsidian', label: '🔮 Obsidian' },
-  { id: 'terracotta', label: '🏺 Terracotta' }
+  { id: 'terracotta', label: '🏺 Terracotta' },
+  { id: 'topkapi', label: '👑 Topkapı' }
 ];
 let currentTheme = localStorage.getItem('mangala_theme') || 'walnut';
 
@@ -2117,34 +2692,95 @@ function cycleTheme() {
   applyTheme(next);
 }
 
-// ── Real-Time Evaluation Bar ───────────────────────────────────────────────
-function updateEvalBar() {
-  if (!S || !window.MangalaAI) return;
+// ── Real-Time Evaluation Bar & Live Engine Telemetry ───────────────────────
+function updateEvalBar(stateOverride = null) {
+  const st = stateOverride || S;
+  if (!st || !window.MangalaAI) return;
   const badge = document.getElementById('evalBadge');
   const fill = document.getElementById('evalFill');
   if (!badge || !fill) return;
 
+  // Update 25-Stone Victory Target Progress Meters
+  const p1Sc = st.pits[P1_TREAS] || 0;
+  const p2Sc = st.pits[P2_TREAS] || 0;
+  const f1 = document.getElementById('win25Fill1'), l1 = document.getElementById('win25Lbl1');
+  const f2 = document.getElementById('win25Fill2'), l2 = document.getElementById('win25Lbl2');
+  if (f1) f1.style.width = Math.min(100, Math.round((p1Sc / 25) * 100)) + '%';
+  if (l1) l1.textContent = p1Sc >= 25 ? '🏆 25+ Victory Secured!' : `${p1Sc} / 25 to win`;
+  if (f2) f2.style.width = Math.min(100, Math.round((p2Sc / 25) * 100)) + '%';
+  if (l2) l2.textContent = p2Sc >= 25 ? '🏆 25+ Victory Secured!' : `${p2Sc} / 25 to win`;
+
   let ev = 0;
   try {
-    ev = window.MangalaAI.evaluate(S, 0);
+    ev = window.MangalaAI.evaluate(st, 0);
   } catch (_) {
     return;
   }
 
   let pct = 50;
   let txt = '0.0';
-  if (ev >= 20000) {
+  let winProb1 = 50;
+  if (ev >= 9000) {
     pct = 100;
-    txt = '+M';
-  } else if (ev <= -20000) {
+    txt = '+WIN';
+    winProb1 = 100;
+  } else if (ev <= -9000) {
     pct = 0;
-    txt = '-M';
+    txt = '-WIN';
+    winProb1 = 0;
   } else {
     pct = Math.max(5, Math.min(95, 50 + (ev / 24) * 50));
     txt = (ev >= 0 ? '+' : '') + ev.toFixed(1);
+    winProb1 = Math.max(1, Math.min(99, Math.round(100 / (1 + Math.exp(-ev / 6.5)))));
   }
   fill.style.width = pct + '%';
   badge.textContent = txt;
+
+  // Update Engine Telemetry Strip
+  const wpEl = document.getElementById('telemWinProb');
+  const phEl = document.getElementById('telemPhase');
+  const srcEl = document.getElementById('telemSource');
+  if (wpEl) wpEl.textContent = `⚖️ P1 ${winProb1}% · P2 ${100 - winProb1}%`;
+
+  let activeStones = 0;
+  for (let i = 0; i < 6; i++) activeStones += st.pits[i];
+  for (let i = 7; i < 13; i++) activeStones += st.pits[i];
+
+  if (phEl) {
+    const phaseName = activeStones >= 34 ? '🌱 Opening' : (activeStones >= 17 ? '⚔️ Midgame' : '🏁 Endgame');
+    phEl.textContent = `${phaseName} · ${activeStones} stones on board`;
+  }
+
+  if (srcEl) {
+    srcEl.className = 'telem-pill';
+    if (st.game_over) {
+      srcEl.classList.add('egtb');
+      srcEl.textContent = `🏁 Match Complete (${p1Sc}–${p2Sc})`;
+    } else if (activeStones <= 6 && typeof window.MangalaAI.probeEgtb === 'function') {
+      const egtbDiff = window.MangalaAI.probeEgtb(st);
+      if (egtbDiff !== null) {
+        const p1Diff = st.current_player === 0 ? egtbDiff : -egtbDiff;
+        const sign = p1Diff > 0 ? `+${p1Diff}` : `${p1Diff}`;
+        srcEl.classList.add('egtb');
+        srcEl.textContent = `🏁 EGTB Tablebase Exact: P1 ${sign}`;
+      }
+    } else if (window.MangalaBook && typeof window.MangalaBook.getBookMove === 'function') {
+      const bm = window.MangalaBook.getBookMove(st);
+      if (bm !== null) {
+        const dispPit = bm < 6 ? (bm + 1) : (bm - 6);
+        srcEl.classList.add('book');
+        srcEl.textContent = `📖 GM Opening Book · Theory Pit ${dispPit}`;
+        return;
+      }
+      if (lastEngineTelemetry) {
+        srcEl.classList.add('search');
+        srcEl.textContent = lastEngineTelemetry;
+      } else {
+        srcEl.classList.add('search');
+        srcEl.textContent = activeStones <= 16 ? `🔬 Exact Endgame Solver Active` : `⚡ PVS Alpha-Beta Ready`;
+      }
+    }
+  }
 }
 
 // ── Match Clocks & Time Controls ───────────────────────────────────────────
@@ -2182,7 +2818,7 @@ function startClock() {
   if (clockInterval) clearInterval(clockInterval);
   if (selectedTime === 0) return;
   clockInterval = setInterval(() => {
-    if (!S || S.game_over || busy) return;
+    if (!S || S.game_over || busy || viewingHistIdx !== null) return;
     const p = S.current_player;
     clocks[p] = Math.max(0, clocks[p] - 0.1);
     updateClockDisplay();
@@ -2208,7 +2844,7 @@ function handleTimeout(player) {
   showWin(`Time out! Player ${S.winner + 1} won on time.`);
 }
 
-// ── Match Review & Accuracy Evaluation ─────────────────────────────────────
+// ── Match Review & Interactive SVG Advantage Chart ─────────────────────────
 function generateMPGN() {
   const d = new Date().toISOString().split('T')[0];
   const p1Name = players[0] === 'ai' ? `AI (${aiLevel})` : 'Player 1';
@@ -2239,6 +2875,54 @@ function generateMPGN() {
   return txt;
 }
 
+function renderReviewChart(evalPoints) {
+  const svg = document.getElementById('reviewSvgChart');
+  const hintEl = document.getElementById('reviewChartHint');
+  if (!svg || !evalPoints || evalPoints.length === 0) return;
+
+  const W = 460, H = 110, midY = H / 2;
+  const denom = Math.max(1, evalPoints.length - 1);
+  const coords = evalPoints.map((pt, idx) => {
+    const x = 14 + (idx / denom) * (W - 28);
+    const clamped = Math.max(-24, Math.min(24, pt.ev));
+    const y = midY - (clamped / 24) * (midY - 12);
+    return { x, y, ...pt };
+  });
+
+  const linePts = coords.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  const areaPts = `${coords[0].x.toFixed(1)},${midY} ${linePts} ${coords[coords.length - 1].x.toFixed(1)},${midY}`;
+
+  let dotsSvg = '';
+  coords.forEach((c, idx) => {
+    const col = c.badge === '??' ? '#ff4757' : (c.badge === '?' ? '#ffa502' : (c.player === 0 ? '#5aa6ff' : '#ff6e6e'));
+    dotsSvg += `<circle class="pt" data-idx="${idx}" cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="${col}" stroke="#120d1d" stroke-width="1.2"><title>Turn ${idx}: Eval ${c.ev >= 0 ? '+' : ''}${c.ev.toFixed(1)} (${c.label})</title></circle>`;
+  });
+
+  svg.innerHTML = `
+    <rect x="0" y="0" width="${W}" height="${midY}" fill="rgba(90, 166, 255, 0.06)"/>
+    <rect x="0" y="${midY}" width="${W}" height="${midY}" fill="rgba(255, 110, 110, 0.06)"/>
+    <line x1="0" y1="${midY}" x2="${W}" y2="${midY}" stroke="rgba(255,255,255,0.22)" stroke-dasharray="4 3" stroke-width="1"/>
+    <polygon points="${areaPts}" fill="rgba(255, 207, 51, 0.16)"/>
+    <polyline fill="none" stroke="#ffcf33" stroke-width="2.2" points="${linePts}"/>
+    ${dotsSvg}
+  `;
+
+  svg.querySelectorAll('circle.pt').forEach(dot => {
+    dot.addEventListener('mouseenter', () => {
+      const idx = parseInt(dot.dataset.idx);
+      const c = coords[idx];
+      if (c && hintEl) {
+        hintEl.textContent = `Turn ${idx}: ${c.ev >= 0 ? '+' : ''}${c.ev.toFixed(1)} (${c.label})`;
+      }
+    });
+    dot.addEventListener('click', () => {
+      const idx = parseInt(dot.dataset.idx);
+      document.getElementById('reviewOverlay').classList.add('hidden');
+      scrubHistory(idx);
+    });
+  });
+}
+
 function openReview() {
   if (!matchHistory || matchHistory.length < 2) {
     alert("Play at least one move to generate a Match Review!");
@@ -2251,6 +2935,7 @@ function openReview() {
     { best: 0, good: 0, inacc: 0, mistake: 0, blunder: 0, losses: [] },
     { best: 0, good: 0, inacc: 0, mistake: 0, blunder: 0, losses: [] }
   ];
+  const evalPoints = [{ ev: 0, player: 0, badge: 'Start', label: 'Initial Board' }];
 
   for (let i = 1; i < matchHistory.length; i++) {
     const prev = matchHistory[i - 1];
@@ -2261,16 +2946,24 @@ function openReview() {
     try {
       const ePrev = window.MangalaAI.evaluate(prev, player);
       const eCurr = window.MangalaAI.evaluate(curr, player);
-      const loss = Math.max(0, ePrev - eCurr);
+      const rawP1 = window.MangalaAI.evaluate(curr, 0);
+      const normP1 = rawP1 >= 9000 ? 24 : (rawP1 <= -9000 ? -24 : rawP1);
+      const loss = Math.max(0, Math.min(24, ePrev - eCurr));
       counts[player].losses.push(loss);
 
-      if (loss <= 0.2) counts[player].best++;
-      else if (loss <= 1.0) counts[player].good++;
-      else if (loss <= 2.5) counts[player].inacc++;
-      else if (loss <= 5.0) counts[player].mistake++;
-      else counts[player].blunder++;
+      let badge = '🎯';
+      if (loss <= 0.2) { counts[player].best++; badge = '🎯'; }
+      else if (loss <= 1.0) { counts[player].good++; badge = '👍'; }
+      else if (loss <= 2.5) { counts[player].inacc++; badge = '?!'; }
+      else if (loss <= 5.0) { counts[player].mistake++; badge = '?'; }
+      else { counts[player].blunder++; badge = '??'; }
+
+      const logTxt = logEntries[i - 1] ? logEntries[i - 1].text : `Turn ${i}`;
+      evalPoints.push({ ev: normP1, player, badge, label: `${logTxt} [${badge}]` });
     } catch (_) {}
   }
+
+  renderReviewChart(evalPoints);
 
   function calcAcc(c) {
     if (c.losses.length === 0) return '100%';
@@ -3469,22 +4162,24 @@ function startRoomPolling() {
 
 
 function render(state) {
-  for (let i = 0; i < TOTAL; i++) renderPit(i, state.pits[i], false);
-  document.getElementById('sc1').textContent = state.pits[P1_TREAS];
-  document.getElementById('sc2').textContent = state.pits[P2_TREAS];
+  const dispState = (viewingHistIdx !== null && matchHistory[viewingHistIdx]) ? matchHistory[viewingHistIdx] : state;
+  if (!dispState) return;
+  for (let i = 0; i < TOTAL; i++) renderPit(i, dispState.pits[i], false);
+  document.getElementById('sc1').textContent = dispState.pits[P1_TREAS];
+  document.getElementById('sc2').textContent = dispState.pits[P2_TREAS];
 
-  document.getElementById('card1').classList.toggle('active', !state.game_over && state.current_player === 0);
-  document.getElementById('card2').classList.toggle('active', !state.game_over && state.current_player === 1);
+  document.getElementById('card1').classList.toggle('active', !dispState.game_over && dispState.current_player === 0);
+  document.getElementById('card2').classList.toggle('active', !dispState.game_over && dispState.current_player === 1);
 
   clearHL();
-  if (!busy && !state.game_over && players[state.current_player] === 'human') {
-    if (mode !== 'online' || state.current_player === onlinePlayerSide) {
-      for (const m of (state.legal || [])) pitEls[m].classList.add('legal');
+  if (viewingHistIdx === null && !busy && !dispState.game_over && players[dispState.current_player] === 'human') {
+    if (mode !== 'online' || dispState.current_player === onlinePlayerSide) {
+      for (const m of (dispState.legal || [])) pitEls[m].classList.add('legal');
     }
   }
 
   // Tutorial visual guidance cues
-  if (mode === 'tutorial') {
+  if (viewingHistIdx === null && mode === 'tutorial') {
     const step = TUTORIAL_STEPS[tutStepIdx];
     if (step && pitEls[step.targetPit]) {
       pitEls[step.targetPit].classList.add('tut-target');
@@ -3494,10 +4189,11 @@ function render(state) {
     }
   }
 
-  updateTurnText(state);
+  updateTurnText(dispState);
   updateAnalysisButtons();
-  updateEvalBar();
+  updateEvalBar(dispState);
   updateClockDisplay();
+  updateScrubberButtons();
 }
 
 function clearHL() {
@@ -3510,40 +4206,107 @@ function clearHL() {
 function clearHoverPreview() {
   document.querySelectorAll('.pit, .treas').forEach(el => {
     el.classList.remove('path-preview', 'extra-turn-target', 'capture-target');
+    const d = el.querySelector('.sow-delta');
+    if (d) {
+      d.className = 'sow-delta';
+      d.textContent = '';
+    }
   });
+  const pill = document.getElementById('tacticalPill');
+  if (pill) {
+    pill.className = 'tactical-pill';
+    pill.textContent = '';
+  }
+}
+
+function pitLabelForDisplay(idx) {
+  if (idx === P1_TREAS) return 'P1 Hazine';
+  if (idx === P2_TREAS) return 'P2 Hazine';
+  return idx < 6 ? `Pit ${idx + 1}` : `P2 Pit ${idx - 6}`;
 }
 
 function showHoverPreview(pit) {
-  if (busy || !S || S.game_over || players[S.current_player] !== 'human') return;
+  if (viewingHistIdx !== null || busy || !S || S.game_over || players[S.current_player] !== 'human') return;
   if (mode === 'online' && S.current_player !== onlinePlayerSide) return;
   if (!(S.legal || []).includes(pit)) return;
   clearHoverPreview();
   const { path } = sowPath(S, pit);
+  const deltaMap = {};
   path.forEach(idx => {
     if (pitEls[idx]) pitEls[idx].classList.add('path-preview');
+    deltaMap[idx] = (deltaMap[idx] || 0) + 1;
   });
+
+  Object.keys(deltaMap).forEach(k => {
+    const idx = parseInt(k);
+    const el = pitEls[idx];
+    if (!el) return;
+    const badge = el.querySelector('.sow-delta');
+    if (badge) {
+      badge.textContent = `+${deltaMap[idx]}`;
+      badge.classList.add('show');
+    }
+  });
+
+  const pill = document.getElementById('tacticalPill');
+  const srcName = pit < 6 ? `Pit ${pit + 1}` : `Pit ${pit - 6}`;
+  let outcomeText = `🛡️ ${srcName} → Safe Sow`;
+  let outcomeClass = '';
+
   if (path.length > 0) {
     const lastPit = path[path.length - 1];
     const player = S.current_player;
+    outcomeText = `🛡️ ${srcName} → Lands in ${pitLabelForDisplay(lastPit)}`;
+
     if (lastPit === OWN_TREAS[player]) {
       pitEls[lastPit].classList.add('extra-turn-target');
+      const b = pitEls[lastPit].querySelector('.sow-delta');
+      if (b) { b.classList.add('extra'); b.textContent = '↺ +1'; }
+      outcomeText = `⚡ ${srcName} → Extra Turn in Hazine!`;
+      outcomeClass = 'extra';
     } else if (PLAYER_PITS[1 - player].includes(lastPit)) {
       const stonesBefore = S.pits[lastPit];
-      const countLanded = path.filter(p => p === lastPit).length;
-      if ((stonesBefore + countLanded) % 2 === 0) {
+      const countLanded = deltaMap[lastPit] || 0;
+      const totalAfter = stonesBefore + countLanded;
+      if (totalAfter % 2 === 0) {
         pitEls[lastPit].classList.add('capture-target');
+        const b = pitEls[lastPit].querySelector('.sow-delta');
+        if (b) { b.classList.add('cap'); b.textContent = `🎯 +${totalAfter}`; }
+        outcomeText = `🎯 ${srcName} → Even Capture (+${totalAfter} stones)!`;
+        outcomeClass = 'capture';
       }
     } else if (PLAYER_PITS[player].includes(lastPit)) {
       const stonesBefore = S.pits[lastPit];
-      const countLanded = path.filter(p => p === lastPit).length;
+      const countLanded = deltaMap[lastPit] || 0;
       if (stonesBefore === 0 && countLanded === 1) {
         const opp = 12 - lastPit;
-        if (S.pits[opp] > 0) {
+        const oppAfter = S.pits[opp] + (deltaMap[opp] || 0);
+        if (oppAfter > 0) {
+          const haul = oppAfter + 1;
           pitEls[lastPit].classList.add('capture-target');
           pitEls[opp].classList.add('capture-target');
+          const b = pitEls[opp].querySelector('.sow-delta');
+          if (b) { b.classList.add('cap', 'show'); b.textContent = `🔄 +${haul}`; }
+          outcomeText = `🔄 ${srcName} → Empty-Hole Capture (+${haul} stones)!`;
+          outcomeClass = 'capture';
         }
       }
     }
+
+    // Check if this move triggers Endgame Sweep
+    try {
+      const sim = window.MangalaEngine.applyMove(S, pit);
+      if (sim && sim.state && sim.state.game_over) {
+        const gain = sim.state.pits[OWN_TREAS[player]] - S.pits[OWN_TREAS[player]];
+        outcomeText = `🏁 ${srcName} → Finishes Match (+${gain} total stones)!`;
+        outcomeClass = 'extra';
+      }
+    } catch (_) {}
+  }
+
+  if (pill) {
+    pill.textContent = outcomeText;
+    pill.className = 'tactical-pill show' + (outcomeClass ? ' ' + outcomeClass : '');
   }
 }
 
@@ -3659,6 +4422,11 @@ function updateTurnText(state) {
     sub.textContent = 'choose a mode';
     return;
   }
+  if (viewingHistIdx !== null) {
+    big.textContent = `Turn ${viewingHistIdx} / ${ Math.max(0, matchHistory.length - 1) }`;
+    sub.textContent = '⏪ Historical preview · click ⏭ Live to resume';
+    return;
+  }
   if (state.game_over) {
     big.textContent = 'Game Over';
     sub.textContent = 'final score tallied';
@@ -3677,12 +4445,22 @@ function updateTurnText(state) {
   }
 }
 
-// ── Board Rotation ─────────────────────────────────────────────────────────
+// ── Board Rotation & Fullscreen ────────────────────────────────────────────
 function applyFlip() {
   document.querySelector('.board').classList.toggle('flipped', flipped);
   document.getElementById('flipBtn').classList.toggle('on', flipped);
 }
 function toggleFlip() { flipped = !flipped; applyFlip(); }
+
+function toggleFullscreen() {
+  try {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  } catch (_) {}
+}
 
 // ── Banner Announcements ───────────────────────────────────────────────────
 async function banner(text, color) {
@@ -3712,8 +4490,12 @@ async function localApi(path, body) {
     else if (body.time_limit && body.time_limit <= 0.6) depth = 4;
     else if (body.time_limit && body.time_limit <= 1.5) depth = 5;
     else depth = 6;
+    if (typeof window.MangalaAI.analyse === 'function') {
+      const res = window.MangalaAI.analyse(body.state, depth, true);
+      return { pit: res.pit, score: res.score, depth: res.depth, source: res.source };
+    }
     const pit = window.MangalaAI.bestMove(body.state, depth);
-    return { pit: pit, score: 0, depth: depth };
+    return { pit: pit, score: 0, depth: depth, source: 'search' };
   }
   throw new Error(`Unknown endpoint: ${path}`);
 }
@@ -3762,6 +4544,7 @@ function sowPath(state, pit) {
 
 // ── Play & Animate Move ────────────────────────────────────────────────────
 async function playMove(pit) {
+  viewingHistIdx = null;
   busy = true;
   clearHL();
   matchStats.moves++;
@@ -3858,7 +4641,6 @@ async function playMove(pit) {
   }
 
   pitEls[OWN_TREAS[player]].classList.remove('glow');
-  addLog(player, pit, events);
   if (selectedTime > 0) {
     clocks[player] += INCREMENTS[selectedTime] || 0;
     updateClockDisplay();
@@ -3873,6 +4655,7 @@ async function playMove(pit) {
   }
 
   matchHistory.push(JSON.parse(JSON.stringify(S)));
+  addLog(player, pit, events, stateBefore, S);
   busy = false;
   render(S);
   for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], true);
@@ -3880,6 +4663,10 @@ async function playMove(pit) {
 
 // ── Turn Flow ──────────────────────────────────────────────────────────────
 async function onPitClick(idx) {
+  if (viewingHistIdx !== null) {
+    scrubHistory(null);
+    return;
+  }
   if (busy || !S || S.game_over) return;
   if (players[S.current_player] !== 'human') return;
   if (!(S.legal || []).includes(idx)) {
@@ -3960,8 +4747,21 @@ async function advance() {
     else tl = 2.5;
     if (mode === 'ava') tl = 0.5;
 
-    const { pit } = await api('/api/ai', { state: S, time_limit: tl });
+    const aiRes = await api('/api/ai', { state: S, time_limit: tl });
+    const pit = aiRes ? aiRes.pit : null;
     if (pit === null || pit === undefined) break;
+
+    const dispPit = pit < 6 ? (pit + 1) : (pit - 6);
+    if (aiRes.source === 'book' || aiRes.depth === 0) {
+      lastEngineTelemetry = `📖 GM Book Move · Pit ${dispPit}`;
+    } else if (aiRes.source === 'egtb' || aiRes.depth >= 64) {
+      lastEngineTelemetry = `🏁 Exact EGTB · Pit ${dispPit}`;
+    } else {
+      const scStr = typeof aiRes.score === 'number' && Math.abs(aiRes.score) < 9000
+        ? ` (${aiRes.score >= 0 ? '+' : ''}${aiRes.score.toFixed(1)})`
+        : '';
+      lastEngineTelemetry = `⚡ AI Depth ${aiRes.depth || '?'} · Pit ${dispPit}${scStr}`;
+    }
 
     await playMove(pit);
     pushHistory();
@@ -3972,23 +4772,106 @@ async function advance() {
   else render(S);
 }
 
-// ── Move Log ───────────────────────────────────────────────────────────────
-function addLog(player, pit, events) {
-  const parts = [`P${player + 1}`, `pit ${pit + 1}`];
-  if (events.capture > 0) parts.push(`✦ +${events.capture}`);
-  if (events.extra_turn) parts.push('↺ extra turn');
-  logEntries.push({ player, text: parts.join('   ') });
+// ── Interactive Move Timeline & Replay Scrubber ────────────────────────────
+function addLog(player, pit, events, stateBefore = null, stateAfter = null) {
+  const dispPit = pit < 6 ? (pit + 1) : (pit - 6);
+  const parts = [`P${player + 1}`, `pit ${dispPit}`];
+  if (events.capture > 0) parts.push(`✦+${events.capture}`);
+  if (events.extra_turn) parts.push('↺');
+
+  let qual = '';
+  if (stateBefore && stateAfter && window.MangalaAI) {
+    try {
+      const ePrev = window.MangalaAI.evaluate(stateBefore, player);
+      const eCurr = window.MangalaAI.evaluate(stateAfter, player);
+      const loss = Math.max(0, ePrev - eCurr);
+      if (loss <= 0.2) qual = '🎯';
+      else if (loss >= 5.0) qual = '??';
+      else if (loss >= 2.5) qual = '?';
+    } catch (_) {}
+  }
+
+  logEntries.push({
+    player,
+    pit,
+    text: parts.join(' '),
+    qual,
+    histIdx: matchHistory.length - 1
+  });
   renderLog();
 }
+
+function scrubHistory(targetIdx) {
+  if (!matchHistory || matchHistory.length === 0 || busy) return;
+  const maxIdx = matchHistory.length - 1;
+  if (targetIdx === null || targetIdx >= maxIdx) {
+    viewingHistIdx = null;
+  } else {
+    viewingHistIdx = Math.max(0, targetIdx);
+  }
+  renderLog();
+  render(S);
+  const dispState = (viewingHistIdx !== null && matchHistory[viewingHistIdx]) ? matchHistory[viewingHistIdx] : S;
+  if (dispState) {
+    for (let i = 0; i < TOTAL; i++) renderPit(i, dispState.pits[i], true);
+  }
+}
+
+function updateScrubberButtons() {
+  const fBtn = document.getElementById('scrubFirstBtn');
+  const pBtn = document.getElementById('scrubPrevBtn');
+  const nBtn = document.getElementById('scrubNextBtn');
+  const lBtn = document.getElementById('scrubLastBtn');
+  const hdr = document.getElementById('logHeaderTitle');
+  if (!fBtn || !pBtn || !nBtn || !lBtn) return;
+
+  const maxIdx = Math.max(0, (matchHistory ? matchHistory.length : 1) - 1);
+  const curIdx = viewingHistIdx !== null ? viewingHistIdx : maxIdx;
+
+  fBtn.disabled = busy || curIdx <= 0;
+  pBtn.disabled = busy || curIdx <= 0;
+  nBtn.disabled = busy || curIdx >= maxIdx;
+  lBtn.disabled = busy || viewingHistIdx === null;
+  lBtn.classList.toggle('live-warn', viewingHistIdx !== null);
+
+  if (hdr) {
+    hdr.textContent = viewingHistIdx !== null
+      ? `⏪ Inspecting Turn ${curIdx} of ${maxIdx}`
+      : `Move Timeline (${maxIdx} turns)`;
+  }
+}
+
 function renderLog() {
   const box = document.getElementById('logLines');
+  if (!box) return;
   box.innerHTML = '';
-  logEntries.slice(-3).reverse().forEach(e => {
-    const d = document.createElement('div');
-    d.className = 'line p' + (e.player + 1);
-    d.textContent = e.text;
-    box.appendChild(d);
+  const maxIdx = Math.max(0, (matchHistory ? matchHistory.length : 1) - 1);
+  const activeIdx = viewingHistIdx !== null ? viewingHistIdx : maxIdx;
+
+  if (logEntries.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'line';
+    empty.style.color = 'var(--text-dim)';
+    empty.textContent = 'No moves played yet — click any glowing pit (or keys 1–6) to sow!';
+    box.appendChild(empty);
+    updateScrubberButtons();
+    return;
+  }
+
+  logEntries.forEach((e, i) => {
+    const hIdx = typeof e.histIdx === 'number' ? e.histIdx : (i + 1);
+    const chip = document.createElement('button');
+    chip.className = 'log-chip p' + (e.player + 1) + (hIdx === activeIdx ? ' active' : '');
+    chip.textContent = `${i + 1}. ${e.text}${e.qual ? ' ' + e.qual : ''}`;
+    chip.title = `Click to inspect board after Turn ${i + 1}`;
+    chip.addEventListener('click', () => scrubHistory(hIdx));
+    box.appendChild(chip);
   });
+
+  if (viewingHistIdx === null) {
+    box.scrollLeft = box.scrollWidth;
+  }
+  updateScrubberButtons();
 }
 
 // ── Analysis Sandbox ───────────────────────────────────────────────────────
@@ -4011,6 +4894,7 @@ function restore() {
   const h = history[histIdx];
   S = JSON.parse(JSON.stringify(h.state));
   logEntries = h.log.slice();
+  viewingHistIdx = null;
   renderLog();
   render(S);
   for (let i = 0; i < TOTAL; i++) renderPit(i, S.pits[i], true);
@@ -4025,7 +4909,8 @@ async function passTurn() {
     winner: null,
     legal: PLAYER_PITS[1 - p].filter(i => S.pits[i] > 0)
   };
-  logEntries.push({ player: p, text: `P${p + 1}   passed` });
+  matchHistory.push(JSON.parse(JSON.stringify(S)));
+  logEntries.push({ player: p, text: `P${p + 1} passed`, histIdx: matchHistory.length - 1 });
   renderLog();
   pushHistory();
   render(S);
@@ -4040,7 +4925,8 @@ async function hint() {
   if (pit != null) {
     clearHL();
     pitEls[pit].classList.add('hint');
-    document.getElementById('turnSub').textContent = `AI suggests pit ${pit + 1}`;
+    const dispPit = pit < 6 ? (pit + 1) : (pit - 6);
+    document.getElementById('turnSub').textContent = `AI suggests Pit ${dispPit}`;
   }
   updateAnalysisButtons();
 }
@@ -4052,6 +4938,19 @@ function showWin(customMsg) {
   animateCelebration(S ? S.winner : 0);
   if (mode === 'online') {
     clearP2PSession();
+  }
+  const careerRes = recordMatchCareer();
+  const eloEl = document.getElementById('winEloDelta');
+  if (eloEl) {
+    if (careerRes && careerRes.mode === 'hva') {
+      const sign = careerRes.eloDelta >= 0 ? `+${careerRes.eloDelta}` : `${careerRes.eloDelta}`;
+      eloEl.style.display = 'inline-block';
+      eloEl.textContent = `🏆 Rating: ${Math.round(careerRes.newElo)} ELO (${sign})`;
+      eloEl.style.color = careerRes.eloDelta >= 0 ? '#48db8c' : '#ff6e6e';
+      eloEl.style.borderColor = careerRes.eloDelta >= 0 ? 'rgba(72,219,140,0.5)' : 'rgba(255,110,110,0.5)';
+    } else {
+      eloEl.style.display = 'none';
+    }
   }
   const o = document.getElementById('winOverlay');
   o.classList.remove('hidden');
@@ -4082,6 +4981,8 @@ async function startGame() {
   S = state;
   matchHistory = [JSON.parse(JSON.stringify(S))];
   logEntries = [];
+  viewingHistIdx = null;
+  lastEngineTelemetry = null;
   history = [];
   histIdx = -1;
   busy = false;
@@ -4497,6 +5398,33 @@ document.getElementById('dlMpgnBtn').addEventListener('click', () => {
   a.click();
 });
 
+document.getElementById('profileBtn').addEventListener('click', openProfile);
+document.getElementById('closeProfileBtn').addEventListener('click', () => {
+  document.getElementById('profileOverlay').classList.add('hidden');
+});
+document.getElementById('closeProfileOkBtn').addEventListener('click', () => {
+  document.getElementById('profileOverlay').classList.add('hidden');
+});
+document.getElementById('resetProfileBtn').addEventListener('click', resetProfile);
+document.getElementById('profileOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'profileOverlay') {
+    document.getElementById('profileOverlay').classList.add('hidden');
+  }
+});
+
+document.getElementById('scrubFirstBtn').addEventListener('click', () => scrubHistory(0));
+document.getElementById('scrubPrevBtn').addEventListener('click', () => {
+  const maxIdx = Math.max(0, (matchHistory ? matchHistory.length : 1) - 1);
+  const curIdx = viewingHistIdx !== null ? viewingHistIdx : maxIdx;
+  if (curIdx > 0) scrubHistory(curIdx - 1);
+});
+document.getElementById('scrubNextBtn').addEventListener('click', () => {
+  const maxIdx = Math.max(0, (matchHistory ? matchHistory.length : 1) - 1);
+  const curIdx = viewingHistIdx !== null ? viewingHistIdx : maxIdx;
+  if (curIdx < maxIdx) scrubHistory(curIdx + 1);
+});
+document.getElementById('scrubLastBtn').addEventListener('click', () => scrubHistory(null));
+
 document.getElementById('reviewBtn').addEventListener('click', openReview);
 document.getElementById('winReviewBtn').addEventListener('click', () => {
   document.getElementById('winOverlay').classList.add('hidden');
@@ -4516,6 +5444,7 @@ document.getElementById('closeRulesBtn').addEventListener('click', () => {
 });
 document.getElementById('speedBtn').addEventListener('click', toggleSpeed);
 document.getElementById('flipBtn').addEventListener('click', toggleFlip);
+document.getElementById('fsBtn').addEventListener('click', toggleFullscreen);
 document.getElementById('menuBtn').addEventListener('click', openMenu);
 document.getElementById('newBtn').addEventListener('click', () => {
   if (mode) startGame(); else openMenu();
@@ -4534,16 +5463,30 @@ document.getElementById('hintBtn').addEventListener('click', hint);
 document.addEventListener('keydown', e => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
 
-  // Escape key to close overlays
+  // Escape key to close overlays or exit historical preview
   if (e.key === 'Escape') {
     const rulesO = document.getElementById('rulesOverlay');
+    const profO = document.getElementById('profileOverlay');
+    const revO = document.getElementById('reviewOverlay');
     const menuO = document.getElementById('menuOverlay');
     if (!rulesO.classList.contains('hidden')) {
       rulesO.classList.add('hidden');
       return;
     }
+    if (profO && !profO.classList.contains('hidden')) {
+      profO.classList.add('hidden');
+      return;
+    }
+    if (revO && !revO.classList.contains('hidden')) {
+      revO.classList.add('hidden');
+      return;
+    }
     if (!menuO.classList.contains('hidden') && S !== null) {
       closeMenu();
+      return;
+    }
+    if (viewingHistIdx !== null) {
+      scrubHistory(null);
       return;
     }
   }
@@ -4551,9 +5494,31 @@ document.addEventListener('keydown', e => {
   if (!document.getElementById('menuOverlay').classList.contains('hidden')) return;
   if (!document.getElementById('winOverlay').classList.contains('hidden')) return;
   if (!document.getElementById('rulesOverlay').classList.contains('hidden')) return;
+  if (!document.getElementById('profileOverlay').classList.contains('hidden')) return;
+
+  // ArrowLeft / ArrowRight for Move History Scrubbing
+  if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.metaKey) {
+    const maxIdx = Math.max(0, (matchHistory ? matchHistory.length : 1) - 1);
+    const curIdx = viewingHistIdx !== null ? viewingHistIdx : maxIdx;
+    if (curIdx > 0) {
+      e.preventDefault();
+      scrubHistory(curIdx - 1);
+    }
+    return;
+  }
+  if (e.key === 'ArrowRight' && !e.ctrlKey && !e.metaKey) {
+    const maxIdx = Math.max(0, (matchHistory ? matchHistory.length : 1) - 1);
+    const curIdx = viewingHistIdx !== null ? viewingHistIdx : maxIdx;
+    if (curIdx < maxIdx) {
+      e.preventDefault();
+      scrubHistory(curIdx + 1);
+    }
+    return;
+  }
 
   // Keys 1 to 6 for pit sowing
   if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (viewingHistIdx !== null) scrubHistory(null);
     if (busy || !S || S.game_over || players[S.current_player] !== 'human') return;
     const num = parseInt(e.key) - 1;
     let pit;
@@ -4597,6 +5562,8 @@ document.addEventListener('keydown', e => {
 // ── Initialization ─────────────────────────────────────────────────────────
 applyTheme(currentTheme);
 buildBoard();
+updateHeaderElo();
+renderLog();
 updateTurnText(null);
 syncMenuDOM();
 

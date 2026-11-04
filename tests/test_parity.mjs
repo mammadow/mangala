@@ -135,6 +135,10 @@ test('Client AI Evaluation and Move Search Parity', (t) => {
   const egtbVal = MangalaAI.probeEgtb(sEnd);
   assert.equal(typeof egtbVal, 'number');
   assert.equal(egtbVal, 2); // P0 finishes with 25 vs P1's 23 -> exact differential +2
+
+  const egtbAnalysis = MangalaAI.analyse(sEnd, 4, false);
+  assert.equal(egtbAnalysis.source, 'egtb');
+  assert.equal(egtbAnalysis.pit, 5);
 });
 
 

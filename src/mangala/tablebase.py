@@ -279,7 +279,7 @@ def probe_egtb_move(
     best_diff = -999
 
     for m in moves:
-        child, _ = apply_move(state, m, rules)
+        child, events = apply_move(state, m, rules)
         if child.game_over:
             c_own = child.pits[P1_TREASURY] if root_player == 0 else child.pits[P2_TREASURY]
             c_opp = child.pits[P2_TREASURY] if root_player == 0 else child.pits[P1_TREASURY]
@@ -289,7 +289,7 @@ def probe_egtb_move(
             assert child_diff is not None
             diff = child_diff if child.current_player == root_player else -child_diff
 
-        if diff > best_diff:
+        if diff > best_diff or (diff == best_diff and events["extra_turn"]):
             best_diff = diff
             best_m = m
 

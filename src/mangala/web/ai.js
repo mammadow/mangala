@@ -602,26 +602,53 @@
     return { bestM, bestVal };
   }
 
-  function bestMove(state, depth = 6, useBook = true) {
+  function analyse(state, depth = 6, useBook = true) {
     const moves = Engine.legalMoves(state);
-    if (moves.length === 0) return null;
-    if (moves.length === 1) return moves[0];
+    if (moves.length === 0) return { pit: null, score: 0, depth: 0, source: 'none' };
+    if (moves.length === 1) return { pit: moves[0], score: evaluate(state, state.current_player), depth: 0, source: 'forced' };
 
     // Check precomputed opening book
     if (useBook && Book && typeof Book.getBookMove === 'function') {
       const bookMv = Book.getBookMove(state);
       if (bookMv !== null && moves.includes(bookMv)) {
-        return bookMv;
+        return { pit: bookMv, score: evaluate(state, state.current_player), depth: 0, source: 'book' };
       }
     }
 
     const rootPlayer = state.current_player;
     const ownTreas = Engine.PLAYER_TREAS[rootPlayer];
+    const oppTreas = Engine.PLAYER_TREAS[1 - rootPlayer];
 
     // Fast-path: immediate winning move securing 25+ stones
     for (const m of moves) {
       const {state: child} = Engine.applyMove(state, m);
-      if (child.pits[ownTreas] >= 25) return m;
+      if (child.pits[ownTreas] >= 25) {
+        return { pit: m, score: WIN + (child.pits[ownTreas] - child.pits[oppTreas]), depth: 1, source: 'win25' };
+      }
+    }
+
+    // Fast-path: Combinadic Endgame Tablebase when <= EGTB_MAX_STONES remain
+    let stonesOnBoard = 0;
+    for (let i = 0; i < 6; i++) stonesOnBoard += state.pits[i];
+    for (let i = 7; i < 13; i++) stonesOnBoard += state.pits[i];
+    if (stonesOnBoard <= EGTB_MAX_STONES) {
+      let bestEgtbM = moves[0];
+      let bestEgtbDiff = -INF;
+      for (const m of moves) {
+        const {state: child, events} = Engine.applyMove(state, m);
+        const cDiff = probeEgtb(child);
+        if (cDiff !== null) {
+          const rDiff = child.current_player === rootPlayer ? cDiff : -cDiff;
+          if (rDiff > bestEgtbDiff || (rDiff === bestEgtbDiff && events.extra_turn)) {
+            bestEgtbDiff = rDiff;
+            bestEgtbM = m;
+          }
+        }
+      }
+      if (bestEgtbDiff > -INF) {
+        const sc = bestEgtbDiff > 0 ? (WIN + bestEgtbDiff) : (bestEgtbDiff < 0 ? (-WIN + bestEgtbDiff) : 0);
+        return { pit: bestEgtbM, score: sc, depth: 64, source: 'egtb' };
+      }
     }
 
     // Reset search context
@@ -632,6 +659,7 @@
 
     let bestMv = moves[0];
     let bestScore = -INF;
+    let reachedDepth = 0;
     const rootKey = `${state.pits.join(',')}:${state.current_player}`;
 
     // Iterative deepening up to depth with aspiration search
@@ -651,16 +679,22 @@
 
       bestMv = res.bestM;
       bestScore = res.bestVal;
+      reachedDepth = d;
       tt.set(rootKey, { depth: d, val: bestScore, flag: EXACT, bestMove: bestMv });
 
       if (Math.abs(bestScore) >= WIN) break; // Forced win/loss reached
     }
 
-    return bestMv;
+    return { pit: bestMv, score: bestScore, depth: reachedDepth, source: 'search' };
+  }
+
+  function bestMove(state, depth = 6, useBook = true) {
+    return analyse(state, depth, useBook).pit;
   }
 
   const MangalaAI = {
     bestMove,
+    analyse,
     search,
     evaluate,
     probeEgtb
