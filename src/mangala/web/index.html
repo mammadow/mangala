@@ -110,26 +110,46 @@ body.theme-terracotta {
 }
 
 body.theme-topkapi {
-  --bg-gradient: radial-gradient(1200px 800px at 50% -10%, #092c25 0%, #051915 50%, #020b09 100%);
-  --wood-outer: #163b32;
-  --wood-mid: #1f5245;
-  --wood-inner: #0d2620;
-  --wood-rim: #c89d3c;
-  --felt-dark: #071e1a;
-  --felt-light: #0f3830;
-  --pit-edge: #d4af37;
-  --pit-mid: #1b493e;
-  --pit-base: #091c17;
-  --treas-light: #f3d078;
-  --treas-dark: #9c741e;
-  --stone-top: #ecfeff;
-  --stone-mid: #67e8f9;
-  --stone-shadow: #0e7490;
-  --gold: #f5c542;
-  --p1-color: #34d399;
+  --bg-gradient: radial-gradient(1200px 800px at 50% -10%, #361024 0%, #1b0814 52%, #0b0409 100%);
+  --wood-outer: #2e0e1b;
+  --wood-mid: #48182b;
+  --wood-inner: #18060e;
+  --wood-rim: #cfa346;
+  --felt-dark: #08141e;
+  --felt-light: #132a3a;
+  --pit-edge: #543a18;
+  --pit-mid: #7d5a2b;
+  --pit-base: #291a09;
+  --treas-light: #ebd197;
+  --treas-dark: #9e7628;
+  --stone-top: #fffdf9;
+  --stone-mid: #eed8b3;
+  --stone-shadow: #8c6732;
+  --gold: #f5c84c;
+  --gold-glow: rgba(245, 200, 76, 0.45);
+  --p1-color: #60a5fa;
+  --p1-glow: rgba(96, 165, 250, 0.35);
   --p2-color: #fb7185;
-  --text-main: #f0fdf4;
-  --text-dim: #86efac;
+  --p2-glow: rgba(251, 113, 133, 0.35);
+  --text-main: #fdf8f0;
+  --text-dim: #c4b0a6;
+}
+body.theme-topkapi .board {
+  box-shadow:
+    inset 0 2px 10px rgba(245, 200, 76, 0.25),
+    inset 0 -8px 24px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(207, 163, 70, 0.35),
+    0 24px 56px rgba(0, 0, 0, 0.75);
+}
+body.theme-topkapi .felt {
+  border-color: rgba(207, 163, 70, 0.4);
+  box-shadow:
+    inset 0 0 50px rgba(0, 0, 0, 0.65),
+    0 0 16px rgba(207, 163, 70, 0.12);
+}
+body.theme-topkapi .pit,
+body.theme-topkapi .treas {
+  border-color: rgba(245, 200, 76, 0.38);
 }
 
 /* ── Clocks ──────────────────────────────────────────── */
@@ -547,6 +567,15 @@ header {
 .board.flipped .felt .tcount,
 .board.flipped .felt .rowlabel,
 .board.flipped .felt .stones { transform: rotate(180deg); }
+.board.flipped .felt .sow-delta { transform: rotate(180deg) scale(0.8); }
+.board.flipped .felt .sow-delta.show { transform: rotate(180deg) scale(1); }
+.board.flipped .felt .pit.path-preview::after {
+  content: '↑';
+  top: auto;
+  right: auto;
+  bottom: 3px;
+  left: 6px;
+}
 
 /* ── Pit Rows ─────────────────────────────────────────── */
 .rows {
@@ -1830,10 +1859,10 @@ header {
 
         <!-- Pit Rows -->
         <div class="rows">
-          <div class="rowlabel p2"><span>Player 2</span> <span>◄ sowing direction</span></div>
+          <div class="rowlabel p2"><span>Player 2</span> <span id="sowDirP2">◄ sowing direction</span></div>
           <div class="row p2row" id="row2"></div>
           <div class="row p1row" id="row1"></div>
-          <div class="rowlabel p1"><span>Player 1</span> <span>► sowing direction</span></div>
+          <div class="rowlabel p1"><span>Player 1</span> <span id="sowDirP1">► sowing direction</span></div>
         </div>
 
         <!-- P1 Treasury (Right) -->
@@ -4449,6 +4478,10 @@ function updateTurnText(state) {
 function applyFlip() {
   document.querySelector('.board').classList.toggle('flipped', flipped);
   document.getElementById('flipBtn').classList.toggle('on', flipped);
+  const dirP2 = document.getElementById('sowDirP2');
+  const dirP1 = document.getElementById('sowDirP1');
+  if (dirP2) dirP2.textContent = flipped ? '► sowing direction' : '◄ sowing direction';
+  if (dirP1) dirP1.textContent = flipped ? '◄ sowing direction' : '► sowing direction';
 }
 function toggleFlip() { flipped = !flipped; applyFlip(); }
 
