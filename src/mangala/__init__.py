@@ -1,7 +1,7 @@
 """Turkish Mangala — rules engine, strong AI, and web / terminal / desktop front-ends."""
 from __future__ import annotations
 
-__version__ = "0.2.4"
+__version__ = "0.2.5"
 
 from .ai import DEFAULT_WEIGHTS, EvalWeights, SearchResult, analyse, best_move
 from .book import OPENING_BOOK, get_book_move

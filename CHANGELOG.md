@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.4] - 2026-11-03
+## [0.2.5] - 2026-11-10
 
 ### Added
 - **Automated Self-Play Dataset Generator & SPSA/Texel Tuning Optimizer (`src/mangala/tune.py`)**:
@@ -16,13 +16,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - SPSA (Simultaneous Perturbation Stochastic Approximation) optimizer minimizing Texel MSE loss.
   - Head-to-head match arena with Wald's Sequential Probability Ratio Testing (SPRT) and Elo calculation.
   - New console script: `mangala-tune` (`selfplay`, `tune`, `arena`).
-- **Advanced Search Pruning (Late Move Reductions & Reverse Futility Pruning)**:
-  - Added Late Move Reductions (LMR) on quiet moves ordered late in the alpha-beta tree across both Python and client JavaScript.
-  - Added Reverse Futility Pruning (RFP / Static Null-Move Pruning) at shallow non-PV plies ($d \le 2$).
-  - Increases effective search depth by 3–6 plies within the same time budget.
+- **Superhuman AI Engine v2.0 Architecture**:
+  - **Endgame Tablebase (EGTB) Engine (`src/mangala/tablebase.py`, `src/mangala/web/ai.js`)**: Pure-math combinadic state indexer, DAG-based retro-analysis solver, and client-side tablebase probing with extra-turn tie breaking.
+  - **Efficiently Updatable Neural Network (NNUE) (`src/mangala/nnue.py`)**: Quantized feature transformers with accumulator caching, clipped ReLU activations, and AdamW distillation trainer.
+  - **Advanced Search Pruning & Move Ordering**: Added Late Move Reductions (LMR), Reverse Futility Pruning (RFP), Razoring, Internal Iterative Deepening (IIR), and dynamic history malus.
+  - **120-Line Grandmaster Opening Book (`src/mangala/book.py`, `src/mangala/web/book.js`)**: Comprehensive theory coverage for both Player 1 and Player 2 openings.
 - **Dedicated Standalone Desktop App Window Mode (`mangala-gui` / `mangala --app`)**:
   - Re-routed `mangala-gui` to launch the modern Web/PWA interface inside a dedicated, frameless desktop application window (`--app` mode).
-  - Eliminates all C/SDL external dependencies while delivering full WebRTC P2P multiplayer, 4 luxury board themes, procedural Web Audio effects, and offline PWA support.
+  - Eliminates all C/SDL external dependencies while delivering full WebRTC P2P multiplayer, 5 luxury board themes, procedural Web Audio effects, and offline PWA support.
+- **Web UI & UX Overhaul**:
+  - **Live Engine Telemetry**: Real-time evaluation gauge, node counter, search depth, NPS, and source tag (Book, EGTB, Win25, Search).
+  - **Interactive Tactical Hover Previews & Stone Delta Badges**: Live sowing preview highlighting destination pits and displaying stone count changes (`+1`, `+2`).
+  - **Interactive Move Timeline & Scrubber**: Full game history navigation with first, previous, next, and last step controls.
+  - **SVG Match Review Graph**: Interactive post-game evaluation trajectory chart visualizing advantages and turning points.
+  - **Player Career / ELO Profile Modal**: Persistent statistics tracking rating, win rates, streak counter, and achievement unlocks.
+  - **Imperial Topkapı Royal Theme**: Cohesive Ottoman palace aesthetic with Midnight Burgundy Velvet, Rosewood frame, burnished bronze-gold pits, and mother-of-pearl stones.
+  - **Flipped Board Counter-Rotation Fix**: Dynamic sowing direction indicators (`◄` / `►`) accurately reflecting the counter-clockwise visual flow toward each player's Hazine when the board is flipped 180°.
+
+### Removed
+- **Legacy Pygame Interface (`gui_pygame.py`) & Dependency Extra (`[gui]`)**:
+  - Dropped legacy Pygame script and `pygame` / `pygame-ce` dependencies.
+  - Repository and PyPI package are now **100% Pure Python Standard Library** (`dependencies = []`).
+
+## [0.2.4] - 2026-11-03
+
+### Added
 - **7-Step Interactive Board Tutorial ("All Rules in One Go")**:
   - Replaced modal text guide with an uninterrupted, guided on-board walkthrough (`#interactiveHUD`) explaining 100% of authentic Turkish rules sequentially.
   - Covers: Sowing >1 stone, Single-stone pickup, Skipping opponent's treasury, Extra turn in Hazine, Even-parity capture, Empty-hole capture, and Endgame sweep.
@@ -34,11 +52,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Categorized into 3 skill tiers: `Apprentice` (Puzzles 1–5), `Master` (Puzzles 6–11), and `Grandmaster` (Puzzles 12–16) with dedicated filter tabs.
   - Multi-move combination engine: puzzles with bonus turns (e.g. Extra-turn into Even capture) seamlessly request the correct follow-up move.
   - Persistent progress tracking stored in `localStorage` (`mangala_puzzles_solved`) with checkmarks (`✓`) and progress bar (`X / 16 solved`).
-
-### Removed
-- **Legacy Pygame Interface (`gui_pygame.py`) & Dependency Extra (`[gui]`)**:
-  - Dropped legacy Pygame script and `pygame` / `pygame-ce` dependencies.
-  - Repository and PyPI package are now **100% Pure Python Standard Library** (`dependencies = []`).
 
 ## [0.2.3] - 2026-11-03
 

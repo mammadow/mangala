@@ -81,6 +81,7 @@ exclude_also = ["if __name__ == .__main__.:", "pragma: no cover"]
 line-length = 110
 target-version = "py310"
 src = ["src", "tests"]
+extend-exclude = [".agents", ".references"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
